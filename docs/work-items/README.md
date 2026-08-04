@@ -21,22 +21,29 @@ Work item definitions — the implementation units within sprints. Work items ar
 3. The ID prefix identifies the work item type.
 4. Sequential numbering within each type.
 
-## Work Item Lifecycle
+## Work Item Status
 
-General lifecycle (per type may vary):
+Every work item uses one of the following statuses. No other status is allowed.
 
 ```
-Draft → Ready → In Progress → In Review → Verified → Done
+Planned → Todo → In Progress → In Review → Done
 ```
 
-| Status | Description |
-|---|---|
-| Draft | Work item is being defined |
-| Ready | Work item is ready for implementation |
-| In Progress | Work item is being worked on |
-| In Review | Work item is under review |
-| Verified | Work item has been verified |
-| Done | Work item is complete |
+| Status | Meaning | Condition |
+|---|---|---|
+| `Planned` | Default status when assigned to a sprint | Sprint generation (initial state) |
+| `Todo` | Will be worked on — the item has entered an execution wave | Item's wave becomes active |
+| `In Progress` | Implementation is underway | Assignee starts working |
+| `In Review` | Pull Request has been created | PR opened |
+| `Done` | Implementation is merged | PR merged to the target branch |
+
+### Status Rules
+
+- Status transitions are strictly sequential: `Planned` → `Todo` → `In Progress` → `In Review` → `Done`.
+- Never skip a status. Never revert to a previous status.
+- `Planned` is the only valid initial status.
+- `Done` is the only valid terminal status.
+- Work item status, sprint table status, and ticket status must always agree.
 
 ## Ownership
 

@@ -20,6 +20,27 @@ Sprint documents — execution snapshots from the latest roadmap. Only one sprin
 |---|---|---|
 | Sprint | `mvp-nnn-s<nn>.md` | `mvp-001-s01.md` |
 
+## Work Item Status
+
+Every work item in the Sprint's Work Items table uses one of the following statuses. No other status is allowed.
+
+| Status | Meaning | Condition |
+|---|---|---|
+| `Planned` | Default status when the sprint is generated from the roadmap | Sprint generation (initial state) |
+| `Todo` | Will be worked on — the item has entered an execution wave | Item's wave becomes active in the ticket document |
+| `In Progress` | Implementation is underway | Assignee starts working on the item |
+| `In Review` | Pull Request has been created | PR opened for the item's implementation |
+| `Done` | Implementation is merged | PR merged to the target branch |
+
+### Status Rules
+
+- Status transitions are strictly sequential: `Planned` → `Todo` → `In Progress` → `In Review` → `Done`.
+- Never skip a status. Never revert to a previous status.
+- `Planned` is the only valid initial status — every work item starts here.
+- `Done` is the only valid terminal status — there is no status beyond `Done`.
+- The sprint's Work Items table is the single source of truth for work item status.
+- Status changes are recorded in the Sprint's Change Log.
+
 ## Status Lifecycle
 
 ```
@@ -27,14 +48,14 @@ Active → Completed
 ```
 
 - **Active**: Sprint is in progress; tickets are being worked on.
-- **Completed**: All tickets are Verified; sprint is closed.
+- **Completed**: All tickets are Done; sprint is closed.
 
 ## Active Sprint Rule
 
 **ONLY ONE active sprint at a time.**
 
 - A sprint becomes active when generated from the roadmap.
-- The next sprint CANNOT be generated until the active sprint is completed (all tickets Verified).
+- The next sprint CANNOT be generated until the active sprint is completed (all work items Done).
 - Sprint completion is recorded in the sprint's Change Log.
 - If a sprint is partially completed, deferred items roll to the next sprint.
 

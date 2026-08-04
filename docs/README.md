@@ -124,7 +124,7 @@ PRD → MVP → Epic Planning → Roadmap → Sprint → Ticket → Work Items �
 **ONLY ONE active sprint at a time.**
 
 - A sprint becomes active when generated from the roadmap.
-- The next sprint CANNOT be generated until the active sprint is completed (all tickets Verified).
+- The next sprint CANNOT be generated until the active sprint is completed (all work items Done).
 - Sprint completion is recorded in the sprint's Change Log.
 - If a sprint is partially completed, deferred items roll to the next sprint.
 
@@ -134,8 +134,8 @@ PRD → MVP → Epic Planning → Roadmap → Sprint → Ticket → Work Items �
 Active → Completed
 ```
 
-- **Active**: Sprint is in progress; tickets are being worked on.
-- **Completed**: All tickets are Verified; sprint is closed.
+- **Active**: Sprint is in progress; work items are being worked on.
+- **Completed**: All work items are Done; sprint is closed.
 
 ---
 
