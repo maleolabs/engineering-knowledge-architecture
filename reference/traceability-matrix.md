@@ -10,6 +10,7 @@ Legenda tipe: **artifact** = file ber-frontmatter `type` + `id` (artifact rule);
 |---|---|---|---|---|
 | `standard/README.md` | standard | konvensi | 1.2, 4 | Menjelaskan zona pra-lapisan; standard mendefinisikan lapisan, bukan artifact proyek. |
 | `standard/eka-specification-v1.0.md` | standard | konvensi (teks kanonik) | seluruh dokumen (1–16) | Salinan verbatim standard kanonik; referensi konformasi. |
+| `standard/eka-exchange-specification-v1.0.md` | standard | konvensi (teks kanonik) | 13, 5.4 (invariant 7), P13, 16.1 (milestone 2) | Exchange Contract v1: mengoperasionalkan Section 13 + invariant 5.4.7 menjadi kontrak round-trip, idempotensi, referential integrity, schema versioning, conformance suite; istilah subordinate (Exchange Package, Exchange Unit, Closure, External Reference) didefinisikan di Section 4.1 tanpa mengamandemen teks kanonik. |
 | `standard/glossary.md` | standard | konvensi | 3 | Definisi eksak istilah Core Concepts; tidak diparafrase. |
 
 ## Elemen zona Reference (C)
