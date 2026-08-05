@@ -3,6 +3,8 @@
 > Dokumen konvensi, bukan artefak. Meta-dokumentasi zona `reference/`.
 > Terkait: [`cli.md`](cli.md) (dokumentasi CLI), [`../skeleton/docs/exchange/validation.md`](../skeleton/docs/exchange/validation.md) (9 aturan konformitas), [`../standard/eka-specification-v1.0.md`](../standard/eka-specification-v1.0.md) (standard kanonik).
 
+> **Konsolidasi traceability.** Tabel traceability aturan (spesifikasi ↔ implementasi) pada dokumen ini telah dikonsolidasi ke [`conformance-traceability-matrix.md`](conformance-traceability-matrix.md) — single source of truth cakupan konformansi (REQ→Spec→Rule→Impl→Test). Dokumen ini kini hanya memegang **keputusan interpretasi (29 item)** dan **gap yang diketahui**; perbarui matriks tersebut, bukan tabel di sini, saat cakupan berubah.
+
 ## Tujuan
 
 Dokumen ini menjelaskan **bagaimana CLI `eka` menjalankan spesifikasi EKA secara mekanis**: klasifikasi artifact vs dokumen konvensi, aturan R0–R9, dan — yang terpenting — setiap **keputusan interpretasi** yang diambil ketika teks aturan tidak cukup presisi untuk dieksekusi mesin. Tujuannya adalah traceability aturan-demi-aturan: dari teks standard → teks aturan `validation.md` → perilaku validator → lokasi implementasi Go.
@@ -39,7 +41,7 @@ Nomor #1–#28 adalah keputusan yang diambil selama implementasi; #29 adalah gap
 | 22 | R9 | `fnd-` muncul di dua baris tabel validation.md (Knowledge doc vs Research Finding) | `fnd-` wajib **4 section**: Purpose, Content, Investigation Summary, Conclusion | Baris khusus (Research Finding) menang atas baris umum (Knowledge doc); research/README.md mengonfirmasi struktur 4 section |
 | 23 | R9 | Pencocokan heading section wajib | `## Name` eksak atau `## Name <sesuatu>`; `###` tidak dihitung | Heading level 2 adalah konvensi struktur konten; varian dengan suffix diizinkan |
 | 24 | R9 | ADR superseded — siapa penggantinya? | ≥1 artifact lain yang `supersedes`-nya resolve ke identity line ADR tersebut; referensi berversi wajib menunjuk instance eksak | ADR diganti per instance (identity line), bukan per line |
-| 25 | R0 | Token tipe tidak dikenal | = error struktural (R0); aturan R2–R9 dilewati untuk artifact tersebut | Aturan bernomor tidak bermakna tanpa token yang dikenal |
+| 25 | R0 | Token tipe tidak dikenal | = error struktural (R0); aturan R2, R3, R4, R6, R7 dilewati untuk artifact tersebut; R5 tetap memeriksa referensi (token tak dikenal dilaporkan); R8/R9 tidak berlaku | Aturan bernomor tidak bermakna tanpa token yang dikenal; pengecualian R5 terverifikasi secara empiris |
 | 26 | R0 | `instance-version: "1"` (dengan tanda kutip) | = error (bukan integer) | Spesifikasi mendefinisikan field sebagai integer; ADR kanonik menulis tanpa kutip |
 | 27 | Scan | Direktori `testdata/` dan berawalan titik (`.git`) | **Tidak dituruni** | Fixture pengujian Go bukan konten knowledge base; tanpa ini fixture akan mematahkan self-validation |
 | 28 | Scan | File non-.md, symlink, file tak terbaca | Non-.md diabaikan; symlink tidak diikuti; `.md` tak terbaca → `Validate` error | Pemindaian yang tidak melihat seluruh file tidak dapat menyatakan kepatuhan |
@@ -47,21 +49,12 @@ Nomor #1–#28 adalah keputusan yang diambil selama implementasi; #29 adalah gap
 
 ## Matriks traceability aturan (spesifikasi ↔ implementasi)
 
-| Rule | Teks aturan | Anchor EKA | Implementasi Go | Catatan |
-|---|---|---|---|---|
-| R0 (struktural) | Artifact rule (`type` + `id` ⇒ Artifact; `type` XOR `id` = malformed) + prasyarat parsing | 3 (Core Concepts — Artifact) | `conformance/artifact.go` (`analyzeFile`, `asInt`, `asDateString`, `parseChangeLogEntry`), `conformance/report.go` (`RuleStructural`) | Klasifikasi + kegagalan struktural sebelum aturan bernomor |
-| R1 | Aturan 1 — Keunikan Identitas | 6.2.2 (identity uniqueness) | `conformance/rules.go` (`rule1`) | Duplikat `(namespace, type, id, instance-version)` |
-| R2 | Aturan 2 — Konsistensi Filename | 6.4 (filename projection), D2.1 (konvensi filename) | `conformance/filename.go` (`parseFilename`, `filenameTypeToken`), `conformance/rules.go` (`rule2`) | Token + `-v<nn>`; wajib pada `scp-`/`plan-`, dilarang pada lainnya |
-| R3 | Aturan 3 — Validitas Nilai State | 7.2 (domain formal, value sets) | `conformance/state.go` (`domainValues`, `contentStateVariant`), `conformance/rules.go` (`rule3`) | Variant content-state per keluarga tipe; `phase` hanya `scp-`/`plan-` |
-| R4 | Aturan 4 — Kepatuhan Owned-Set | 7.4 (State Vector, owned) | `conformance/state.go` (`typeTokens` → `Owned`), `conformance/rules.go` (`rule4`) | Field non-owned = error; field owned absen = error (#2); `tkt-` state vector kosong |
-| R5 | Aturan 5 — Integritas Referensial | 6.2.7 (relationships by Identity), 13.2.3 (referential integrity) | `conformance/rules.go` (`parseReference`, `resolve`, `rule5`) | Grammar + bare-id (#9); severity draft vs non-draft (#10) |
-| R6 | Aturan 6 — Dimensi == Folder | 8 (Knowledge Taxonomy), P15 (classification is property) | `conformance/state.go` (`dimensionTokens`), `conformance/rules.go` (`rule6`, `dimensionFolderFor`) | Ancestor terdekat (#13); `dimension` wajib (#14); proyeksi dilarang membawa dimensi |
-| R7 | Aturan 7 — Konsistensi Change-Log | 5.2 (Operating Layer contract, change log), P7 (forward-only) | `conformance/artifact.go` (`parseChangeLogEntry`), `conformance/state.go` (`isLegalTransition`), `conformance/rules.go` (`rule7`) | Batasan snapshot (#4), `from: "-"` (#5), adjacency (#6), phase tanpa urutan (#7), `tkt-` bebas (#8) |
-| R8 | Aturan 8 — Single-Writer & Proyeksi | 7.4 (State Vector, projection), P6 (single-writer) | `conformance/rules.go` (`rule8`, `workItemsTable`, `compareWorkItemsTable`, `hasProjectionHeader`, `resolveWorkItemCell`) | Header proyeksi (#18), `derives-from` ctr- (#19), format tabel (#20–21) |
-| R9 | Aturan 9 — Well-Formedness | 10 (Artifact Taxonomy), 14.2.6 (ekstensi tipe wajib deklarasi State Vector lengkap) | `conformance/rules.go` (`requiredSectionsFor`, `headingMatches`, `rule9`, `hasReplacement`) | `fnd-` 4 section (#22), heading level 2 (#23), supersesi per instance (#24) |
-| Pemindaian | — (prasyarat) | 13 (Import/Export Model), P16 | `conformance/validate.go` (`Validate`) | Scope pemindaian (#27–28), klasifikasi, determinisme |
-| Pelaporan | Hasil (0 = blocking, W = catatan) | P16 (enforcement capability varies, invariants don't) | `conformance/report.go` (`Report`, `Pass`, `SortedResults`) | Warning tidak memblokir; pengurutan deterministik |
-| CLI | — (antarmuka) | 13, P16 | `cmd/eka/main.go` (`run`, `printReport`) | Exit codes 0/1/2; format keluaran |
+> **HISTORIS — dikonsolidasikan.** Tabel traceability ini dipindahkan ke
+> [`conformance-traceability-matrix.md`](conformance-traceability-matrix.md) sebagai
+> **single source of truth** cakupan konformansi (Engineering Requirement → Specification →
+> Conformance Rule → Implementation → Automated Test). Dokumen ini kini hanya memegang
+> keputusan interpretasi (#1–#29) dan gap yang diketahui. Perubahan conformance wajib
+> memperbarui matriks tersebut (lihat `CONTRIBUTING.md`).
 
 ## Gap yang diketahui
 

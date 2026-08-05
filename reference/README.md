@@ -15,8 +15,11 @@ Zona ini berisi **meta-dokumentasi** dari Reference Implementation EKA v1.0: bag
 | [`traceability-matrix.md`](traceability-matrix.md) | Aktif | Matriks penelusuran: setiap elemen repositori → anchor EKA. |
 | [`ratification-notes.md`](ratification-notes.md) | Aktif | Catatan ratifikasi EKA v1.0 (verbatim dari stabilization pass). |
 | [`cli.md`](cli.md) | Aktif | Dokumentasi CLI resmi `eka` (validator): instalasi, penggunaan, exit codes, proses validasi, arsitektur tooling, roadmap. |
-| [`conformance-notes.md`](conformance-notes.md) | Aktif | Catatan implementasi konformansi: 29 keputusan interpretasi + matriks traceability aturan R0–R9 → implementasi Go. |
+| [`conformance-notes.md`](conformance-notes.md) | Aktif | Catatan implementasi konformansi: 29 keputusan interpretasi + gap yang diketahui (traceability tabel telah dikonsolidasi ke Conformance Traceability Matrix). |
+| [`conformance-traceability-matrix.md`](conformance-traceability-matrix.md) | Aktif | Single source of truth cakupan konformansi: REQ→Spec→Rule→Impl→Test→Coverage→Notes (R0–R9, 54 test, 16 requirement). |
 | [`decisions/`](decisions/) | Aktif | 7 Implementation ADR (keputusan arsitektur serialisasi). |
+
+> Governance kontribusi + definisi "implementasi tidak lengkap" berada di [`../CONTRIBUTING.md`](../CONTRIBUTING.md) (root repo).
 
 ## Rujukan lintas zona
 
