@@ -206,3 +206,69 @@ func indexOf(values []string, v string) int {
 func contains(values []string, v string) bool {
 	return indexOf(values, v) >= 0
 }
+
+// --- Exported accessors (additive; consumed by the exchange/ import
+// engine, which must validate package units against the same taxonomy the
+// validator uses — one source of truth instead of a duplicated table). ---
+
+// TypeInfoFor returns the TypeInfo of a type token, or nil when the token
+// is unknown.
+func TypeInfoFor(token string) *TypeInfo {
+	info, ok := typeTokens[token]
+	if !ok {
+		return nil
+	}
+	return &info
+}
+
+// OwnedDomains returns the owned state domains of an artifact type (Rule
+// 4), or nil for unknown types.
+func OwnedDomains(token string) []string {
+	info, ok := typeTokens[token]
+	if !ok {
+		return nil
+	}
+	return info.Owned
+}
+
+// IsVersionedType reports whether the type token must carry a -v<nn>
+// filename suffix (Rule 2): scp- and plan- only.
+func IsVersionedType(token string) bool {
+	return versionedTypes[token]
+}
+
+// ValidStateValue reports whether value is a legal value of the state
+// domain on the given artifact type (content-state variant selected by the
+// type; Rule 3).
+func ValidStateValue(domain, typeToken, value string) bool {
+	return contains(domainValues(domain, typeToken), value)
+}
+
+// DomainValues returns the ordered value set of a state domain on the
+// given artifact type (content-state variant selected by the type; Rule
+// 3), or nil for unknown domains. Phase is included (type-independent).
+// This is the single source of truth for the allowed-value diagnostics
+// rendered by the exchange/ import engine: value validation and value
+// listing always derive from the same table, so a diagnostic can never
+// drift from what ValidStateValue/ValidPhaseValue accept.
+func DomainValues(domain, typeToken string) []string {
+	return domainValues(domain, typeToken)
+}
+
+// ValidPhaseValue reports whether value is a legal phase context value
+// (Rule 3).
+func ValidPhaseValue(value string) bool {
+	return contains(phaseValues, value)
+}
+
+// IsDimensionToken reports whether s is one of the 12 knowledge dimension
+// tokens (Rule 6).
+func IsDimensionToken(s string) bool {
+	return dimensionTokens[s]
+}
+
+// RelationshipFieldNames returns the five canonical relationship field
+// names in declared order (Rule 5).
+func RelationshipFieldNames() []string {
+	return relationshipFields
+}

@@ -47,7 +47,7 @@ func TestExitCodeUsage(t *testing.T) {
 	}
 	// Cobra sorts command lists alphabetically (EnableCommandSorting);
 	// the message must list exactly the registered commands.
-	if !strings.Contains(errText, "available commands: export, init, validate") {
+	if !strings.Contains(errText, "available commands: export, import, init, validate") {
 		t.Errorf("unknown command message must list the available commands, got %q", errText)
 	}
 	code, _, _ = runIn([]string{"validate", "a", "b"})
@@ -85,7 +85,7 @@ func TestHelpExitsZero(t *testing.T) {
 		if !strings.Contains(text, "Usage:") {
 			t.Errorf("args %v: root help must contain Usage:", args)
 		}
-		for _, cmdName := range []string{"validate", "init", "export"} {
+		for _, cmdName := range []string{"validate", "init", "export", "import"} {
 			if !strings.Contains(text, cmdName) {
 				t.Errorf("args %v: root help must mention the %s command", args, cmdName)
 			}
@@ -662,5 +662,232 @@ func TestExportDeterministicCLI(t *testing.T) {
 	}
 	if !bytes.Equal(data1, data2) {
 		t.Error("two CLI exports of identical state must be byte-identical")
+	}
+}
+
+// --- eka import CLI-level tests -----------------------------------------
+
+// importPackageFixture exports the valid fixture and returns the package
+// path plus a fresh EKA target repository.
+func importPackageFixture(t *testing.T) (pkg string, repo string) {
+	t.Helper()
+	dir := exportFixtureAbs(t, "valid")
+	chdirInto(t, dir)
+	pkg = filepath.Join(t.TempDir(), "cli.ekapkg")
+	if code, _, errText := runIn([]string{"export", "-o", pkg}); code != 0 {
+		t.Fatalf("fixture export failed: exit %d\n%s", code, errText)
+	}
+	repo = t.TempDir()
+	if err := os.MkdirAll(filepath.Join(repo, "docs"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	return pkg, repo
+}
+
+func TestImportHelpExitsZero(t *testing.T) {
+	for _, args := range [][]string{{"import", "-h"}, {"import", "--help"}} {
+		code, text, _ := runIn(args)
+		if code != 0 {
+			t.Errorf("args %v: exit = %d, want 0", args, code)
+		}
+		if !strings.Contains(text, "eka import") {
+			t.Errorf("args %v: import help text missing usage", args)
+		}
+		if !strings.Contains(text, "<package-path>") {
+			t.Errorf("args %v: import help must document the positional argument", args)
+		}
+	}
+}
+
+func TestImportUnknownFlagExitsTwo(t *testing.T) {
+	code, _, errText := runIn([]string{"import", "--bogus"})
+	if code != 2 {
+		t.Errorf("exit = %d, want 2", code)
+	}
+	if !strings.Contains(errText, "--bogus") {
+		t.Errorf("stderr must name the unknown flag, got %q", errText)
+	}
+}
+
+func TestImportMissingArgumentExitsTwo(t *testing.T) {
+	code, _, errText := runIn([]string{"import"})
+	if code != 2 {
+		t.Errorf("exit = %d, want 2", code)
+	}
+	if !strings.Contains(errText, "accepts 1 arg(s)") {
+		t.Errorf("stderr must explain the argument requirement, got %q", errText)
+	}
+}
+
+// TestImportHappyPathExitsZero: import a valid package into a fresh
+// repository — exit 0 with the deterministic summary.
+func TestImportHappyPathExitsZero(t *testing.T) {
+	pkg, repo := importPackageFixture(t)
+	chdirInto(t, repo)
+	code, text, errText := runIn([]string{"import", pkg})
+	if code != 0 {
+		t.Fatalf("exit = %d, want 0\nstdout: %s\nstderr: %s", code, text, errText)
+	}
+	for _, want := range []string{"EKA Import", "rsf-repo-eka-valid-fixture-1", "Imported:", "6", "Skipped (no-op):", "0", "Conflicts:", "0", "Validation (pre):", "PASS", "Validation (post):", "PASS"} {
+		if !strings.Contains(text, want) {
+			t.Errorf("output must contain %q:\n%s", want, text)
+		}
+	}
+	if _, err := os.Stat(filepath.Join(repo, "docs", "decisions", "adr-001-exchange.md")); err != nil {
+		t.Errorf("imported artifact file missing: %v", err)
+	}
+	// The imported repository must validate.
+	code, text, _ = runIn([]string{"validate", repo})
+	if code != 0 {
+		t.Errorf("imported repository must validate, exit = %d:\n%s", code, text)
+	}
+}
+
+// TestImportTwiceExitsZero: re-importing the same package is a no-op —
+// still exit 0, zero imported, zero conflicts.
+func TestImportTwiceExitsZero(t *testing.T) {
+	pkg, repo := importPackageFixture(t)
+	chdirInto(t, repo)
+	if code, _, errText := runIn([]string{"import", pkg}); code != 0 {
+		t.Fatalf("first import: exit %d\n%s", code, errText)
+	}
+	code, text, errText := runIn([]string{"import", pkg})
+	if code != 0 {
+		t.Fatalf("second import: exit = %d, want 0\nstdout: %s\nstderr: %s", code, text, errText)
+	}
+	if !strings.Contains(text, "Imported:            0") {
+		t.Errorf("second import must report 0 imported:\n%s", text)
+	}
+	if !strings.Contains(text, "Skipped (no-op):     6") {
+		t.Errorf("second import must report 6 skipped no-ops:\n%s", text)
+	}
+}
+
+// TestImportBadPackagePathExitsTwo: a missing/unreadable package is a
+// usage-class failure (exit 2).
+func TestImportBadPackagePathExitsTwo(t *testing.T) {
+	repo := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(repo, "docs"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	chdirInto(t, repo)
+	code, _, errText := runIn([]string{"import", filepath.Join(t.TempDir(), "nope.ekapkg")})
+	if code != 2 {
+		t.Errorf("exit = %d, want 2", code)
+	}
+	if !strings.Contains(errText, "eka:") {
+		t.Errorf("stderr must be a deterministic eka error, got %q", errText)
+	}
+}
+
+// TestImportIntoNonEKADirExitsOne: a destination without the docs/
+// knowledge tree is not an EKA repository (documented decision: exit 1).
+func TestImportIntoNonEKADirExitsOne(t *testing.T) {
+	pkg, _ := importPackageFixture(t)
+	plain := t.TempDir() // no docs/ directory
+	chdirInto(t, plain)
+	code, _, errText := runIn([]string{"import", pkg})
+	if code != 1 {
+		t.Errorf("exit = %d, want 1", code)
+	}
+	if !strings.Contains(errText, "not an EKA repository") {
+		t.Errorf("stderr must explain the non-EKA refusal, got %q", errText)
+	}
+}
+
+// TestImportConflictExitsOne: a conflicting identity aborts with exit 1,
+// a per-identity summary, and no changes.
+func TestImportConflictExitsOne(t *testing.T) {
+	pkg, repo := importPackageFixture(t)
+	// CWD is the fixture directory (importPackageFixture chdirs into it):
+	// copy the full fixture tree so the modified artifact stays
+	// referentially valid, then modify one artifact so the package
+	// conflicts with the repository.
+	err := filepath.WalkDir(".", func(path string, d os.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if d.IsDir() {
+			return nil
+		}
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return err
+		}
+		dst := filepath.Join(repo, path)
+		if err := os.MkdirAll(filepath.Dir(dst), 0o755); err != nil {
+			return err
+		}
+		return os.WriteFile(dst, data, 0o644)
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	adr := filepath.Join(repo, "docs", "decisions", "adr-001-exchange.md")
+	orig, err := os.ReadFile(adr)
+	if err != nil {
+		t.Fatal(err)
+	}
+	modified := strings.Replace(string(orig), "author: Engineering Architecture", "author: Someone Else", 1)
+	if err := os.WriteFile(adr, []byte(modified), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	before, err := snapshot(repo)
+	if err != nil {
+		t.Fatal(err)
+	}
+	chdirInto(t, repo)
+	code, text, errText := runIn([]string{"import", pkg})
+	if code != 1 {
+		t.Fatalf("exit = %d, want 1\nstdout: %s\nstderr: %s", code, text, errText)
+	}
+	if !strings.Contains(errText, "eka-valid-fixture/adr:001-exchange:1") {
+		t.Errorf("conflict summary must name the identity, got %q", errText)
+	}
+	if !strings.Contains(errText, "metadata differs") {
+		t.Errorf("conflict summary must list the differences, got %q", errText)
+	}
+	after, err := snapshot(repo)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(after) != len(before) {
+		t.Errorf("conflict import must not change the repository: %d files before, %d after", len(before), len(after))
+	}
+}
+
+// TestImportRelationshipErrorExitsOne: a package carrying a declared
+// external reference that cannot resolve in the target repository (a
+// non-draft unit) fails at CLI level with exit 1 and the deterministic
+// RelationshipError stderr. The package is crafted at CLI level: a
+// line-scope export of the fixture's adr declares its depends-on sto
+// target as external (the sto is not in the package), and the empty
+// target repository cannot resolve it.
+func TestImportRelationshipErrorExitsOne(t *testing.T) {
+	dir := exportFixtureAbs(t, "valid")
+	chdirInto(t, dir)
+	pkg := filepath.Join(t.TempDir(), "line.ekapkg")
+	if code, _, errText := runIn([]string{"export", "adr:001-exchange", "-o", pkg}); code != 0 {
+		t.Fatalf("fixture export failed: exit %d\n%s", code, errText)
+	}
+
+	repo := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(repo, "docs"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	chdirInto(t, repo)
+	code, text, errText := runIn([]string{"import", pkg})
+	if code != 1 {
+		t.Fatalf("exit = %d, want 1\nstdout: %s\nstderr: %s", code, text, errText)
+	}
+	if text != "" {
+		t.Errorf("stdout must be empty on a relationship failure, got %q", text)
+	}
+	// Deterministic stderr: the RelationshipError summary line plus the
+	// single failing relationship detail, byte-exact.
+	want := "eka: import refused: 1 unresolved relationship(s) outside draft tolerance; no changes written\n" +
+		"  - eka-valid-fixture/adr:001-exchange:1 -> depends-on eka-valid-fixture/sto:login-email:1 (declared external reference does not resolve in the target repository)\n"
+	if errText != want {
+		t.Errorf("stderr must be deterministic:\ngot  %q\nwant %q", errText, want)
 	}
 }

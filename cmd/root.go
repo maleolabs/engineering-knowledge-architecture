@@ -136,6 +136,6 @@ Exit codes:
 		SilenceErrors: true,
 		SilenceUsage:  true,
 	}
-	root.AddCommand(newValidateCommand(), newInitCommand(), newExportCommand())
+	root.AddCommand(newValidateCommand(), newInitCommand(), newExportCommand(), newImportCommand())
 	return root
 }

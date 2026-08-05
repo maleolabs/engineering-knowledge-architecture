@@ -775,6 +775,14 @@ func normalizeHeader(s string) string {
 //     a versioned reference must name the exact instance, a line reference
 //     matches any instance.
 
+// RequiredSectionsFor returns the mandatory content sections of an artifact
+// type family (Rule 9), or nil for unknown types. Exported for the
+// exchange/ import engine, which validates package unit content against the
+// same section table before commit.
+func RequiredSectionsFor(typeToken string) []string {
+	return requiredSectionsFor(typeToken)
+}
+
 func requiredSectionsFor(typeToken string) []string {
 	switch typeToken {
 	case "scp", "epc", "plan", "trc":
