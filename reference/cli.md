@@ -10,6 +10,7 @@
 
 - **`eka init`** — Repository Bootstrapper resmi: menganalisis workspace, menyusun rencana bootstrap, mengonfigurasi proyek secara interaktif, membangkitkan repositori EKA dari Reference Skeleton, lalu memvalidasinya.
 - **`eka export`** — implementasi praktis pertama Exchange Specification: mengekspor pengetahuan engineering menjadi **EKA Package** sesuai Reference Serialization Format (RSF).
+- **`eka import`** — kebalikan dari export: mengonsumsi EKA Package dan mengintegrasikan pengetahuan ke repositori EKA yang ada — implementasi semantik import Exchange Specification §11.
 - **`eka validate`** — Validator konformitas: konformitas repositori tidak boleh bergantung hanya pada review manual — aturan R1–R9 di `skeleton/docs/exchange/validation.md` dirancang mekanis, dan validator ini adalah implementasi kanoniknya (P16: mekanisme enforcement bervariasi, invariant tetap identik).
 
 Konsekuensi dari filosofi ini:
@@ -45,6 +46,7 @@ Hasil build adalah **binari standalone yang portabel** — tidak ada dependensi 
 ```
 eka init [project-name] [--dry-run]
 eka export [target...] [-o|--output path]
+eka import <package-path>
 eka validate [path]
 eka completion [bash|zsh|fish|powershell]
 eka help [command]
@@ -232,6 +234,75 @@ Kedua mode deterministik. Paket yang sama dari repositori identik → identik.
 | Komponen identity melanggar charset (RSF §5.2.3) | Export ditolak (keamanan: pencegahan path traversal), exit `2` |
 | Kegagalan serialisasi/fs (output tidak dapat ditulis, dll.) | Error, exit `2` |
 
+## `eka import` — Integrasi Pengetahuan
+
+`eka import <package-path>` mengonsumsi EKA Package (`.ekapkg` atau layout direktori) dan mengintegrasikan pengetahuan engineering ke repositori EKA di direktori saat ini. Ini **bukan** ekstraksi arsip — ini pipeline integrasi pengetahuan yang mengimplementasikan semantik import Exchange Specification §11.
+
+### Filosofi import
+
+```
+EKA Package
+    ↓
+Reference Deserialization
+    ↓
+Exchange Model
+    ↓
+Repository Integration
+    ↓
+Repository Validation
+```
+
+- Identitas = mekanisme lookup kanonik — tidak pernah path filesystem.
+- Integrasi **atomik**: semua berhasil, atau tidak ada yang berubah.
+- Strategi v1 = **merge konservatif**: hanya artifact baru yang ditulis; duplikat identik = no-op; perbedaan payload apa pun = konflik → batal. Tidak ada overwrite, tidak ada hapus, tidak ada strategi replace (masa depan).
+
+### Alur kerja (pipeline Exchange §11)
+
+1. **Repository discovery + gate** — target harus repositori EKA (marker `docs/operating/` + `docs/exchange/`); `conformance.Validate` dijalankan sebelum impor. Target tidak valid → berhenti, exit `1`.
+2. **Package validation** — integritas package (digest SHA-256: package-level atas seluruh entry kecuali `manifest.json` + `integrity.json`, per-unit atas `unit.json ‖ content`, per-attachment), JSON well-formed, manifest↔units 1:1, field/entry tak dikenal ditolak (RSF §9.5), kompatibilitas versi (serialization `1`, exchange format `1`, specification `1.0` — ketidakcocokan ditolak dengan diagnostik "ditemukan vs didukung").
+3. **Fase 1–8 (analisis, tanpa tulis)** — contract → identity (charset RSF §5.2.3, unik dalam package) → state (nilai valid, owned-set, konsistensi change-log) → struktural (well-formedness per keluarga tipe) → referensial (lokal → global → eksternal per §7.4; dangling non-draft → batal; draft → warning) → konflik → duplikat → urutan dependensi.
+4. **Fase 9 (commit)** — tulis ter-staging (temp + rename, atomik per file); kegagalan apa pun → rollback (file + direktori yang dibuat dihapus), repositori tidak berubah.
+5. **Fase 10 (revalidasi)** — `conformance.Validate` setelah integrasi; gagal → rollback, exit `1`.
+
+### Konflik
+
+| Kondisi | Perilaku |
+|---|---|
+| Identity sama + payload identik (content, state, change-log, relationship, klasifikasi, metadata) | Duplikat → no-op (dilewati) |
+| Identity sama + payload berbeda | **Konflik → impor dibatalkan**; ringkasan per-identity mencantumkan perbedaan |
+| Referensi tak terdeklarasi / eksternal tak ter-resolve (non-draft) | **Batal** — integritas referensial tidak dapat dipertahankan |
+| Referensi menggantung pada artifact Draft | Ditoleransi (draft tolerance, R5), dicatat sebagai warning |
+| Attachment target sudah ada, konten beda | Konflik → batal; identik → dilewati |
+
+Tidak ada partial integration: seluruh analisis terjadi sebelum satu pun file ditulis.
+
+### Jaminan rollback
+
+- Commit ter-staging per file; kegagalan commit → semua file + direktori yang dibuat dihapus (deepest-first), file yang sudah ada sebelumnya tidak tersentuh.
+- Revalidasi pasca-impor gagal → seluruh hasil impor di-rollback, repositori kembali ke state pra-impor.
+- Jika rollback sendiri gagal (mis. filesystem berubah read-only), error mencantumkan peringatan eksplisit bahwa repositori mungkin partially modified.
+
+### Kompatibilitas
+
+- Package harus menyatakan serialization version `1`, exchange format version `1`, specification version `1.0` — didukung.
+- Kombinasi tidak didukung ditolak dengan diagnostik (nilai ditemukan vs didukung).
+- Package tanpa Capability Declaration diterima (opsional per Exchange §4.5); package dengan ekstensi tak dikenal ditolak eksplisit.
+
+### Keterbatasan v1
+
+- Referensi lintas-namespace hanya untuk instance v1 (format repositori `<ns>/<type>:<id>`; instance > 1 → error jelas).
+- Tidak ada rekonsiliasi state forward-only (Exchange §13.2) — v1 konservatif: identik = no-op, berbeda = konflik.
+- Strategi replace/merge lanjutan: masa depan.
+
+### Error handling
+
+| Kondisi | Perilaku |
+|---|---|
+| Target bukan repositori EKA / tidak konform | Berhenti, exit `1` |
+| Konflik identity/state/metadata, kegagalan relationship, revalidasi gagal | Berhenti + rollback, exit `1` |
+| Package invalid (digest, JSON, entry hilang, versi tak didukung, field tak dikenal) | Berhenti, repositori tidak berubah, exit `2` |
+| Kegagalan filesystem / usage | Error, exit `2` |
+
 ## `eka validate` — Validator Konformitas
 
 ```
@@ -316,7 +387,7 @@ CLI diorganisasi sebagai **dua lapisan + satu titik masuk**:
 |---|---|---|
 | Command layer | `cmd/` (package `cmd`) | **Hanya** definisi perintah Cobra: registrasi, flag, help, validasi argumen, dispatch ke layanan. Tidak ada logika domain. |
 | Application layer | `bootstrap/` (package publik) | Repository Bootstrapper: discovery, planning, wizard, generasi, validasi — dapat digunakan ulang tanpa CLI. |
-| Application layer | `exchange/` (package publik) | Mesin import/export (Exchange Spec + RSF): discovery, loading, model building, serialization, package writer — dapat digunakan ulang tanpa CLI. |
+| Application layer | `exchange/` (package publik) | Mesin import/export (Exchange Spec + RSF): discovery, loading, model building, serialization, deserialization, identity/relationship resolver, conflict analyzer, integration engine (staged commit + rollback), package writer — dapat digunakan ulang tanpa CLI. |
 | Application layer | `conformance/` (package publik) | Mesin validasi: pemindaian, klasifikasi artifact, aturan R1–R9, model hasil (`Report`); juga menyediakan `Scan` dan `ParseReference` untuk konsumen lain. |
 | Entry point | `cmd/eka/main.go` | Tipis: `os.Exit(cmd.Execute(...))`. Nama executable: `eka`. |
 
@@ -326,6 +397,7 @@ cmd/                package cmd — Cobra command definitions (command layer)
   validate.go       perintah validate
   init.go           perintah init
   export.go         perintah export
+  import.go         perintah import
   execute_test.go   test CLI (exit codes, help, completion, mode)
 cmd/eka/
   main.go           tipis: os.Exit(cmd.Execute(...))
@@ -361,10 +433,10 @@ Perintah baru ditambahkan tanpa refactor arsitektur:
 |---|---|---|
 | `eka init` | **Diimplementasikan** | Repository Bootstrapper (5 tahap, wizard adaptif, dry-run, idempoten, validasi pasca-generasi). |
 | `eka export` | **Diimplementasikan** | Ekspor EKA Package (RSF v1.0): scope repo/line/instance/collection, validasi otomatis, deterministik, external reference declaration, attachment, digest SHA-256. |
+| `eka import` | **Diimplementasikan** | Impor EKA Package (RSF v1.0 + Exchange §11): validasi package + integritas, resolusi identity/relationship, konflik → batal, commit atomik ter-staging, rollback, revalidasi pasca-impor. |
 | `eka validate` | **Diimplementasikan** | Validator konformitas penuh (R1–R9 + R0 struktural). |
 | `eka completion` | **Diimplementasikan** | Script completion bash/zsh/fish/powershell (disediakan Cobra). |
 | `eka diagnose` | Belum diimplementasikan | Diagnostik repositori — kandidat masa depan. |
-| `eka import` | Belum diimplementasikan | Impor EKA Package (seam Exchange, Section 13) — kebalikan dari export. |
 | `eka graph` | Belum diimplementasikan | Query/knowledge graph atas artifact. |
 
 Perintah masa depan ditambahkan mengikuti [Panduan kontribusi](#panduan-kontribusi-menambah-perintah) — tanpa refactor arsitektur.
