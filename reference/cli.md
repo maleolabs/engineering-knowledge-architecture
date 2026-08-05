@@ -9,6 +9,7 @@
 `eka` adalah **bentuk executable dari spesifikasi EKA** — antarmuka resmi Engineering Knowledge Architecture bagi manusia dan agent (Naming and Terminology Specification v1.0 §7). Dua peran saat ini:
 
 - **`eka init`** — Repository Bootstrapper resmi: menganalisis workspace, menyusun rencana bootstrap, mengonfigurasi proyek secara interaktif, membangkitkan repositori EKA dari Reference Skeleton, lalu memvalidasinya.
+- **`eka export`** — implementasi praktis pertama Exchange Specification: mengekspor pengetahuan engineering menjadi **EKA Package** sesuai Reference Serialization Format (RSF).
 - **`eka validate`** — Validator konformitas: konformitas repositori tidak boleh bergantung hanya pada review manual — aturan R1–R9 di `skeleton/docs/exchange/validation.md` dirancang mekanis, dan validator ini adalah implementasi kanoniknya (P16: mekanisme enforcement bervariasi, invariant tetap identik).
 
 Konsekuensi dari filosofi ini:
@@ -43,6 +44,7 @@ Hasil build adalah **binari standalone yang portabel** — tidak ada dependensi 
 
 ```
 eka init [project-name] [--dry-run]
+eka export [target...] [-o|--output path]
 eka validate [path]
 eka completion [bash|zsh|fish|powershell]
 eka help [command]
@@ -142,6 +144,94 @@ Tidak ada pertanyaan "Methodology" — EKA v1 tidak memiliki taksonomi methodolo
 
 Setelah selesai, dicetak ringkasan ringkas: Project Name, Namespace, Repository Type (new / existing-dir / existing-eka), Git Status, Knowledge Standard Version (EKA v1.0), Validation Result (PASS/FAIL + jumlah error/warning), dan langkah selanjutnya yang disarankan.
 
+## `eka export` — Ekspor Paket Pengetahuan
+
+`eka export` adalah implementasi praktis pertama dari **EKA Exchange Specification** dan **Reference Serialization Format (RSF)**. Ini **bukan** arsip repositori dan **bukan** utilitas ZIP — ia membangun EKA Package kanonik.
+
+### Filosofi ekspor
+
+Export diperlakukan sebagai **transformasi pengetahuan**, bukan penyalinan file:
+
+```
+Repository
+    ↓
+Engineering Knowledge Model
+    ↓
+Reference Serialization Format
+    ↓
+EKA Package
+```
+
+- Package merepresentasikan **Engineering Knowledge** (Identity, State, Content, Relationship, Klasifikasi), bukan layout repositori — tidak ada path repositori di dalam package; semua identitas kanonik.
+- Package adalah proyeksi bijective dari Exchange Package Object Model (Exchange Spec §4.4) ke RSF.
+- Repositori yang identik selalu menghasilkan package yang **identik byte-per-byte**.
+
+### Alur kerja
+
+1. **Validasi repositori** — `conformance.Validate(root)` dijalankan otomatis (setara `eka validate`). Jika gagal: **export berhenti, tidak ada package diproduksi** (exit `1`). Hanya repositori konform yang dapat diekspor.
+2. **Discovery** — identitas repositori (namespace dari seluruh artifact), specification version (EKA v1.0), scope, metadata package.
+3. **Loading** — artifact dimuat via `conformance.Scan` (kebijakan pemindaian sama dengan validator: `.md` saja, lewati `testdata`/dot-dirs/symlink); body konten diekstrak byte-exact.
+4. **Scope resolution** — pilih unit sesuai scope (lihat bawah).
+5. **Model construction** — bangun object model Exchange: Header, Manifest, Units, Declarations, Integrity.
+6. **Serialization (RSF)** — proyeksi deterministik: blok JSON + payload konten + attachments.
+7. **Write** — package `.ekapkg` (ZIP) atau layout direktori.
+
+### Export scope
+
+| Argumen | Scope | Isi package |
+|---|---|---|
+| (tanpa target) | **Repository** (default) | seluruh artifact seluruh Line |
+| `<type>:<id>` | **Line** | seluruh instance Line tersebut |
+| `<type>:<id>:<instance-version>` | **Instance** | satu instance |
+| beberapa target | **Collection** | gabungan Line/instance yang diminta |
+
+Referensi keluar package → **External Reference Declaration** di `declarations.json` (Exchange §12.3) — integritas dependensi dipertahankan tanpa closure traversal di v1. Referensi menggantung pada artifact Draft ditoleransi (draft tolerance, R5) dan dicatat; referensi menggantung pada non-Draft memblokir validasi (dan karenanya export).
+
+### Isi package (proyeksi RSF referensi)
+
+| Entry | Isi |
+|---|---|
+| `header.json` | Package Header: serialization version `1`, exchange format version `1`, specification version `1.0`, exporter `eka`, package identity label, scope, namespace. Tanpa creation timestamp (determinisme byte). |
+| `manifest.json` | Manifest: daftar unit terurut (canonical identity form), digest per-unit + package, counts, closure declaration (scope + seed). |
+| `units/<ns>/<type>-<id>-v<nn>/unit.json` | Metadata unit: identity lengkap, revision, author/created/updated, state vector eksak, change log urutan kejadian, relationship by Identity terurut, klasifikasi, phase (scp-/plan-). |
+| `units/<ns>/<type>-<id>-v<nn>/content` | Body konten (representasi `eka/structured-text/1`), byte-exact. |
+| `attachments/<path>` | File non-`.md` di bawah `docs/` (diagram, gambar, dsb.), byte-exact. Attachment ID = path relatif. v1: tanpa referensi unit→attachment. |
+| `declarations.json` | Declarations Block: closure declaration, external reference declarations, extension declarations (kosong di v1). |
+| `integrity.json` | Digest SHA-256: package-level (atas seluruh entry kecuali `manifest.json` + `integrity.json`), per-unit (`unit.json ‖ content`), per-attachment. |
+
+Encoding: UTF-8 tanpa BOM, LF, JSON struct berurutan tetap, entry ZIP terurut + timestamp nol. Paket nama: `rsf-<scope>-<namespace>-1.ekapkg` (RSF §4.1–4.2).
+
+### Deviasi RSF terdokumentasi (v1)
+
+1. Tanpa creation timestamp di header — determinisme byte (RSF §4.3 memperbolehkan metadata berbeda).
+2. Header tidak mengumumkan integrity/declarations — keberadaan `integrity.json`/`declarations.json` deterministik.
+3. Konten dibawa byte-exact tanpa normalisasi LF — losslessness; canonicalization dideklarasikan = payload byte-exact (RSF §9.3/§6.3.3).
+4. Attachment ID = path relatif repositori, bukan "referring unit identity + resource name" (RSF §7.2 recommended rule).
+5. Package digest tidak mencakup `manifest.json` — menghindari self-reference (manifest memuat digest package).
+
+### Output
+
+- Default: `<label>.ekapkg` di direktori saat ini.
+- `-o <file>.ekapkg` — path file kustom.
+- `-o <dir>` / path berakhiran separator — layout direktori (struktur logis sama, tanpa ZIP).
+
+Kedua mode deterministik. Paket yang sama dari repositori identik → identik.
+
+### Determinisme
+
+- Semua koleksi terurut oleh canonical identity key; change log urutan kejadian; relationship terurut (type, target); entry ZIP terurut; field JSON urutan tetap.
+- Tanpa timestamp, tanpa nilai host-dependent, tanpa absolute path di dalam package.
+- Digest dihitung atas bytes kanonik.
+
+### Error handling
+
+| Kondisi | Perilaku |
+|---|---|
+| Repositori tidak konform | Berhenti, laporan validasi dicetak, **tidak ada package**, exit `1` |
+| Target tidak ada / sintaks salah / ambigu | Error dengan daftar artifact tersedia, exit `2` |
+| Komponen identity melanggar charset (RSF §5.2.3) | Export ditolak (keamanan: pencegahan path traversal), exit `2` |
+| Kegagalan serialisasi/fs (output tidak dapat ditulis, dll.) | Error, exit `2` |
+
 ## `eka validate` — Validator Konformitas
 
 ```
@@ -226,7 +316,8 @@ CLI diorganisasi sebagai **dua lapisan + satu titik masuk**:
 |---|---|---|
 | Command layer | `cmd/` (package `cmd`) | **Hanya** definisi perintah Cobra: registrasi, flag, help, validasi argumen, dispatch ke layanan. Tidak ada logika domain. |
 | Application layer | `bootstrap/` (package publik) | Repository Bootstrapper: discovery, planning, wizard, generasi, validasi — dapat digunakan ulang tanpa CLI. |
-| Application layer | `conformance/` (package publik) | Mesin validasi: pemindaian, klasifikasi artifact, aturan R1–R9, model hasil (`Report`) — dapat digunakan ulang tanpa CLI. |
+| Application layer | `exchange/` (package publik) | Mesin import/export (Exchange Spec + RSF): discovery, loading, model building, serialization, package writer — dapat digunakan ulang tanpa CLI. |
+| Application layer | `conformance/` (package publik) | Mesin validasi: pemindaian, klasifikasi artifact, aturan R1–R9, model hasil (`Report`); juga menyediakan `Scan` dan `ParseReference` untuk konsumen lain. |
 | Entry point | `cmd/eka/main.go` | Tipis: `os.Exit(cmd.Execute(...))`. Nama executable: `eka`. |
 
 ```
@@ -234,10 +325,12 @@ cmd/                package cmd — Cobra command definitions (command layer)
   root.go           root command + Execute(args, stdin, stdout, stderr) int
   validate.go       perintah validate
   init.go           perintah init
+  export.go         perintah export
   execute_test.go   test CLI (exit codes, help, completion, mode)
 cmd/eka/
   main.go           tipis: os.Exit(cmd.Execute(...))
 bootstrap/          package publik — engine eka init (application layer)
+exchange/           package publik — engine ekspor/impor (application layer)
 conformance/        package publik — engine validasi (application layer)
 skeletonembed.go    package root — //go:embed skeleton (Reference Skeleton kanonik)
 ```
@@ -267,11 +360,11 @@ Perintah baru ditambahkan tanpa refactor arsitektur:
 | Perintah | Status | Catatan |
 |---|---|---|
 | `eka init` | **Diimplementasikan** | Repository Bootstrapper (5 tahap, wizard adaptif, dry-run, idempoten, validasi pasca-generasi). |
+| `eka export` | **Diimplementasikan** | Ekspor EKA Package (RSF v1.0): scope repo/line/instance/collection, validasi otomatis, deterministik, external reference declaration, attachment, digest SHA-256. |
 | `eka validate` | **Diimplementasikan** | Validator konformitas penuh (R1–R9 + R0 struktural). |
 | `eka completion` | **Diimplementasikan** | Script completion bash/zsh/fish/powershell (disediakan Cobra). |
 | `eka diagnose` | Belum diimplementasikan | Diagnostik repositori — kandidat masa depan. |
-| `eka import` | Belum diimplementasikan | Impor artifact eksternal (seam Exchange, Section 13). |
-| `eka export` | Belum diimplementasikan | Ekspor artifact (seam Exchange, Section 13); target serialisasi: RSF v1.0. |
+| `eka import` | Belum diimplementasikan | Impor EKA Package (seam Exchange, Section 13) — kebalikan dari export. |
 | `eka graph` | Belum diimplementasikan | Query/knowledge graph atas artifact. |
 
 Perintah masa depan ditambahkan mengikuti [Panduan kontribusi](#panduan-kontribusi-menambah-perintah) — tanpa refactor arsitektur.

@@ -39,6 +39,7 @@ Repositori ini adalah **Reference Implementation** dari **Engineering Knowledge 
 **CLI EKA** (`eka`) adalah antarmuka resmi Engineering Knowledge Architecture (Naming §7). Framework: Cobra (adapter murni; logika bisnis di `bootstrap/` + `conformance/`).
 
 - **`eka init`** — Repository Bootstrapper: menganalisis workspace, wizard adaptif, membangkitkan repositori EKA dari Reference Skeleton, lalu memvalidasi. Idempoten; dukung `--dry-run`.
+- **`eka export`** — ekspor pengetahuan menjadi **EKA Package** (implementasi praktis pertama Exchange Specification + RSF): validasi otomatis, deterministik byte-identical, scope repo/line/instance/collection, digest SHA-256.
 - **`eka validate`** — validator konformitas kanonik: menjalankan 9 aturan R1–R9 dari `skeleton/docs/exchange/validation.md` secara mekanis (P16). Konformitas repositori tidak bergantung hanya pada review manual — `eka validate` memutuskan kepatuhan dengan deterministik, termasuk exit code untuk integrasi CI.
 - **`eka completion`** — script completion bash/zsh/fish/powershell.
 
