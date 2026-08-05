@@ -27,7 +27,9 @@ Repositori ini adalah **Reference Implementation** dari **Engineering Knowledge 
 - **Perubahan breaking**: [`reference/breaking-changes.md`](reference/breaking-changes.md) — 14 perubahan disengaja + catatan tooling.
 - **Keputusan implementasi**: [`reference/adr-summary.md`](reference/adr-summary.md) — 7 Implementation ADR (accepted).
 - **Dokumentasi CLI**: [`reference/cli.md`](reference/cli.md) — instalasi, penggunaan, exit codes, arsitektur tooling `eka`.
-- **Catatan konformansi**: [`reference/conformance-notes.md`](reference/conformance-notes.md) — 29 keputusan interpretasi + matriks traceability aturan R0–R9.
+- **Catatan konformansi**: [`reference/conformance-notes.md`](reference/conformance-notes.md) — 29 keputusan interpretasi + gap yang diketahui (matriks traceability-nya telah dikonsolidasi ke Conformance Traceability Matrix).
+- **Conformance Traceability Matrix**: [`reference/conformance-traceability-matrix.md`](reference/conformance-traceability-matrix.md) — **single source of truth** cakupan konformansi: Engineering Requirement → Specification → Conformance Rule → Implementation → Automated Test → Coverage Status → Notes.
+- **Panduan kontribusi**: [`CONTRIBUTING.md`](CONTRIBUTING.md) — governance kontribusi + definisi "implementasi tidak lengkap" + review checklist.
 
 ## Tooling
 
@@ -38,6 +40,8 @@ go build -o eka ./cmd/eka && ./eka validate .
 ```
 
 Repositori ini **lolos suite konformansinya sendiri** (7 artifact, 0 error, exit 0) — dikodifikasi sebagai test `TestReferenceImplementationConforms`. Dokumentasi lengkap: [`reference/cli.md`](reference/cli.md); catatan interpretasi dan traceability aturan: [`reference/conformance-notes.md`](reference/conformance-notes.md).
+
+**Governance.** Cakupan konformansi dikelola lewat [`reference/conformance-traceability-matrix.md`](reference/conformance-traceability-matrix.md) — single source of truth yang menelusuri setiap Conformance Rule (R0–R9) dari requirement spec hingga implementasi Go dan test otomatisnya. Matriks **wajib diperbarui dalam Pull Request yang sama** dengan setiap perubahan spec/rule/implementasi/test, dan sebaliknya. Seluruh aturan kontribusi dan definisi "implementasi tidak lengkap" ada di [`CONTRIBUTING.md`](CONTRIBUTING.md).
 
 ## Status
 
