@@ -141,7 +141,7 @@ A Family specification must not define or redefine canonical terms (EKA Core Spe
 | Family | Type | Status | Anchor | Dependencies |
 |---|---|---|---|---|
 | Core | domain | Ratified (v1.0) | self | — |
-| Exchange | domain | Ratification candidate (v1.0) | Core §13, §5.4.7, P13 | Core |
+| Exchange | domain | Ratified (v1.0) | Core §13, §5.4.7, P13 | Core |
 | Conformance | domain (candidate) | Not registered | Core (future) | Core, Exchange |
 | Runtime | domain (candidate) | Not registered | Core (future) | Core |
 | Interoperability | domain (candidate) | Not registered | Core (future) | Core, Exchange |

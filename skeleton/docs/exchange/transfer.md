@@ -45,7 +45,7 @@ Saat identitas `(namespace, type, id, instance-version)` sudah ada di target:
 
 ### 1.6 Versi Kontrak
 
-- [ ] Setiap paket transfer mendeklarasikan versi kontrak exchange yang dipakainya (mis. `eka-exchange: 1.0`).
+- [ ] Setiap paket transfer mendeklarasikan **dua versi** di Contract Header (Exchange Specification §9.2.1): versi kontrak serialisasi (mis. `eka-exchange-format: 1.0`) dan versi spesifikasi EKA yang dipatuhi (mis. `eka-spec: 1.0`).
 - [ ] Impor menolak paket dengan versi kontrak yang tidak didukung.
 
 ## 2. Yang Dipreservasi

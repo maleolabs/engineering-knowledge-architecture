@@ -1,14 +1,14 @@
-# Engineering Knowledge Architecture — Exchange Specification Version 1
+# EKA Exchange Specification v1.0
 
 | Field | Value |
 |---|---|
 | **Version** | 1.0 |
-| **Status** | Ratification candidate — milestone 16.1.2 of EKA v1.0 |
+| **Status** | Ratified — milestone 16.1.2 of EKA v1.0 (refined; see `reference/ratification-notes-exchange-v1.0.md`) |
 | **Anchor** | Engineering Knowledge Architecture (EKA) Canonical Specification v1.0 (Ratified) |
 | **Zone** | standard/ |
 | **Scope** | Conceptual exchange contract — not serialization, not implementation |
 
-**Reading this document:** capitalized terms refer to canonical definitions (EKA v1.0 Section 3 + glossary). "must" = binding requirement (harus/wajib). "should" = recommendation within the bounds of the contract. "may" = implementation option within the bounds of the contract.
+**Reading this document:** capitalized terms refer to canonical definitions (EKA Core Specification v1.0 Section 3 + glossary) or to Exchange-Spec subordinate terms (Section 4.1). "must" = binding requirement (harus/wajib, as a translation aid). "should" = recommendation within the bounds of the contract. "may" = option within the bounds of the contract.
 
 ## 1. Purpose
 
@@ -20,7 +20,7 @@
 
 1.4 Relationship to the Canonical Specification
 
-- This specification operationalizes canonical Section 13 (Import/Export Model) and global invariant 5.4.7 (lossless round-trip, P13) into a testable contract.
+- It is anchored to canonical Section 13 and global invariant 5.4.7 (see 1.2).
 - It introduces Exchange-Spec subordinate terms, defined in Section 4.1.
 - It does not amend the canonical specification.
 
@@ -29,7 +29,7 @@
 ### 2.1 In scope
 - the smallest exchange unit and the unit hierarchy;
 - the contract for Identity, Relationship, State, and versioning representation;
-- the conceptual composition of the Exchange Package;
+- the conceptual composition of the Exchange Package (the Exchange Object Model, Section 4.4);
 - import, export, and synchronization semantics;
 - conformance validation and round-trip guarantees;
 - compatibility and evolution strategy.
@@ -63,17 +63,74 @@
 
 | Exchange-Spec term | Definition |
 |---|---|
-| **Exchange Package** | self-contained, versioned carrier containing Exchange Units + Contract Header + manifest + declarations; produced by one exporter in one operation |
+| **Exchange Package** | self-contained, versioned carrier containing Exchange Units + Contract Header + Manifest + Declarations; produced by one exporter in one operation |
 | **Exchange Unit** | the smallest exchange unit: one Artifact Instance with complete Identity, Content, State Vector (all owned domains), Change Log, Relationship, and classification |
-| **Contract Header** | declarative package block: exchange format version, specification version, exporter identity, export scope, extension declarations, data integrity |
+| **Contract Header** | declarative package block: exchange format version, specification version, exporter identity, export scope, creation metadata, data integrity, and optional Capability Declaration (4.5) |
+| **Manifest** | the ordered package-level list of all Exchange Units (10.2); distinct from the Import Manifest (11.3) |
 | **Export Scope** | declared type of export selection (Section 5.3) |
+| **Collection** | explicit set of Artifact Lines selected by Identity, used as an export scope level (5.1) |
+| **Graph** | the Closure of a seed set over Relationships, used as an export scope level (12.2) |
 | **Closure** | smallest set of Artifact Instances that contains the seed set and is closed under traversal of declared Relationships (Section 12.2) |
+| **Closure Declaration** | record in the package-level Declarations element declaring the Export Scope and seed set from which the package Closure was computed (12.2) |
 | **External Reference** | Relationship target whose Identity is not carried by the package; must be declared (Section 12.3) |
 | **Import Manifest** | record of import decisions during validation: per-unit verdict accepted / rejected / warned / duplicate (no-op) / re-namespaced, each with a reason |
+| **Capability Declaration** | optional declarative block carried in the Contract Header declaring which portions of this specification the exporter supports (4.5) |
 
 4.2 These are Exchange-Spec terms subordinate to the canonical glossary — they extend, never replace, canonical terms.
 
 4.3 The Exchange Layer has this model and nothing more: it has no Content and no State (4.1); it never writes State transitions (8.5); it never mutates Content (P8, P10).
+
+### 4.4 Canonical Exchange Package Object Model
+
+The Exchange Package is one coherent logical object model: the canonical abstraction of the Exchange Contract from which every future serialization derives — **any serialization is a projection of this object model** (2.3; canonical 13.3). This subsection defines the model; Section 10 operationalizes it into package-structure rules. The object model introduces no new terms — every element name is an existing canonical or Exchange-Spec term (4.1).
+
+**Containment hierarchy.** An Exchange Package contains exactly: Contract Header (10.1); Manifest (10.2); Exchange Units (10.3); Declarations (10.4); integrity data (17.1).
+
+| Model element | Cardinality per package | Existence rule |
+|---|---|---|
+| Contract Header | exactly one | contract facts per 10.1 |
+| Manifest | exactly one | lists every unit exactly once, ordered (6.3, 10.6) |
+| Exchange Units | zero or more | each unit carries the full composition below |
+| Declarations | exactly one, may be empty | package-level: Closure Declaration (12.2) + External Reference Declarations (12.3) + Extension Declarations (16.3) |
+| Integrity data | exactly one, covering all units | 17.1 |
+
+**Exchange Unit composition.** Every Exchange Unit is exactly the composition of the following elements, and nothing more:
+
+| Element | Cardinality | Rule |
+|---|---|---|
+| Identity | exactly one, complete tuple `(Namespace, Type, ID, InstanceVersion)` | 6.1; never omitted, derived, or defaulted |
+| Revision metadata | exactly one | 6.4; never part of Identity |
+| State Vector | exactly one, complete | all owned domains of the unit's Type, exact values (8.1, rule 4); empty-vector Types carry an empty vector (8.5) |
+| Change Log | exactly one, full and ordered | 8.2 |
+| Content | exactly one, complete, Well-formed for the Type | rule 9 |
+| Relationship set | zero or more | all Relationships by Identity, recorded on the referring unit (7.1–7.2) |
+| Classification | exactly one primary Knowledge Dimension; at most one secondary | canonical Section 8; P15 |
+
+**Contract Header and package-level Declarations.** Declarations are package-level: exactly one Declarations set per package; Closure, External Reference, and Extension declarations attach at package level only — no per-unit declarations exist. The Contract Header is the package's contract block: it declares the contract facts (10.1) and announces the package's extension declarations; the declaration records live in the package-level Declarations element (10.4).
+
+**Determinism.** The deterministic ordering contract (10.5) applies to every multi-element collection of the object model — Manifest, units, Relationship sets, declaration records, Change Log entries. Two exports from identical repository state **must** yield object models identical up to the permissible differences of 15.4, and therefore identical projections within the same bound.
+
+**Projection.** Any serialization is a projection of this object model: it **must** represent every model element losslessly and unambiguously (6.2) and preserve every cardinality above. A projection **must not** add, drop, or reorder model elements, except for the permissible differences of 15.4. Round-trip (Section 15) is defined as equality of projections of the same object model.
+
+### 4.5 Capability Declaration
+
+The **Capability Declaration** is an Exchange-Spec subordinate term (4.2): an optional, declarative block carried in the Contract Header (10.1) in which the exporter declares which portions of this specification it supports. It is producer metadata — not a protocol message, not feature negotiation, not an interface, and not a validity condition of the package. It is a Contract Header element, not a member of the package-level Declarations element (10.4).
+
+**Purpose.** An exporter may include a Capability Declaration so the supported surface of the Exchange Contract is explicit rather than inferred (D8). It is supplementary and never a substitute: exchange format version and specification version remain authoritative (9.2); conformance validation (Section 14) is unchanged.
+
+**Capability classes.** A declaration is a set of capability classes. This version defines:
+1. **supported specification families** — Families of the EKA standard whose registered contracts the exporter's knowledge conforms to (EKA Naming and Terminology Specification v1.0 §5.6 Family Registry);
+2. **extension declaration classes honored** — classes of extension declarations (16.3) the exporter can emit and honor: artifact types, Relationship types, classification uses;
+3. **Relationship type extensions supported** — non-canonical Relationship types the exporter supports (7.3);
+4. **state variants supported** — Content State variants the exporter's State Vectors use: standard, ADR, decision (canonical 7.2);
+5. **export scopes supported** — Export Scopes the exporter can produce (5.3); distinct from the Export Scope declared for this package (10.1);
+6. **future protocol capabilities** — reserved for capabilities introduced by future minor versions (18.4), e.g., registered protocol variants (18.3).
+
+**Rules.**
+- Declarative only: a Capability Declaration is never required for package validity; packages without one are fully conformant v1.0 (9.3, P14) and every conformant importer **must** accept them.
+- Not a declaration substitute: a Capability Declaration is not an extension declaration and never substitutes for one; package content remains subject to the full conformance rules (Section 14).
+- Additive: new capability classes appear only in future minor versions (16.2); existing classes never change meaning within a version.
+- Importer behavior: an importer may compare its own supported capabilities against a declaration. Mismatch → warning recorded in the Import Manifest (11.3), never blocking: the package is judged by Section 14 conformance, not by the exporter's claims. A declaration the importer cannot interpret → warning, ignored. Rejection is not introduced here — unsupported versions (9.2) and unknown artifact or Relationship types (16.3) are rejected by their own rules, which a Capability Declaration must not bypass.
 
 ## 5. Exchange Units
 
@@ -111,7 +168,7 @@ Alternatives evaluated and rejected: whole Artifact (ambiguous — Line or Insta
 - **machine-parseably** — parseable without human interpretation;
 - **independently** — must not depend on location, file name, path, process stage, or representation conventions (canonical 6.4: Identity must not be encoded in location).
 
-6.3 Canonical ordering key: Identity tuples are compared component-by-component in the order `(Namespace, Type, ID, InstanceVersion)`, with a total, stable comparison over the canonical serialization of each component. All ordered collections within a package (manifest, units, Relationship lists, External Reference declarations) **must** be ordered by this key. Consequence: identical repository state **must** produce identical packages (10.5).
+6.3 Canonical ordering key: Identity tuples are compared component-by-component in the order `(Namespace, Type, ID, InstanceVersion)`, with a total, stable comparison over the canonical serialization of each component. All ordered collections within a package (Manifest, units, Relationship lists, External Reference declarations) **must** be ordered by this key, except Change Log entries, which keep occurrence order (8.2, 10.5). Consequence: identical repository state **must** produce identical packages (10.5).
 
 6.4 Revision: travels as metadata on the unit — never part of Identity (canonical 6.1, 6.3). Revision changes must not affect references or Identity equality. Revision **must not** be used as an identity ordering key.
 
@@ -121,24 +178,24 @@ Alternatives evaluated and rejected: whole Artifact (ambiguous — Line or Insta
 
 7.1 All Relationships **must** be expressed by Identity — never by location, path, display name, or classification (P3, 6.2.3).
 
-7.2 Canonical Relationship types: `supersedes`, `amends`, `derives-from`, `depends-on`, `validates` (Section 3). Relationships are recorded on the referring artifact (one-directional, per validation rule 5).
+7.2 Canonical Relationship types: `supersedes`, `amends`, `derives-from`, `depends-on`, `validates` (Section 3). Relationships are recorded on the referring artifact (one-directional, per rule 5, §14.2).
 
-7.3 Extensibility: new Relationship types are lightweight extensions (canonical 14.1). Packages using non-canonical types **must** declare them in the Contract Header extension declarations; an importer may reject undeclared or unknown types (16.3).
+7.3 Extensibility: new Relationship types are lightweight extensions (canonical 14.1). Packages using non-canonical types **must** declare them in the package-level Extension Declarations (10.4); an importer may reject undeclared or unknown types (16.3).
 
 7.4 Resolution on import **must** follow this order:
 1. **local** — the target Identity is carried by the package;
 2. **global** — the target Identity already exists in the target repository;
-3. **external** — declared External Reference: **must** resolve to an artifact in the target repository, or the referring artifact has Content State Draft (draft tolerance, validation rule 5).
+3. **external** — declared External Reference: **must** resolve to an artifact in the target repository, or the referring artifact has Content State Draft (draft tolerance, rule 5, §14.2).
 
 Failure of all three: blocking (11.1 phase 5), except under draft tolerance.
 
-7.5 Post-exchange validity: references remain valid because Identity is immutable and location-independent (P3, 12.2). Import **must not** rewrite references into paths/locations; it re-resolves them.
+7.5 Post-exchange validity: references remain valid because Identity is immutable and location-independent (P3, canonical 12.2). Import **must not** rewrite references into paths/locations; it re-resolves them.
 
 ## 8. State Representation
 
 8.1 **Equal-exchange decision**: every Exchange Unit **must** carry its complete owned State Vector — all State Domains owned for its type, with exact values (canonical 7.4; type→state binding per canonical Section 10) — plus the full Change Log. Selection is permitted only at unit granularity; partial state exchange (a subset of owned domains) is **forbidden**.
 
-Justification: partial state breaks Change Log consistency (validation rule 7) and forward-only verification (P7); lossless exchange (P13) requires the full vector; unit-level selection already covers all scoping needs (5.3).
+Justification: partial state breaks Change Log consistency (rule 7, §14.2) and forward-only verification (P7); lossless exchange (P13) requires the full vector; unit-level selection already covers all scoping needs (5.3).
 
 8.2 Change Log: the full chronological record of transitions — domain, old value, new value, time, authority (Section 3). **Must** be exchanged in occurrence order, append-only; import **must not** fabricate, truncate, or reorder entries.
 
@@ -156,7 +213,7 @@ Justification: partial state breaks Change Log consistency (validation rule 7) a
 |---|---|---|---|
 | Artifact version — **InstanceVersion** | Artifact Instance | distinguishes instances within one Line; created deliberately (canonical 6.3) | Yes |
 | Artifact version — **Revision** | Content of one instance | tracks Content evolution; changes on every edit (canonical 6.1, 6.3) | No |
-| **Specification version** | the knowledge being exchanged | version of the EKA contract the artifact complies with; determines applicable taxonomy, State Domains, and variants | No |
+| **Specification version** | the artifacts being exchanged | version of the EKA contract the artifact complies with; determines applicable taxonomy, State Domains, and variants | No |
 | **Exchange format version** | the package itself | version of the serialization contract; determines package structure and validation rules | No |
 
 ### 9.2 Negotiation rules
@@ -177,10 +234,10 @@ Justification: partial state breaks Change Log consistency (validation rule 7) a
 Conceptual composition — no serialization is mandated.
 
 ### 10.1 Contract Header
-Declares: exchange format version; specification version; exporter identity; export scope (5.3); creation metadata (timestamp — package metadata, not artifact knowledge); extension declarations; data integrity (17.1).
+Declares: exchange format version; specification version; exporter identity; export scope (5.3); creation metadata (timestamp — package metadata, not artifact knowledge); data integrity (17.1); optionally a Capability Declaration (4.5). Extension and External Reference declarations are announced by the Header and recorded in the package-level Declarations element (10.4).
 
 ### 10.2 Manifest
-Ordered list (6.3) of all Exchange Units; declares the scope type; closure declaration (12.2); External Reference declarations (12.3); extension declarations (16.3).
+Ordered list (6.3) of all Exchange Units; declares the scope type. Declaration records (Closure, External Reference, Extension) live in the package-level Declarations element (10.4), not in the Manifest.
 
 ### 10.3 Exchange Units
 Each unit **must** carry:
@@ -188,45 +245,49 @@ Each unit **must** carry:
 - Revision metadata (6.4);
 - State Vector: all owned domains, exact values (8.1);
 - Change Log: full, ordered (8.2);
-- Content: complete, Well-formed for its type (validation rule 9);
+- Content: complete, Well-formed for its type (rule 9, §14.2);
 - Relationship: all, by Identity (7.1–7.2);
-- Classification: primary Knowledge Dimension (+ optional secondary) (canonical 8.1; P15).
+- Classification: primary Knowledge Dimension (+ optional secondary) (canonical Section 8; P15);
+- Phase context for planning/scope artifacts (8.4).
 
 ### 10.4 Declarations
-External Reference Declarations: every Relationship target not carried by the package (12.3). Extension Declarations: every non-canonical artifact type, Relationship type, or classification use (16.3).
+The package-level Declarations element records exactly:
+- **Closure Declaration**: the Export Scope and seed set from which the package Closure was computed (12.2);
+- **External Reference Declarations**: every Relationship target not carried by the package (12.3);
+- **Extension Declarations**: every non-canonical artifact type, Relationship type, or classification use (16.3).
 
 ### 10.5 Deterministic ordering contract
-- manifest, units, external references: canonical Identity key (6.3);
+- Manifest, units, External Reference declarations: canonical Identity key (6.3);
 - Change Log entries: occurrence order, with deterministic tie-break (entry order);
 - Relationship lists: (source Identity key, Relationship type, target Identity key);
 - extension and external declarations: canonical key.
 
-Consequence: two exports from identical repository state **must** be identical up to package metadata (15.4).
+Consequence: two exports from identical repository state **must** be identical up to the permissible differences (15.4).
 
 ### 10.6 Package integrity
-The manifest **must** correspond 1:1 with the units — no phantom entries, no missing units. A package failing self-consistency **must** be rejected before any validation phase (11.1).
+The Manifest **must** correspond 1:1 with the units — no phantom entries, no missing units. A package failing self-consistency **must** be rejected before any validation phase (11.1).
 
 ## 11. Import Semantics
 
 ### 11.1 Ordered phases
-Phases **must** execute in order. No write before phase 9. A blocking failure in any phase aborts the import before commit.
+Phases **must** execute in order. No write before phase 9. A blocking failure in phases 1–8 aborts the import before commit; a failure in phase 10 (post-commit revalidation) aborts the import and rolls back the commit.
 
 | # | Phase | Checks | Blocking (0) | Warning (W) |
 |---|---|---|---|---|
 | 1 | Contract validation | header well-formed; exchange format version supported; specification version declared and validatable | unsupported format; invalid header | — |
 | 2 | Identity validation | every unit Identity canonical (6.2); unique within package | duplicate/non-canonical Identity | — |
-| 3 | State validation | values ∈ domain value sets (canonical 7.2, incl. variants); owned-set compliance per type (rule 4); forward-only + Change Log consistency (rule 7) | invalid values; foreign domain fields; log inconsistency | — |
+| 3 | State validation | values ∈ domain value sets (canonical 7.2, incl. variants); owned-set compliance per type (rule 4); classification: primary Knowledge Dimension declared and valid (rule 6); forward-only + Change Log consistency (rule 7) | invalid values; foreign domain fields; invalid classification; log inconsistency | — |
 | 4 | Structural validation | Content Well-formed per type (rule 9) | malformed content | — |
 | 5 | Referential validation | resolution per 7.4; External References declared; draft tolerance (rule 5) | unresolved non-draft references; undeclared externals | unresolved references on Draft artifacts |
-| 6 | Conflict detection | Identity already exists at target with same InstanceVersion | conflict (policy: reject by default) | — |
-| 7 | Duplicate detection | package (or its units) already imported — idempotency (13.2.2) | — | entire import = no-op, no write |
+| 6 | Conflict detection | Identity already exists at target with same InstanceVersion and differing Content, State, or Change Log | conflict (policy: reject by default) | — |
+| 7 | Duplicate detection | package (or its units) already imported, or units identical in Identity and payload — idempotency (13.2.2) | — | entire import = no-op (outcome: no write) |
 | 8 | Dependency resolution | commit order: target Relationships precede referrers; closure completeness | unresolved dependencies | — |
 | 9 | Commit | atomic write of all accepted units | any failure → no partial commit | — |
-| 10 | Post-commit revalidation | target revalidated after import (13.2.5, transfer.md 1.5) | violation | — |
+| 10 | Post-commit revalidation | target revalidated after import (13.2.5, transfer.md 1.5), including single-writer and projection non-writer checks (rule 8, evaluated against repository state per 14.3) | violation → rollback | — |
 
 ### 11.2 Conflict policy (13.2.4)
 - Identity conflict: **reject by default**. Explicit re-namespace is the only alternative (6.5). Silent merge is **forbidden**.
-- Duplicate detection: re-importing an identical package **must** be a no-op — no new units, no state changes, no fabricated Change Log entries, no conflict errors.
+- Duplicate detection: re-importing an identical package **must** be a no-op — no new units, no state changes, no fabricated Change Log entries, no conflict errors. A unit is a duplicate when its Identity and full payload (Content, State Vector, Change Log, Relationships, Classification) are identical to what the target already holds; identical units are routed to phase 7 (no-op), never to conflict (phase 6).
 
 ### 11.3 Import Manifest
 Phases 1–8 **must** produce an Import Manifest recording the per-unit verdict: accepted / rejected / warned / duplicate (no-op) / re-namespaced, each with a reason. The Import Manifest is the authoritative record of the import; validation failures (0) block, warnings (W) permit commit with notes.
@@ -240,7 +301,7 @@ No unit may be written before all phases pass for it (13.2.5); the target **must
 The exporter **must** declare its Export Scope (5.3). Selection resolves to a set of Artifact Instances; resolution **must** be deterministic (identical selection criteria → identical set).
 
 ### 12.2 Closure computation
-For Graph scope, Closure is the smallest set of instances that contains the seed set and is closed under Relationship traversal: for every included instance, every target of a `depends-on`, `derives-from`, `validates`, `supersedes`, or `amends` Relationship **must** be included; for `supersedes`/`amends`, every artifact that references the instance is also included (so supersession/amendment chains are complete — history links, canonical 13.1). Computation is a fixed point over a finite Identity set: it terminates and is deterministic for a given seed.
+For Graph scope, Closure is the smallest set of instances that contains the seed set and is closed under Relationship traversal: for every included instance, every target of a `depends-on`, `derives-from`, `validates`, `supersedes`, or `amends` Relationship **must** be included; for `supersedes`/`amends`, every artifact that references the instance is also included (so supersession/amendment chains are complete — history links, canonical 13.1). Computation is a fixed point over a finite Identity set: it terminates and is deterministic for a given seed. The Closure Declaration (10.4) records the Export Scope and seed set so the importer can verify closure completeness (phase 8).
 
 ### 12.3 External Reference detection
 After closure, every Relationship target not carried by the package **must** be declared as an External Reference. Rules:
@@ -249,10 +310,10 @@ After closure, every Relationship target not carried by the package **must** be 
 3. dangling after non-draft import is **forbidden** (13.2.3) — the package **must not** silently drop or rewrite External References.
 
 ### 12.4 Dependency integrity
-The package **must** be referentially closed for non-draft units: every unit with non-Draft Content State **must** have all Relationship targets carried or declared external (validation rule 5). Draft units may carry unresolved references (warning only).
+The package **must** be referentially closed for non-draft units: every unit with non-Draft Content State **must** have all Relationship targets carried or declared external (rule 5, §14.2). Draft units may carry unresolved references (warning only).
 
 ### 12.5 Package integrity
-The exporter **must** validate the complete package against the Section 14 conformance rules before release (analogous to validation-before-commit, 13.2.5). The manifest↔unit 1:1 correspondence **must** hold (10.6). Exports **must** be deterministic (10.5).
+The exporter **must** validate the complete package against the Section 14 conformance rules before release (analogous to validation-before-commit, 13.2.5). The Manifest↔unit 1:1 correspondence **must** hold (10.6). Exports **must** be deterministic (10.5).
 
 ## 13. Synchronization Model
 
@@ -264,7 +325,7 @@ Conceptual strategy — no algorithm is specified.
 |---|---|---|
 | **Replace** | full package replaces the matching scope at the target; declared clean replace (13.2.2); post-sync, the scope's identity set == the package's identity set; all replaced units carry state + full Change Log | mirror, restore |
 | **Merge** | Identity lines join: units whose Identity is absent at the target are added; overlapping Identities go through the conflict policy (13.2); Change Log appended in original order; existing content never silently replaced | two-way sync |
-| **Patch** | targeted delta: an explicit unit set (or declared per-unit operations) with declared semantics; validation pipeline identical to full import | incremental sync |
+| **Patch** | targeted delta: an explicit unit set, or declared per-unit operations (add, remove, replace of complete units); unit operations always operate on complete units with full state — partial unit state exchange remains forbidden (8.1); validation pipeline identical to full import | incremental sync |
 
 ### 13.2 Merge behavior — defined
 - Identity lines: disjoint lines are added; overlapping lines → conflict policy; never silent merge.
@@ -299,26 +360,28 @@ A conformant validator **must**:
 4. agree with all other conformant validators (P16): verdicts derive only from this contract, never from layout, enforcement, or implementation tooling (canonical 12.3);
 5. validate before commit (13.2.5) and after import (11.1 phase 10).
 
-### 14.2 Nine conformance rules (mechanical)
+### 14.2 Nine Conformance Rules (R1–R9; mechanical)
 
 | # | Rule | Violation verdict |
 |---|---|---|
-| 1 | **Identity uniqueness**: no duplicate (Namespace, Type, ID, InstanceVersion) in the repository (6.2.2) | blocking |
-| 2 | **Identity canonical**: serialized losslessly, unambiguously, machine-parseably (6.2.6); never encoded in location/stage/convention (canonical 6.4) | blocking |
-| 3 | **State value validity**: every owned domain value ∈ its domain value set, incl. declared variants (canonical 7.2) | blocking |
-| 4 | **Owned-set compliance**: present state fields == the artifact type's owned domains (canonical 7.4, Section 10); no foreign fields; empty-vector types carry no fields (canonical 7.4) | blocking |
-| 5 | **Referential integrity**: every reference resolves per 7.4; draft tolerance for unresolved references on Draft artifacts; a superseded ADR must point to its successor | blocking (non-draft); warning (draft) |
-| 6 | **Classification**: primary Knowledge Dimension declared and valid; secondary optional; classification changes never touch Identity (P15) | blocking |
-| 7 | **Change Log consistency**: every transition has an entry; last entry per domain == current value; no transitions without entries; order preserved (P7) | blocking |
-| 8 | **Single-writer & projection non-writer**: projections carry no owned state of other artifacts; projections never write (P6) | blocking |
-| 9 | **Well-formedness**: Content structure matches the artifact type family (Section 3) | blocking |
+| R1 | **Identity uniqueness**: no duplicate (Namespace, Type, ID, InstanceVersion) in the repository (6.2.2) | blocking |
+| R2 | **Identity canonical**: serialized losslessly, unambiguously, machine-parseably (6.2.6); never encoded in location/stage/convention (canonical 6.4) | blocking |
+| R3 | **State value validity**: every owned domain value ∈ its domain value set, incl. declared variants (canonical 7.2) | blocking |
+| R4 | **Owned-set compliance**: present state fields == the artifact type's owned domains (canonical 7.4, Section 10); no foreign fields; empty-vector types carry no fields (canonical 7.4) | blocking |
+| R5 | **Referential integrity**: every reference resolves per 7.4; draft tolerance for unresolved references on Draft artifacts | blocking (non-draft); warning (draft) |
+| R6 | **Classification**: primary Knowledge Dimension declared and valid; secondary optional; classification changes never touch Identity (P15) | blocking |
+| R7 | **Change Log consistency**: every transition has an entry; last entry per domain == current value; no transitions without entries; order preserved (P7) — order is guaranteed by list structure (8.2, 10.5) | blocking |
+| R8 | **Single-writer & projection non-writer**: projections carry no owned state of other artifacts; projections never write (P6) | blocking |
+| R9 | **Well-formedness**: Content structure matches the artifact type family (Section 3); a superseded ADR must point to its successor | blocking |
+
+Notes: in the reference implementation, the superseded-ADR successor check is enforced within Aturan 9 of `validation.md`; enforcement position is a serialization detail — verdict semantics are defined by R5/R9 here and unchanged. R0 (structural rule: artifact-rule parsing, frontmatter well-formedness) is defined by the Reference Validator and is not one of the nine rules above (Naming and Terminology Specification v1.0 §9.3).
 
 ### 14.3 Verdict semantics
 - **Conformant**: all rules pass, no warnings.
 - **Conformant with warnings**: no blocking violations; warnings recorded.
 - **Non-conformant**: at least one blocking violation → no commit.
 
-Verdicts apply to the exchanged knowledge and to repository state alike: a unit that fails a rule is non-conformant both as exchanged content and as committed repository state. Implementation-specific enforcement mechanisms (filename conventions, folder layout, database constraints, tooling) **must not** change verdicts (P16, canonical 12.3). In the reference implementation, the filename/dimension-folder rules (validation.md rules 2 and 6) are enforcement mechanisms of one serialization — the invariants they serve are rules 2 and 6 above.
+Verdicts apply to the exchanged knowledge and to repository state alike: a unit that fails a rule is non-conformant both as exchanged content and as committed repository state. Implementation-specific enforcement mechanisms (filename conventions, folder layout, database constraints, tooling) **must not** change verdicts (P16, canonical 12.3). In the reference implementation, the filename/dimension-folder rules (validation.md Aturan 2 and 6) are enforcement mechanisms of one serialization — the invariants they serve are R2 and R6 above.
 
 ## 15. Round-Trip Guarantees
 
@@ -361,8 +424,8 @@ Re-importing the same package: no new units, no state changes, no fabricated Cha
 
 ### 16.2 Backward compatibility
 - An exchange format v1 importer **must** accept v1.0 packages (9.3).
-- New contract features **must** be optional and declared extensions (9.3); the canonical core is closed (14.2.3).
-- Extensions **must not** weaken invariants (14.2.1) and **must** remain exchangeable (14.2.4).
+- New contract features **must** be optional and declared extensions (9.3); the canonical core is closed (canonical 14.2.3).
+- Extensions **must not** weaken invariants (canonical 14.2.1) and **must** remain exchangeable (canonical 14.2.4).
 
 ### 16.3 Forward compatibility limits
 - Unknown exchange format version → reject (cannot be interpreted safely).
@@ -388,13 +451,13 @@ Conceptual only — no cryptographic algorithms are mandated (canonical 12.4, P1
 
 18.1 This specification is milestone 16.1.2: the exchange contract v1 with a conformance suite. Milestone 16.1.3 (reference implementations) **must** demonstrate conformance to Sections 14–15; milestone 16.1.4 (Knowledge OS) consumes this contract as its seam.
 
-18.2 Conformance suite: a mechanical validator derived from Section 14.2, with verdict semantics fixed (14.3); validators **must** agree (P16). Suite extensions follow governance (14.2).
+18.2 Conformance suite: a mechanical validator derived from Section 14.2, with verdict semantics fixed (14.3); validators **must** agree (P16). Suite extensions follow governance (canonical 14.2).
 
-18.3 Extensions: new Artifact types, new Relationship types, new Knowledge Dimensions, and registered protocol variants go through governance 14.2 and **must** be declared in the Contract Header when used (10.4); extensions **must not** weaken invariants (14.2.1) and **must** remain exchangeable (14.2.4).
+18.3 Extensions: new Artifact types, new Relationship types, new Knowledge Dimensions, and registered protocol variants go through governance (canonical 14.2) and **must** be declared in the package-level Extension Declarations (10.4) when used; extensions **must not** weaken invariants (canonical 14.2.1) and **must** remain exchangeable (canonical 14.2.4).
 
 18.4 Future exchange format versions **must** be additive (16.2); round-trip guarantees (Section 15) and the invariant set (canonical 16.3) survive across versions.
 
-18.5 Evolution never changes: Identity (P3), global invariants (5.4), the two-channel separation (P10), layer composition (canonical 4.1).
+18.5 Evolution never changes: Identity (P3), global invariants (canonical 5.4), the two-channel separation (P10), layer composition (canonical 4.1).
 
 ## Appendix A — Open Questions
 
@@ -406,4 +469,4 @@ The following questions remain open; this specification takes the stated positio
 
 ---
 
-*End of Exchange Specification — EKA Exchange v1.0 (milestone 16.1.2).*
+*End of Exchange Specification — EKA Exchange Specification v1.0 (Ratified, milestone 16.1.2).*

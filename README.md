@@ -50,7 +50,7 @@ Repositori ini **lolos suite konformansinya sendiri** (7 artifact, 0 error, exit
 | Item | Status |
 |---|---|
 | EKA v1.0 | **Ratified** (2026-08-05; lihat [`reference/ratification-notes.md`](reference/ratification-notes.md)) |
-| EKA Exchange Specification v1.0 | **Ratification candidate** (milestone 16.1.2 — Exchange Contract v1) |
+| EKA Exchange Specification v1.0 | **Ratified** (refinement pass + ratification report: [`reference/ratification-notes-exchange-v1.0.md`](reference/ratification-notes-exchange-v1.0.md)) |
 | EKA Naming and Terminology Specification v1.0 | **Ratified** (meta-specification — penamaan resmi ekosistem) |
 | Referensi implementasi | Aktif (zona standard / skeleton / reference lengkap) |
 | Serialisasi | Git + Markdown (satu-satunya serialisasi repositori ini) |
