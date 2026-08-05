@@ -1,70 +1,36 @@
-# Project Documentation Template
+# Project Docs Template — Reference Implementation EKA v1.0
 
-Standardized documentation structure for engineering projects. This template provides a complete, opinionated folder layout and governance rules for managing product, architecture, planning, and implementation documentation.
+Repositori ini adalah **Reference Implementation** dari **Engineering Knowledge Architecture (EKA) v1.0** — model konseptual kanonik untuk pengetahuan engineering (Artifact, Identity, State, lapisan, kontrak pertukaran).
 
-## What Is This?
+> **Satu serialisasi, bukan arsitekturnya.** Repositori ini adalah ONE serialization (Git + Markdown) dari standard EKA — bukan standard itu sendiri, dan bukan arsitekturnya (EKA 1.3). Standard hidup utuh di `standard/`; yang dapat disalin ke proyek ada di `skeleton/`.
 
-A reusable `docs/` structure that enforces:
+## Orientasi tiga zona
 
-- Consistent folder placement — every document has a home
-- Kebab-case naming — no ambiguous filenames
-- Document lifecycle management — Draft → Review → Approved → Superseded
-- Clear ownership — each folder has a defined owner role
-- Workflow alignment — PRD → MVP → Epics → Roadmap → Sprint → Tickets → Work Items → Sessions → Reviews
+| Zona | Isi | Peran |
+|---|---|---|
+| [`standard/`](standard/README.md) | Teks kanonik EKA v1.0 + glosarium istilah kanonik | **Standard itu sendiri** (pra-lapisan: mendefinisikan lapisan, bukan artifact proyek) |
+| [`skeleton/`](skeleton/README.md) | Struktur proyek yang dapat disalin — 12 folder dimensi (KB) + `operating/` (OS) + `exchange/` (EX) | **Serialisasi** (format Git+Markdown yang diimplementasikan repositori ini) |
+| [`reference/`](reference/README.md) | Meta-dokumentasi implementasi ini: arsitektur serialisasi, migrasi, filosofi, ADR, traceability | **Dokumentasi** keputusan dan konvensi implementasi |
 
-## How To Use
+## Jalur adopsi
 
-1. Copy the `docs/` folder into your project root.
-2. Read [`docs/README.md`](docs/README.md) — it is the single source of truth for structure, workflow, and rules.
-3. Adapt folder contents to your product's MVP and PRD.
-4. Remove folders you don't need, or add new ones following the naming conventions.
+1. Salin `skeleton/docs/` ke root proyek.
+2. Set `namespace` pada frontmatter seluruh artifact sesuai proyek.
+3. Baca `skeleton/docs/README.md` — sumber kebenaran struktur, workflow, dan aturan.
+4. Gunakan [`standard/`](standard/README.md) untuk konformasi dan [`reference/`](reference/README.md) untuk konvensi serialisasi.
 
-## Naming Conventions
+## Dokumen kunci
 
-| Rule | Example |
+- **Spesifikasi**: [`standard/eka-specification-v1.0.md`](standard/eka-specification-v1.0.md) — teks kanonik lengkap (16 section).
+- **Arsitektur serialisasi**: [`reference/reference-architecture.md`](reference/reference-architecture.md) — zona → lapisan, konvensi Identity/State, tabel 26 token, artifact rule.
+- **Panduan migrasi**: [`reference/migration-guide.md`](reference/migration-guide.md) — peta legacy → baru + strategi langkah-demi-langkah.
+- **Perubahan breaking**: [`reference/breaking-changes.md`](reference/breaking-changes.md) — 14 perubahan disengaja + catatan tooling.
+- **Keputusan implementasi**: [`reference/adr-summary.md`](reference/adr-summary.md) — 7 Implementation ADR (accepted).
+
+## Status
+
+| Item | Status |
 |---|---|
-| All filenames use kebab-case | `mvp-001-anvil-v1.md` |
-| No full capslock filenames | WRONG: `ANVIL_MANIFESTO.md` / RIGHT: `anvil-manifesto.md` |
-| No underscores in filenames | WRONG: `my_document.md` / RIGHT: `my-document.md` |
-| No PascalCase or camelCase | WRONG: `MyDocument.md` / RIGHT: `my-document.md` |
-| README.md is the only exception | `README.md` (conventional uppercase) |
-
-## Document Lifecycle
-
-Living documents follow a status lifecycle:
-
-```
-Draft → Review → Approved → Amended (via amendment docs)
-```
-
-Architecture Decision Records (ADRs):
-
-```
-Proposed → Accepted → Superseded (by new ADR)
-```
-
-Work items follow per-type lifecycles — see `docs/work-items/README.md`.
-
-## Structure Overview
-
-```
-docs/
-├── prd/                    # Product Requirements Documents
-├── mvp/                    # Minimum Viable Product definitions
-├── epics/                  # Epic definitions
-├── architecture/           # Architecture documents
-├── adr/                    # Architecture Decision Records
-├── decisions/              # Operational/reversible decisions
-├── roadmap/                # Sprint roadmaps (immutable once sprints exist)
-├── sprints/                # Sprint execution documents (one active at a time)
-├── tickets/                # Wave/ticket execution documents
-├── work-items/             # Work items (stories, bugs, tech debt, chores, spikes)
-├── reviews/                # Code and architecture reviews
-├── sessions/               # Implementation session contexts
-├── operations/             # Deployment guides, exit codes, server setup
-├── planning/               # Cross-cutting planning artifacts
-├── manifesto/              # Product manifesto and principles
-└── specification-corpus/   # Canonical definitions and shared terminology
-```
-
-See [`docs/README.md`](docs/README.md) for the full structure guide, workflow, and governance rules.
+| EKA v1.0 | **Ratified** (2026-08-05; lihat [`reference/ratification-notes.md`](reference/ratification-notes.md)) |
+| Referensi implementasi | Aktif (zona standard / skeleton / reference lengkap) |
+| Serialisasi | Git + Markdown (satu-satunya serialisasi repositori ini) |
