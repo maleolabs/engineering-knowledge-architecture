@@ -17,6 +17,7 @@ Zona ini berisi **meta-dokumentasi** dari Reference Implementation EKA v1.0: bag
 | [`cli.md`](cli.md) | Aktif | Dokumentasi CLI resmi `eka` (validator): instalasi, penggunaan, exit codes, proses validasi, arsitektur tooling, roadmap. |
 | [`conformance-notes.md`](conformance-notes.md) | Aktif | Catatan implementasi konformansi: 29 keputusan interpretasi + gap yang diketahui (traceability tabel telah dikonsolidasi ke Conformance Traceability Matrix). |
 | [`conformance-traceability-matrix.md`](conformance-traceability-matrix.md) | Aktif | Single source of truth cakupan konformansi: REQ→Spec→Rule→Impl→Test→Coverage→Notes (R0–R9, 54 test, 16 requirement). |
+| [`eka-reference-serialization-format-v1.0.md`](eka-reference-serialization-format-v1.0.md) | Referensi (bukan normatif) | **RSF v1.0** — satu serialisasi proyeksi kanonik dari Exchange Package Object Model (Exchange Spec §4.4): Package Model, Unit Entry, Content Representation (EKA Structured Text), Attachment Model, Manifest, prinsip serialisasi deterministik, round-trip mapping, compatibility, contoh konseptual, rekomendasi implementasi `eka export`/`eka import`. |
 | [`decisions/`](decisions/) | Aktif | 7 Implementation ADR (keputusan arsitektur serialisasi). |
 
 > Governance kontribusi + definisi "implementasi tidak lengkap" berada di [`../CONTRIBUTING.md`](../CONTRIBUTING.md) (root repo).
