@@ -1,0 +1,294 @@
+package conformance
+
+import (
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+)
+
+// Integration tests against the static fixture trees in testdata/.
+
+const testdataDir = "testdata"
+
+func fixturePath(t *testing.T, name string) string {
+	t.Helper()
+	return filepath.Join(testdataDir, name)
+}
+
+func TestValidFixtureRepo(t *testing.T) {
+	report, err := Validate(fixturePath(t, "valid"))
+	if err != nil {
+		t.Fatalf("Validate: %v", err)
+	}
+	if report.FilesScanned != 7 {
+		t.Errorf("files scanned = %d, want 7", report.FilesScanned)
+	}
+	if report.Artifacts != 6 {
+		t.Errorf("artifacts = %d, want 6", report.Artifacts)
+	}
+	if report.ErrorCount() != 0 {
+		t.Errorf("errors = %d, want 0:\n%s", report.ErrorCount(), dumpResults(report))
+	}
+	if report.WarningCount() != 0 {
+		t.Errorf("warnings = %d, want 0:\n%s", report.WarningCount(), dumpResults(report))
+	}
+	if !report.Pass() {
+		t.Error("valid fixture must pass")
+	}
+}
+
+// TestInvalidFixtures runs every invalid-* fixture tree and asserts that the
+// intended rule fires. Presence-based assertions keep the tests robust
+// against cascading findings on intentionally broken files.
+func TestInvalidFixtures(t *testing.T) {
+	cases := []struct {
+		dir     string
+		want    []expectation // at least one result matching each
+		notWant []expectation // no result matching these
+	}{
+		{
+			dir: "invalid-dup-identity",
+			want: []expectation{
+				{rule: Rule1, sev: SeverityError, sub: "duplicate identity"},
+			},
+		},
+		{
+			dir: "invalid-reference",
+			want: []expectation{
+				{rule: Rule5, sev: SeverityError, sub: "unresolved reference"},
+				{rule: Rule5, sev: SeverityWarning, sub: "unresolved reference"},
+				{rule: Rule5, sev: SeverityError, sub: "self-reference"},
+				{rule: Rule5, sev: SeverityError, sub: "malformed reference"},
+			},
+		},
+		{
+			dir: "invalid-state-value",
+			want: []expectation{
+				{rule: Rule3, sev: SeverityError, sub: "not a valid value"},
+				{rule: Rule3, sev: SeverityError, sub: "allowed only on scp-/plan-"},
+			},
+		},
+		{
+			dir: "invalid-ownership",
+			want: []expectation{
+				{rule: Rule4, sev: SeverityError, sub: "not owned by type"},
+				{rule: Rule4, sev: SeverityError, sub: "missing owned state field"},
+			},
+		},
+		{
+			dir: "invalid-dimension",
+			want: []expectation{
+				{rule: Rule6, sev: SeverityError, sub: "does not match home folder"},
+				{rule: Rule6, sev: SeverityError, sub: "unknown dimension"},
+				{rule: Rule6, sev: SeverityError, sub: "missing `dimension`"},
+				{rule: Rule6, sev: SeverityError, sub: "not allowed on type"},
+			},
+		},
+		{
+			dir: "invalid-filename",
+			want: []expectation{
+				{rule: Rule2, sev: SeverityError, sub: "does not match frontmatter"},
+				{rule: Rule2, sev: SeverityError, sub: "not versioned"},
+				{rule: Rule2, sev: SeverityError, sub: "must carry a -v<nn> suffix"},
+			},
+		},
+		{
+			dir: "invalid-changelog",
+			want: []expectation{
+				{rule: Rule7, sev: SeverityError, sub: "last change-log entry"},
+				{rule: Rule7, sev: SeverityError, sub: "illegal transition"},
+				{rule: Rule7, sev: SeverityError, sub: "not owned by type"},
+				{rule: Rule7, sev: SeverityError, sub: "malformed"},
+			},
+		},
+		{
+			dir: "invalid-malformed",
+			want: []expectation{
+				{rule: RuleStructural, sev: SeverityError, sub: "not valid YAML"},
+				{rule: RuleStructural, sev: SeverityError, sub: "type XOR id"},
+				{rule: RuleStructural, sev: SeverityError, sub: "namespace"},
+				{rule: RuleStructural, sev: SeverityError, sub: "instance-version"},
+				{rule: RuleStructural, sev: SeverityError, sub: "YYYY-MM-DD"},
+			},
+		},
+		{
+			dir: "invalid-sections",
+			want: []expectation{
+				{rule: Rule9, sev: SeverityError, sub: "missing required content section"},
+			},
+		},
+		{
+			dir: "invalid-adr-superseded",
+			want: []expectation{
+				{rule: Rule9, sev: SeverityError, sub: "must be referenced by a replacement"},
+			},
+		},
+		{
+			dir: "invalid-projection",
+			want: []expectation{
+				{rule: Rule8, sev: SeverityError, sub: "projection header"},
+				{rule: Rule8, sev: SeverityWarning, sub: "owner artifact holds"},
+			},
+			notWant: []expectation{
+				{rule: Rule8, sev: SeverityError, sub: "projects"},
+			},
+		},
+	}
+
+	for _, c := range cases {
+		t.Run(c.dir, func(t *testing.T) {
+			report, err := Validate(fixturePath(t, c.dir))
+			if err != nil {
+				t.Fatalf("Validate: %v", err)
+			}
+			if report.Pass() {
+				t.Fatalf("fixture %s must fail, got pass", c.dir)
+			}
+			for _, want := range c.want {
+				if !hasExpectation(report, want) {
+					t.Errorf("fixture %s: missing expected %s %s %q\nresults:\n%s",
+						c.dir, want.sev, want.rule, want.sub, dumpResults(report))
+				}
+			}
+			for _, notWant := range c.notWant {
+				if hasExpectation(report, notWant) {
+					t.Errorf("fixture %s: unexpected %s %s %q\nresults:\n%s",
+						c.dir, notWant.sev, notWant.rule, notWant.sub, dumpResults(report))
+				}
+			}
+		})
+	}
+}
+
+type expectation struct {
+	rule string
+	sev  Severity
+	sub  string
+}
+
+func hasExpectation(report *Report, want expectation) bool {
+	for _, r := range report.Results {
+		if r.Rule == want.rule && r.Severity == want.sev && strings.Contains(r.Message, want.sub) {
+			return true
+		}
+	}
+	return false
+}
+
+func dumpResults(report *Report) string {
+	var b strings.Builder
+	for _, r := range report.SortedResults() {
+		b.WriteString("  " + r.String() + "\n")
+	}
+	return b.String()
+}
+
+// TestReportDeterminism verifies byte-identical output across runs.
+func TestReportDeterminism(t *testing.T) {
+	for _, dir := range []string{"valid", "invalid-reference", "invalid-dimension", "invalid-projection"} {
+		r1, err := Validate(fixturePath(t, dir))
+		if err != nil {
+			t.Fatal(err)
+		}
+		r2, err := Validate(fixturePath(t, dir))
+		if err != nil {
+			t.Fatal(err)
+		}
+		s1, s2 := dumpResults(r1), dumpResults(r2)
+		if s1 != s2 {
+			t.Errorf("%s: results differ between runs:\n%s\nvs\n%s", dir, s1, s2)
+		}
+	}
+}
+
+// TestSortedResultsOrder verifies the documented ordering contract.
+func TestSortedResultsOrder(t *testing.T) {
+	report, err := Validate(fixturePath(t, "invalid-dimension"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	results := report.SortedResults()
+	for i := 1; i < len(results); i++ {
+		prev, cur := results[i-1], results[i]
+		if prev.File > cur.File {
+			t.Fatalf("results not sorted by file: %q after %q", cur.File, prev.File)
+		}
+	}
+	// The dimension fixture exercises R6 only; ensure R0..R9 rank ordering
+	// does not shuffle files: R6 must appear once per file.
+}
+
+// TestScanSkipsTestdataAndHiddenDirs verifies the documented scan policy.
+func TestScanSkipsTestdataAndHiddenDirs(t *testing.T) {
+	root := t.TempDir()
+	writeTree(t, root, map[string]string{
+		// A deliberately invalid artifact inside testdata/ must be skipped.
+		"testdata/invalid/docs/decisions/adr-bad.md": `---` + "\n" + `type: adr` + "\n---\n",
+		".git/invalid.md":                `---` + "\n" + `type: adr` + "\n---\n",
+		"docs/decisions/adr-001-good.md": buildADR("eka", "001-good", "accepted", "", ""),
+	})
+	report, err := Validate(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if report.FilesScanned != 1 {
+		t.Errorf("files scanned = %d, want 1 (testdata/ and .git skipped)", report.FilesScanned)
+	}
+	if report.ErrorCount() != 0 {
+		t.Errorf("errors = %d, want 0:\n%s", report.ErrorCount(), dumpResults(report))
+	}
+}
+
+// TestValidateInputErrors verifies error handling for bad scan roots.
+func TestValidateInputErrors(t *testing.T) {
+	if _, err := Validate(filepath.Join(t.TempDir(), "does-not-exist")); err == nil {
+		t.Error("nonexistent root must error")
+	}
+	f := filepath.Join(t.TempDir(), "file.md")
+	if err := os.WriteFile(f, []byte("x"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Validate(f); err == nil {
+		t.Error("file root must error")
+	}
+}
+
+// TestConventionDocumentsAreSkipped verifies docs without type+id are inert.
+func TestConventionDocumentsAreSkipped(t *testing.T) {
+	root := t.TempDir()
+	writeTree(t, root, map[string]string{
+		"README.md":                    "# readme\n",
+		"docs/exchange/validation.md":  "# validation\n",
+		"docs/operating/protocol.md":   "# protocol\n",
+		"docs/README.md":               "---\ntitle: sources of truth\n---\n\n# docs\n",
+		"docs/decisions/adr-001-ok.md": buildADR("eka", "001-ok", "accepted", "", ""),
+	})
+	report, err := Validate(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if report.FilesScanned != 5 {
+		t.Errorf("files scanned = %d, want 5", report.FilesScanned)
+	}
+	if report.Artifacts != 1 {
+		t.Errorf("artifacts = %d, want 1", report.Artifacts)
+	}
+	if report.ErrorCount() != 0 {
+		t.Errorf("errors = %d, want 0:\n%s", report.ErrorCount(), dumpResults(report))
+	}
+}
+
+// writeTree creates a temp file tree from a relative path -> content map.
+func writeTree(t *testing.T, root string, files map[string]string) {
+	t.Helper()
+	for rel, content := range files {
+		full := filepath.Join(root, rel)
+		if err := os.MkdirAll(filepath.Dir(full), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(full, []byte(content), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+}
