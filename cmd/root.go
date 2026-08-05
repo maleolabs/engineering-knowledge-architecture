@@ -1,10 +1,11 @@
 // Package cmd implements the EKA CLI as a thin Cobra command layer.
 //
-// The command tree (root, validate, init) is the only part of the
+// The command tree (root, validate, init, export) is the only part of the
 // codebase that knows about argument parsing, flags, help text, output
 // rendering and exit codes. It contains no domain logic: validate
 // delegates to the conformance package, init delegates to the bootstrap
-// engine, both of which are public, reusable application packages.
+// engine, export delegates to the exchange engine — all public, reusable
+// application packages.
 //
 // Layout rationale: the reusable engines stay where they are
 // (bootstrap/, conformance/, skeletonembed.go at the module root). There
@@ -15,11 +16,12 @@
 //
 // Exit codes (deterministic contract, preserved from the pre-Cobra CLI):
 //
-//	0  fully compliant (warnings allowed); init completed and validates
-//	1  blocking violations present (validate; or init produced a
-//	   non-conformant repository)
+//	0  fully compliant (warnings allowed); init completed and validates;
+//	   export produced a package
+//	1  blocking violations present (validate; init produced a
+//	   non-conformant repository; export refused the repository)
 //	2  usage or internal error (unknown command, invalid path,
-//	   unreadable scan root)
+//	   unreadable scan root, bad export target, export failure)
 package cmd
 
 import (
@@ -103,9 +105,11 @@ func newRootCommand() *cobra.Command {
 		Short: "Official EKA CLI: conformance validation and repository bootstrapping",
 		Long: `The official EKA CLI.
 
-eka validate checks a repository against the EKA conformance rules and
-eka init bootstraps a new EKA repository from the embedded skeleton,
-validating the result afterwards.
+eka validate checks a repository against the EKA conformance rules,
+eka init bootstraps a new EKA repository from the embedded skeleton
+(validating the result afterwards), and eka export projects a
+repository to a deterministic package in the EKA Reference
+Serialization Format (RSF) v1.0.
 
 Exit codes:
   0  fully compliant (warnings allowed)
@@ -132,6 +136,6 @@ Exit codes:
 		SilenceErrors: true,
 		SilenceUsage:  true,
 	}
-	root.AddCommand(newValidateCommand(), newInitCommand())
+	root.AddCommand(newValidateCommand(), newInitCommand(), newExportCommand())
 	return root
 }

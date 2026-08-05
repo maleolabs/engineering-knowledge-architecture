@@ -166,6 +166,25 @@ type reference struct {
 	HasVersion bool
 }
 
+// Reference is the exported form of the parsed reference grammar. It is an
+// alias of the internal reference type: exporting it is purely additive and
+// changes no rule behavior. The Exchange layer (exchange/) uses
+// ParseReference for target parsing and relationship resolution so that
+// reference semantics are shared with the validator instead of duplicated.
+type Reference = reference
+
+// ParseReference parses a reference string per the validation.md Rule 5
+// grammar:
+//
+//	<type>:<id>[:<instance-version>]      same namespace (defNamespace)
+//	<namespace>/<type>:<id>[:<version>]   cross namespace
+//
+// defNamespace is the referrer's namespace; defType is the referrer's type
+// and allows the bare-id form ("" disables it). See parseReference.
+func ParseReference(s, defNamespace, defType string) (Reference, error) {
+	return parseReference(s, defNamespace, defType)
+}
+
 func parseReference(s, defNamespace, defType string) (reference, error) {
 	var ref reference
 	s = strings.TrimSpace(s)

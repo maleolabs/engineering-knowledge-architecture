@@ -38,8 +38,12 @@ type Artifact struct {
 	ID              string
 	InstanceVersion int
 	Revision        int
-	Created         string
-	Updated         string
+	// Author is the frontmatter `author` field, preserved as recorded
+	// ("" when absent). It is unit metadata for exchange purposes and is
+	// not checked by any rule (additive; no rule behavior depends on it).
+	Author  string
+	Created string
+	Updated string
 
 	// States maps present state domain fields to their values. A domain
 	// absent from this map is not present on the artifact.
@@ -211,6 +215,9 @@ func analyzeFile(relPath, absPath string, data []byte) (*Artifact, []Result) {
 			Message: "`revision` must be >= 1",
 		})
 	}
+
+	// Author: unit metadata preserved for exchange; not checked by any rule.
+	a.Author, _ = asString(fm["author"])
 
 	for _, f := range []struct{ key, label string }{
 		{"created", "`created`"},

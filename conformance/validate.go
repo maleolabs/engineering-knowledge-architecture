@@ -41,27 +41,9 @@ func Validate(root string) (*Report, error) {
 	report := &Report{Root: filepath.Clean(root)}
 	e := &engine{report: report}
 
-	var paths []string
-	err = filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-		if d.IsDir() {
-			if path != root {
-				name := d.Name()
-				if strings.HasPrefix(name, ".") || name == "testdata" {
-					return filepath.SkipDir
-				}
-			}
-			return nil
-		}
-		if strings.HasSuffix(d.Name(), ".md") {
-			paths = append(paths, path)
-		}
-		return nil
-	})
+	paths, err := collectMarkdownPaths(root)
 	if err != nil {
-		return nil, fmt.Errorf("scan failed: %w", err)
+		return nil, err
 	}
 	report.FilesScanned = len(paths)
 
@@ -101,6 +83,43 @@ func Validate(root string) (*Report, error) {
 	}
 
 	return report, nil
+}
+
+// collectMarkdownPaths walks root and returns the absolute paths of every
+// .md file under it, applying the shared scan policy (documented in the
+// package doc):
+//   - only files ending in .md are collected;
+//   - directories named "testdata" and directories starting with "." (e.g.
+//     .git) are not descended into;
+//   - symlinks are not followed (filepath.WalkDir behavior);
+//   - a walk error (e.g. an unreadable directory) aborts the scan.
+//
+// Both Validate and Scan use it, so the two entry points share one scan
+// policy by construction.
+func collectMarkdownPaths(root string) ([]string, error) {
+	var paths []string
+	err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if d.IsDir() {
+			if path != root {
+				name := d.Name()
+				if strings.HasPrefix(name, ".") || name == "testdata" {
+					return filepath.SkipDir
+				}
+			}
+			return nil
+		}
+		if strings.HasSuffix(d.Name(), ".md") {
+			paths = append(paths, path)
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, fmt.Errorf("scan failed: %w", err)
+	}
+	return paths, nil
 }
 
 // engine carries the state shared by all rule checks.

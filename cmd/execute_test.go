@@ -47,7 +47,7 @@ func TestExitCodeUsage(t *testing.T) {
 	}
 	// Cobra sorts command lists alphabetically (EnableCommandSorting);
 	// the message must list exactly the registered commands.
-	if !strings.Contains(errText, "available commands: init, validate") {
+	if !strings.Contains(errText, "available commands: export, init, validate") {
 		t.Errorf("unknown command message must list the available commands, got %q", errText)
 	}
 	code, _, _ = runIn([]string{"validate", "a", "b"})
@@ -85,7 +85,7 @@ func TestHelpExitsZero(t *testing.T) {
 		if !strings.Contains(text, "Usage:") {
 			t.Errorf("args %v: root help must contain Usage:", args)
 		}
-		for _, cmdName := range []string{"validate", "init"} {
+		for _, cmdName := range []string{"validate", "init", "export"} {
 			if !strings.Contains(text, cmdName) {
 				t.Errorf("args %v: root help must mention the %s command", args, cmdName)
 			}
@@ -497,4 +497,170 @@ func snapshot(dir string) (map[string][]byte, error) {
 		return nil
 	})
 	return out, err
+}
+
+// --- eka export CLI-level tests -----------------------------------------
+
+// exportFixtureAbs is the absolute path of the exchange test fixture (the
+// export command always roots at the current directory).
+func exportFixtureAbs(t *testing.T, name string) string {
+	t.Helper()
+	abs, err := filepath.Abs(filepath.Join("..", "exchange", "testdata", name))
+	if err != nil {
+		t.Fatal(err)
+	}
+	return abs
+}
+
+func TestExportHelpExitsZero(t *testing.T) {
+	for _, args := range [][]string{{"export", "-h"}, {"export", "--help"}} {
+		code, text, _ := runIn(args)
+		if code != 0 {
+			t.Errorf("args %v: exit = %d, want 0", args, code)
+		}
+		if !strings.Contains(text, "eka export") {
+			t.Errorf("args %v: export help text missing usage", args)
+		}
+		if !strings.Contains(text, "--output") {
+			t.Errorf("args %v: export help must document the --output flag", args)
+		}
+	}
+}
+
+func TestExportUnknownFlagExitsTwo(t *testing.T) {
+	code, _, errText := runIn([]string{"export", "--bogus"})
+	if code != 2 {
+		t.Errorf("exit = %d, want 2", code)
+	}
+	if !strings.Contains(errText, "--bogus") {
+		t.Errorf("stderr must name the unknown flag, got %q", errText)
+	}
+}
+
+// TestExportHappyPath: exporting a valid repository with -o produces the
+// package and reports the summary.
+func TestExportHappyPath(t *testing.T) {
+	dir := exportFixtureAbs(t, "valid")
+	chdirInto(t, dir)
+	out := filepath.Join(t.TempDir(), "cli.ekapkg")
+	code, text, errText := runIn([]string{"export", "-o", out})
+	if code != 0 {
+		t.Fatalf("exit = %d, want 0\nstdout: %s\nstderr: %s", code, text, errText)
+	}
+	for _, want := range []string{"EKA Export", "rsf-repo-eka-valid-fixture-1", "Units:", "6", "Attachments:", "1", "Output:"} {
+		if !strings.Contains(text, want) {
+			t.Errorf("output must contain %q:\n%s", want, text)
+		}
+	}
+	if _, err := os.Stat(out); err != nil {
+		t.Fatalf("package file missing: %v", err)
+	}
+}
+
+// TestExportRefusesInvalidRepo: blocking violations exit 1, print the
+// report, and produce no package file.
+func TestExportRefusesInvalidRepo(t *testing.T) {
+	dir := exportFixtureAbs(t, "invalid")
+	chdirInto(t, dir)
+	out := filepath.Join(t.TempDir(), "refused.ekapkg")
+	code, text, errText := runIn([]string{"export", "-o", out})
+	if code != 1 {
+		t.Fatalf("exit = %d, want 1\nstdout: %s\nstderr: %s", code, text, errText)
+	}
+	if !strings.Contains(text, "FAIL") {
+		t.Errorf("stdout must contain the validation report:\n%s", text)
+	}
+	if !strings.Contains(errText, "export refused") {
+		t.Errorf("stderr must explain the refusal, got %q", errText)
+	}
+	if _, err := os.Stat(out); !os.IsNotExist(err) {
+		t.Error("no package file may be produced for an invalid repository")
+	}
+}
+
+// TestExportBadTarget: malformed or unknown targets exit 2.
+func TestExportBadTarget(t *testing.T) {
+	dir := exportFixtureAbs(t, "valid")
+	chdirInto(t, dir)
+	code, _, errText := runIn([]string{"export", "sto:missing"})
+	if code != 2 {
+		t.Errorf("missing artifact: exit = %d, want 2", code)
+	}
+	if !strings.Contains(errText, "does not exist") {
+		t.Errorf("stderr must explain the missing artifact, got %q", errText)
+	}
+
+	code, _, errText = runIn([]string{"export", "bogus:1"})
+	if code != 2 {
+		t.Errorf("unknown type: exit = %d, want 2", code)
+	}
+	if !strings.Contains(errText, "bogus") {
+		t.Errorf("stderr must name the bad token, got %q", errText)
+	}
+}
+
+// TestExportOutputFlag: --output works like -o.
+func TestExportOutputFlag(t *testing.T) {
+	dir := exportFixtureAbs(t, "valid")
+	chdirInto(t, dir)
+	out := filepath.Join(t.TempDir(), "long.ekapkg")
+	code, _, errText := runIn([]string{"export", "--output", out})
+	if code != 0 {
+		t.Fatalf("exit = %d, want 0\nstderr: %s", code, errText)
+	}
+	if _, err := os.Stat(out); err != nil {
+		t.Fatalf("package file missing: %v", err)
+	}
+}
+
+// TestExportDirectoryOutput: --output naming an existing directory writes
+// the directory layout.
+func TestExportDirectoryOutput(t *testing.T) {
+	dir := exportFixtureAbs(t, "valid")
+	chdirInto(t, dir)
+	outDir := filepath.Join(t.TempDir(), "layout")
+	if err := os.MkdirAll(outDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	code, text, errText := runIn([]string{"export", "-o", outDir})
+	if code != 0 {
+		t.Fatalf("exit = %d, want 0\nstdout: %s\nstderr: %s", code, text, errText)
+	}
+	if !strings.Contains(text, "directory") {
+		t.Errorf("output must report the directory mode:\n%s", text)
+	}
+	for _, want := range []string{"header.json", "manifest.json", "declarations.json", "integrity.json"} {
+		if _, err := os.Stat(filepath.Join(outDir, want)); err != nil {
+			t.Errorf("directory layout missing %s: %v", want, err)
+		}
+	}
+}
+
+// TestExportDeterministicCLI: two CLI exports produce byte-identical
+// packages.
+func TestExportDeterministicCLI(t *testing.T) {
+	dir := exportFixtureAbs(t, "valid")
+	chdirInto(t, dir)
+	tmp := t.TempDir()
+	out1 := filepath.Join(tmp, "one.ekapkg")
+	out2 := filepath.Join(tmp, "two.ekapkg")
+	code, _, errText := runIn([]string{"export", "-o", out1})
+	if code != 0 {
+		t.Fatalf("first export: exit = %d\nstderr: %s", code, errText)
+	}
+	code, _, errText = runIn([]string{"export", "-o", out2})
+	if code != 0 {
+		t.Fatalf("second export: exit = %d\nstderr: %s", code, errText)
+	}
+	data1, err := os.ReadFile(out1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	data2, err := os.ReadFile(out2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(data1, data2) {
+		t.Error("two CLI exports of identical state must be byte-identical")
+	}
 }
