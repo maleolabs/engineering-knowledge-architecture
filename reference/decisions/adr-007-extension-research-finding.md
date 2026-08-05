@@ -18,6 +18,11 @@ depends-on:
   - 006-exchange-conventions
 change-log:
   - date: 2026-08-05
+    domain: existence-state
+    from: "-"
+    to: active
+    by: Engineering Architecture
+  - date: 2026-08-05
     domain: content-state
     from: proposed
     to: accepted

@@ -11,10 +11,12 @@ Zona ini berisi **meta-dokumentasi** dari Reference Implementation EKA v1.0: bag
 | [`philosophy.md`](philosophy.md) | Aktif | Narasi mengapa EKA ada dan mengapa repositori ini disusun demikian. |
 | [`terminology-glossary.md`](terminology-glossary.md) | Aktif | Glosarium istilah level implementasi (istilah kanonik ada di `standard/glossary.md`). |
 | [`breaking-changes.md`](breaking-changes.md) | Aktif | Ringkasan 14 perubahan breaking terhadap struktur legacy. |
-| [`adr-summary.md`](adr-summary.md) | Aktif | Indeks 7 Implementation ADR (zona `adr/`). |
+| [`adr-summary.md`](adr-summary.md) | Aktif | Indeks 7 Implementation ADR (zona `decisions/`). |
 | [`traceability-matrix.md`](traceability-matrix.md) | Aktif | Matriks penelusuran: setiap elemen repositori → anchor EKA. |
 | [`ratification-notes.md`](ratification-notes.md) | Aktif | Catatan ratifikasi EKA v1.0 (verbatim dari stabilization pass). |
-| [`adr/`](adr/) | Aktif | 7 Implementation ADR (keputusan arsitektur serialisasi). |
+| [`cli.md`](cli.md) | Aktif | Dokumentasi CLI resmi `eka` (validator): instalasi, penggunaan, exit codes, proses validasi, arsitektur tooling, roadmap. |
+| [`conformance-notes.md`](conformance-notes.md) | Aktif | Catatan implementasi konformansi: 29 keputusan interpretasi + matriks traceability aturan R0–R9 → implementasi Go. |
+| [`decisions/`](decisions/) | Aktif | 7 Implementation ADR (keputusan arsitektur serialisasi). |
 
 ## Rujukan lintas zona
 

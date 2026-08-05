@@ -88,13 +88,13 @@ Dokumen konvensi dapat dikenali dari ketiadaan pasangan `type`+`id` di frontmatt
 
 | Keputusan | Anchor EKA | ADR |
 |---|---|---|
-| Identity di frontmatter; filename = proyeksi; token eksplisit | 6.4, P3, P9 | [ADR-001](adr/adr-001-identity-serialization.md) |
-| State = 5 field frontmatter per domain owned; change-log | 7.2, 5.2, P6 | [ADR-002](adr/adr-002-state-vector-encoding.md) |
-| Ticket/tabel container = proyeksi; refresh on-read | 7.4, 15.5, P6 | [ADR-003](adr/adr-003-projection-model.md) |
-| Phase = metadata frontmatter, bukan folder | 11.2, P3 | [ADR-004](adr/adr-004-phase-as-metadata.md) |
-| 12 folder = 12 dimensi 1:1 + operating/ + exchange/ | 8, P15 | [ADR-005](adr/adr-005-dimension-layout.md) |
-| Seam exchange = validation.md + transfer.md | 13, P13 | [ADR-006](adr/adr-006-exchange-conventions.md) |
-| Tipe extension `fnd-` (Research Finding) | 14.1, 14.2, 11.4 | [ADR-007](adr/adr-007-extension-research-finding.md) |
+| Identity di frontmatter; filename = proyeksi; token eksplisit | 6.4, P3, P9 | [ADR-001](decisions/adr-001-identity-serialization.md) |
+| State = 5 field frontmatter per domain owned; change-log | 7.2, 5.2, P6 | [ADR-002](decisions/adr-002-state-vector-encoding.md) |
+| Ticket/tabel container = proyeksi; refresh on-read | 7.4, 15.5, P6 | [ADR-003](decisions/adr-003-projection-model.md) |
+| Phase = metadata frontmatter, bukan folder | 11.2, P3 | [ADR-004](decisions/adr-004-phase-as-metadata.md) |
+| 12 folder = 12 dimensi 1:1 + operating/ + exchange/ | 8, P15 | [ADR-005](decisions/adr-005-dimension-layout.md) |
+| Seam exchange = validation.md + transfer.md | 13, P13 | [ADR-006](decisions/adr-006-exchange-conventions.md) |
+| Tipe extension `fnd-` (Research Finding) | 14.1, 14.2, 11.4 | [ADR-007](decisions/adr-007-extension-research-finding.md) |
 
 ## Referensi
 

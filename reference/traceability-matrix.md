@@ -27,17 +27,28 @@ Legenda tipe: **artifact** = file ber-frontmatter `type` + `id` (artifact rule);
 | `reference/traceability-matrix.md` | reference | konvensi | 12.2, 12.4 | Bukti konformasi: setiap elemen → anchor standard. |
 | `reference/ratification-notes.md` | reference | konvensi | 16.1 (milestone 1) | Catatan ratifikasi EKA v1.0 (stabilization pass, verbatim). |
 
-### Implementation ADR (`reference/adr/`) — seluruhnya artifact (`type: adr`, `dimension: decisions`, status accepted)
+### Implementation ADR (`reference/decisions/`) — seluruhnya artifact (`type: adr`, `dimension: decisions`, status accepted)
 
 | Elemen | Zona | Tipe | Anchor EKA | Rasional |
 |---|---|---|---|---|
-| `adr-001-identity-serialization.md` | reference/adr | artifact | 6.2, 6.4, 6.3, P3, P9 | Identity di frontmatter; filename proyeksi; 26 token bebas-ambiguitas. |
-| `adr-002-state-vector-encoding.md` | reference/adr | artifact | 7.1, 7.2, 7.3, 7.4, 5.2, P2, P6, P7 | 5 field state frontmatter per domain owned; absence = not-applicable; change-log; mapping legacy. |
-| `adr-003-projection-model.md` | reference/adr | artifact | 7.4, 7.5, 9, 10, 15.5, P6, P9 | Ticket/tabel container = State Projection; State Vector kosong; refresh on-read. |
-| `adr-004-phase-as-metadata.md` | reference/adr | artifact | 3, 7.1, 7.5, 11.2, 11.3, P3 | Phase = field frontmatter pada scp-/plan-; phase change = context update via gate. |
-| `adr-005-dimension-layout.md` | reference/adr | artifact | 8, 4.1, 14.2, P1, P9, P15 | 12 folder = 12 dimensi 1:1 + operating/ + exchange/; `dimension == folder`. |
-| `adr-006-exchange-conventions.md` | reference/adr | artifact | 13.1, 13.2, 13.3, P13, P16 | Seam exchange: validation.md (9 aturan) + transfer.md (round-trip, konflik Identity, idempotensi, schema versioning). |
-| `adr-007-extension-research-finding.md` | reference/adr | artifact | 8, 10, 11.4, 14.1, 14.2, P12 | Ekstensi tipe `fnd-`: State Vector owned (Content, Existence) lengkap; exchangeable. |
+| `adr-001-identity-serialization.md` | reference/decisions | artifact | 6.2, 6.4, 6.3, P3, P9 | Identity di frontmatter; filename proyeksi; 26 token bebas-ambiguitas. |
+| `adr-002-state-vector-encoding.md` | reference/decisions | artifact | 7.1, 7.2, 7.3, 7.4, 5.2, P2, P6, P7 | 5 field state frontmatter per domain owned; absence = not-applicable; change-log; mapping legacy. |
+| `adr-003-projection-model.md` | reference/decisions | artifact | 7.4, 7.5, 9, 10, 15.5, P6, P9 | Ticket/tabel container = State Projection; State Vector kosong; refresh on-read. |
+| `adr-004-phase-as-metadata.md` | reference/decisions | artifact | 3, 7.1, 7.5, 11.2, 11.3, P3 | Phase = field frontmatter pada scp-/plan-; phase change = context update via gate. |
+| `adr-005-dimension-layout.md` | reference/decisions | artifact | 8, 4.1, 14.2, P1, P9, P15 | 12 folder = 12 dimensi 1:1 + operating/ + exchange/; `dimension == folder`. |
+| `adr-006-exchange-conventions.md` | reference/decisions | artifact | 13.1, 13.2, 13.3, P13, P16 | Seam exchange: validation.md (9 aturan) + transfer.md (round-trip, konflik Identity, idempotensi, schema versioning). |
+| `adr-007-extension-research-finding.md` | reference/decisions | artifact | 8, 10, 11.4, 14.1, 14.2, P12 | Ekstensi tipe `fnd-`: State Vector owned (Content, Existence) lengkap; exchangeable. |
+
+### Elemen tooling — implementasi Go (validator EKA)
+
+| Elemen | Zona | Tipe | Anchor EKA | Rasional |
+|---|---|---|---|---|
+| `go.mod` | root (tooling) | konvensi (build) | P16 | Modul `github.com/maleolabs/engineering-knowledge-architecture` (Go 1.24+); pintu masuk `go install`/`go build` CLI. |
+| `cmd/eka/` | root (tooling) | konvensi (CLI) | 13.3, P16 | Bentuk executable dari standard: satu perintah `validate` (R1–R9 + R0 struktural), exit codes 0/1/2 deterministik, warning tidak memblokir. |
+| `conformance/` | root (tooling) | konvensi (engine) | 13, P16 | Implementasi kanonik Conformance Rules (validation.md): engine publik reusable, independen dari CLI; entry `Validate(root) (*Report, error)`. |
+| `reference/cli.md` | reference | konvensi | 13, P16 | Dokumentasi CLI resmi: filosofi, instalasi, penggunaan, exit codes, proses validasi, arsitektur tooling, roadmap. |
+| `reference/conformance-notes.md` | reference | konvensi | 13, P16 | Rekam traceability aturan R0–R9 → anchor EKA → lokasi implementasi + 29 keputusan interpretasi (kebijakan: didokumentasikan sebelum implementasi). |
+| `.gitignore` | root (tooling) | konvensi (hygiene) | — | Hygiene implementasi: biner `eka` hasil build tidak pernah masuk VCS. |
 
 ## Elemen zona Skeleton (B) — zona sibling, direferensikan
 
