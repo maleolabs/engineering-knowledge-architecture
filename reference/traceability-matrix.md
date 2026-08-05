@@ -47,10 +47,13 @@ Legenda tipe: **artifact** = file ber-frontmatter `type` + `id` (artifact rule);
 
 | Elemen | Zona | Tipe | Anchor EKA | Rasional |
 |---|---|---|---|---|
-| `go.mod` | root (tooling) | konvensi (build) | P16 | Modul `github.com/maleolabs/engineering-knowledge-architecture` (Go 1.24+); pintu masuk `go install`/`go build` CLI. |
-| `cmd/eka/` | root (tooling) | konvensi (CLI) | 13.3, P16 | Bentuk executable dari standard: satu perintah `validate` (R1–R9 + R0 struktural), exit codes 0/1/2 deterministik, warning tidak memblokir. |
+| `go.mod` | root (tooling) | konvensi (build) | P16 | Modul `github.com/maleolabs/engineering-knowledge-architecture` (Go 1.24+); dependensi: `gopkg.in/yaml.v3`, `spf13/cobra` (CLI adapter), `golang.org/x/term` (deteksi TTY wizard); pintu masuk `go install`/`go build` CLI. |
+| `cmd/` (command layer) | root (tooling) | konvensi (CLI) | 13.3, P16, Naming §7 | Definisi perintah Cobra murni: `root.go` (root command + `Execute(args, stdin, stdout, stderr) int` + mapping exit 0/1/2), `validate.go`, `init.go`; tanpa logika domain; help + completion standar Cobra. |
+| `cmd/eka/` | root (tooling) | konvensi (CLI) | 13.3, P16 | Entry point tipis: `os.Exit(cmd.Execute(...))`; nama executable `eka`. |
+| `bootstrap/` | root (tooling) | konvensi (engine) | Naming §7, Skeleton | Engine `eka init` (application layer, package publik): Workspace Discovery, Bootstrap Planning, Interactive Wizard (adaptif, non-interaktif deterministik via `x/term`), Repository Generation dari Reference Skeleton, Validasi pasca-generasi. |
+| `skeletonembed.go` | root (tooling) | konvensi (embed) | Naming §6.1 | `//go:embed skeleton` — Reference Skeleton kanonik ter-embed untuk `eka init` (binari standalone, tanpa hardcode direktori). |
 | `conformance/` | root (tooling) | konvensi (engine) | 13, P16 | Implementasi kanonik Conformance Rules (validation.md): engine publik reusable, independen dari CLI; entry `Validate(root) (*Report, error)`. |
-| `reference/cli.md` | reference | konvensi | 13, P16 | Dokumentasi CLI resmi: filosofi, instalasi, penggunaan, exit codes, proses validasi, arsitektur tooling, roadmap. |
+| `reference/cli.md` | reference | konvensi | 13, P16, Naming §7 | Dokumentasi CLI resmi: filosofi, instalasi, `eka init` (5 tahap, wizard adaptif, idempotensi, dry-run, validasi pasca-generasi), `eka validate`, exit codes, shell completion, arsitektur CLI (Cobra adapter + application layer), panduan kontribusi perintah baru, roadmap. |
 | `reference/conformance-notes.md` | reference | konvensi | 13, P16 | Rekam traceability aturan R0–R9 → anchor EKA → lokasi implementasi + 29 keputusan interpretasi (kebijakan: didokumentasikan sebelum implementasi). |
 | `.gitignore` | root (tooling) | konvensi (hygiene) | — | Hygiene implementasi: biner `eka` hasil build tidak pernah masuk VCS. |
 

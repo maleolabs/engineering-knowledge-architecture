@@ -14,7 +14,7 @@ Zona ini berisi **meta-dokumentasi** dari Reference Implementation EKA v1.0: bag
 | [`adr-summary.md`](adr-summary.md) | Aktif | Indeks 7 Implementation ADR (zona `decisions/`). |
 | [`traceability-matrix.md`](traceability-matrix.md) | Aktif | Matriks penelusuran: setiap elemen repositori → anchor EKA. |
 | [`ratification-notes.md`](ratification-notes.md) | Aktif | Catatan ratifikasi EKA v1.0 (verbatim dari stabilization pass). |
-| [`cli.md`](cli.md) | Aktif | Dokumentasi CLI resmi `eka` (validator): instalasi, penggunaan, exit codes, proses validasi, arsitektur tooling, roadmap. |
+| [`cli.md`](cli.md) | Aktif | Dokumentasi CLI resmi `eka`: filosofi, `eka init` (bootstrapper 5 tahap), `eka validate`, exit codes, shell completion, arsitektur CLI (Cobra adapter), panduan kontribusi perintah baru, roadmap. |
 | [`conformance-notes.md`](conformance-notes.md) | Aktif | Catatan implementasi konformansi: 29 keputusan interpretasi + gap yang diketahui (traceability tabel telah dikonsolidasi ke Conformance Traceability Matrix). |
 | [`conformance-traceability-matrix.md`](conformance-traceability-matrix.md) | Aktif | Single source of truth cakupan konformansi: REQ→Spec→Rule→Impl→Test→Coverage→Notes (R0–R9, 54 test, 16 requirement). |
 | [`eka-reference-serialization-format-v1.0.md`](eka-reference-serialization-format-v1.0.md) | Referensi (bukan normatif) | **RSF v1.0** — satu serialisasi proyeksi kanonik dari Exchange Package Object Model (Exchange Spec §4.4): Package Model, Unit Entry, Content Representation (EKA Structured Text), Attachment Model, Manifest, prinsip serialisasi deterministik, round-trip mapping, compatibility, contoh konseptual, rekomendasi implementasi `eka export`/`eka import`. |
