@@ -3,6 +3,8 @@
 > Anchor EKA: Exchange Layer — validasi konformitas. Dokumen konvensi, bukan artefak.
 > Standar: EKA v1.0, tanggal 2026-08-05.
 
+> Pemetaan istilah (Naming and Terminology Specification v1.0 §9.3): "Aturan 1–9" di bawah ini = **Conformance Rules R1–R9** (EKA Exchange Specification §14.2). R0 (aturan struktural artifact-rule) didefinisikan oleh Reference Validator (`conformance/`), bukan bagian sembilan aturan ini.
+
 Checklist mekanis berikut dijalankan **sebelum commit** setiap artefak baru atau perubahan state. Semua aturan bersifat mekanis (dapat diotomasi). Format: 1 = lolos, 0 = gagal (blocking), W = peringatan.
 
 ## Aturan 1 — Keunikan Identitas

@@ -132,12 +132,12 @@ Validator dipisahkan menjadi dua lapisan:
 
 ## Roadmap CLI
 
-Saat ini CLI **hanya menyediakan satu perintah: `validate`**. Perintah lain — `doctor`, `import`, `export`, `graph` — adalah **arah masa depan dan BELUM diimplementasikan**; jangan menggunakannya. Setiap argumen perintah yang tidak dikenal ditolak dengan error yang menyebutkan scope validate-only (exit `2`).
+Saat ini CLI **hanya menyediakan satu perintah: `validate`**. Perintah lain — `diagnose`, `import`, `export`, `graph` — adalah **arah masa depan dan BELUM diimplementasikan**; jangan menggunakannya. Setiap argumen perintah yang tidak dikenal ditolak dengan error yang menyebutkan scope validate-only (exit `2`).
 
 | Perintah | Status | Catatan |
 |---|---|---|
 | `eka validate` | **Diimplementasikan** | Validator konformitas penuh (R1–R9 + R0 struktural). |
-| `eka doctor` | Belum diimplementasikan | Diagnostik repositori — kandidat masa depan. |
+| `eka diagnose` | Belum diimplementasikan | Diagnostik repositori — kandidat masa depan. |
 | `eka import` | Belum diimplementasikan | Impor artifact eksternal (seam Exchange, Section 13). |
 | `eka export` | Belum diimplementasikan | Ekspor artifact (seam Exchange, Section 13). |
 | `eka graph` | Belum diimplementasikan | Query/knowledge graph atas artifact. |

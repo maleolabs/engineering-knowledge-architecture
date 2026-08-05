@@ -1,4 +1,4 @@
-# Project Docs Template — Reference Implementation EKA v1.0
+# Engineering Knowledge Architecture (EKA) v1.0 — Reference Implementation
 
 Repositori ini adalah **Reference Implementation** dari **Engineering Knowledge Architecture (EKA) v1.0** — model konseptual kanonik untuk pengetahuan engineering (Artifact, Identity, State, lapisan, kontrak pertukaran).
 
@@ -8,7 +8,7 @@ Repositori ini adalah **Reference Implementation** dari **Engineering Knowledge 
 
 | Zona | Isi | Peran |
 |---|---|---|
-| [`standard/`](standard/README.md) | Teks kanonik EKA v1.0 + Exchange Specification v1 + glosarium istilah kanonik | **Standard itu sendiri** (pra-lapisan: mendefinisikan lapisan, bukan artifact proyek) |
+| [`standard/`](standard/README.md) | Teks kanonik EKA v1.0 (Core + Exchange + Naming and Terminology) + glosarium istilah kanonik | **Standard itu sendiri** (pra-lapisan: mendefinisikan lapisan, bukan artifact proyek) |
 | [`skeleton/`](skeleton/README.md) | Struktur proyek yang dapat disalin — 12 folder dimensi (KB) + `operating/` (OS) + `exchange/` (EX) | **Serialisasi** (format Git+Markdown yang diimplementasikan repositori ini) |
 | [`reference/`](reference/README.md) | Meta-dokumentasi implementasi ini: arsitektur serialisasi, migrasi, filosofi, ADR, traceability | **Dokumentasi** keputusan dan konvensi implementasi |
 
@@ -23,6 +23,7 @@ Repositori ini adalah **Reference Implementation** dari **Engineering Knowledge 
 
 - **Spesifikasi**: [`standard/eka-specification-v1.0.md`](standard/eka-specification-v1.0.md) — teks kanonik lengkap (16 section).
 - **Exchange Specification**: [`standard/eka-exchange-specification-v1.0.md`](standard/eka-exchange-specification-v1.0.md) — Exchange Contract v1 (milestone 16.1.2): unit exchange, Identity/State/Relationship transport, versioning, import/export/sync semantics, round-trip guarantees. Konseptual — independen dari Git, Markdown, database, CLI, MCP.
+- **Naming and Terminology Specification**: [`standard/eka-naming-and-terminology-specification-v1.0.md`](standard/eka-naming-and-terminology-specification-v1.0.md) — (Ratified) penamaan resmi ekosistem EKA: product identity, specification Families, reference components, tooling, repository naming, daftar terminologi deprecated.
 - **Arsitektur serialisasi**: [`reference/reference-architecture.md`](reference/reference-architecture.md) — zona → lapisan, konvensi Identity/State, tabel 26 token, artifact rule.
 - **Panduan migrasi**: [`reference/migration-guide.md`](reference/migration-guide.md) — peta legacy → baru + strategi langkah-demi-langkah.
 - **Perubahan breaking**: [`reference/breaking-changes.md`](reference/breaking-changes.md) — 14 perubahan disengaja + catatan tooling.
@@ -50,5 +51,6 @@ Repositori ini **lolos suite konformansinya sendiri** (7 artifact, 0 error, exit
 |---|---|
 | EKA v1.0 | **Ratified** (2026-08-05; lihat [`reference/ratification-notes.md`](reference/ratification-notes.md)) |
 | EKA Exchange Specification v1.0 | **Ratification candidate** (milestone 16.1.2 — Exchange Contract v1) |
+| EKA Naming and Terminology Specification v1.0 | **Ratified** (meta-specification — penamaan resmi ekosistem) |
 | Referensi implementasi | Aktif (zona standard / skeleton / reference lengkap) |
 | Serialisasi | Git + Markdown (satu-satunya serialisasi repositori ini) |

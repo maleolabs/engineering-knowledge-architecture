@@ -146,3 +146,5 @@ Content yang mematuhi struktur yang ditetapkan untuk tipe Artifact-nya, sehingga
 ---
 
 *Glosarium kanonik EKA v1.0 — definisi mengikat; lihat `eka-specification-v1.0.md` untuk konteks penuh.*
+
+**Catatan tata kelola terminologi:** glosarium ini adalah sumber definisi istilah Core. Penamaan resmi ekosistem (product identity, Specification Families, reference components, tooling, repository naming) serta daftar terminologi deprecated diatur oleh **EKA Naming and Terminology Specification v1.0** (`eka-naming-and-terminology-specification-v1.0.md`). Istilah baru mengikuti tata kelola terminologi di sana — istilah diperluas, tidak pernah di-fork.
