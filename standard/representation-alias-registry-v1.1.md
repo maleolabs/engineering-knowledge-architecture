@@ -33,6 +33,13 @@
 | **Execution** | rvw-, ctr-, tkt-, sto-, ts-, bug-, td-, ch-, spk-, ses- | Sprint, Iteration, Cycle, Wave, Task, Work Item, Ticket, Card, Bug, Defect, Incident, Chore, Spike, Session |
 | **Operations** | run-, rel- | Release, Incident Report, Maintenance Log, Changelog, Runbook, Playbook, SOP, Post-Mortem |
 
+Representation aliases come in two kinds:
+
+- **Token-named alias** — the alias is the canonical type name of its token (Identity label); it documents the token's own name; renaming or removing it requires taxonomy governance (Core §14.2), never registry governance.
+- **External alias** — a methodology term distinct from the token name; added freely via registry governance (§3).
+
+Both kinds are conventions at the concept level: neither organizes knowledge (domains do); neither is a frontmatter value (R0: token is the only valid type value).
+
 **Full alias → token → domain mapping.** Rows marked *canonical* are the Core §8.1 alias table, reproduced verbatim. Unmarked rows are extensions registered here.
 
 | Representation Alias | Canonical token | Engineering Domain |
@@ -92,7 +99,7 @@
 
 ## 3. Governance
 
-Extension of the registry is the only path for new representation names. It is **methodology-pack governance**: a methodology (Scrum pack, Kanban pack, Shape Up pack, internal workflow) proposes aliases; the registry accepts them; the Core standard is never touched.
+Extension of the registry is the only path for new representation names. It is **methodology-pack governance**: a methodology (Scrum pack, Kanban pack, Shape Up pack, internal workflow) proposes aliases; the registry accepts them; the Core standard is never touched. Token-named entries are identity-adjacent (governed by taxonomy, Core §14.2); external aliases use registry governance.
 
 **Process.**
 
@@ -130,15 +137,15 @@ Complete current registry. Canonical rows (Core §8.1) are marked; all rows are 
 | Product Brief | req- | Discovery | requirements form of intent |
 | Business Requirement | req- | Discovery | |
 | Research Note | fnd- | Discovery | research findings |
-| ADR | adr- | Architecture | canonical (Core §8.1) |
+| ADR | adr- | Architecture | canonical (Core §8.1); token-named |
 | RFC | adr- | Architecture | canonical (Core §8.1); proposal form |
 | RFC | spec- | Architecture | ratified form: normative specification |
-| Decision Record | dec- | Architecture | reversible decisions |
+| Decision Record | dec- | Architecture | reversible decisions; token-named |
 | Design Doc | arc- | Architecture | architecture description |
-| Specification | spec- | Architecture | |
-| Standard | std- | Architecture | |
-| Glossary | gls- | Architecture | vocabulary |
-| Epic | epc- | Planning | canonical (Core §8.1) |
+| Specification | spec- | Architecture | token-named |
+| Standard | std- | Architecture | token-named |
+| Glossary | gls- | Architecture | vocabulary; token-named |
+| Epic | epc- | Planning | canonical (Core §8.1); token-named |
 | Initiative | scp- | Planning | canonical (Core §8.1) |
 | Feature | epc- | Planning | sized planning unit |
 | Backlog | plan- | Planning | ordered work plan |
@@ -148,20 +155,20 @@ Complete current registry. Canonical rows (Core §8.1) are marked; all rows are 
 | Iteration | ctr- | Execution | canonical (Core §8.1) |
 | Cycle | ctr- | Execution | Shape Up container |
 | Wave | ctr- | Execution | |
-| Story | sto- | Execution | |
+| Story | sto- | Execution | token-named |
 | Task | sto- | Execution | generic; prefer specific work item token |
 | Work Item | sto- | Execution | generic family term |
-| Ticket | tkt- | Execution | canonical (Core §8.1); projection |
+| Ticket | tkt- | Execution | canonical (Core §8.1); projection; token-named |
 | Card | tkt- | Execution | Kanban; projection |
-| Bug | bug- | Execution | |
+| Bug | bug- | Execution | token-named |
 | Defect | bug- | Execution | synonym of Bug |
 | Incident | bug- | Execution | canonical (Core §8.1) |
-| Chore | ch- | Execution | |
-| Spike | spk- | Execution | |
-| Session | ses- | Execution | |
-| Release | rel- | Operations | canonical (Core §8.1); record |
+| Chore | ch- | Execution | token-named |
+| Spike | spk- | Execution | token-named |
+| Session | ses- | Execution | token-named |
+| Release | rel- | Operations | canonical (Core §8.1); record; token-named |
 | Changelog | rel- | Operations | record; ≠ canonical Change Log (§5.2) |
-| Runbook | run- | Operations | canonical (Core §8.1) |
+| Runbook | run- | Operations | canonical (Core §8.1); token-named |
 | Playbook | run- | Operations | operational guide |
 | SOP | run- | Operations | standard operating procedure |
 | Post-Mortem | run- | Operations | operational knowledge |

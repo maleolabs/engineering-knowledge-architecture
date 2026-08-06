@@ -507,6 +507,8 @@ Conceptual Artifact type system — not a storage design. Every type defines: Kn
 
 Rule: Type determines the State Vector (the type→state binding is part of the standard); new types are extensions (Section 14) with the obligation to declare the complete owned State Vector.
 
+**Representation labels and methodology independence.** Type names in this taxonomy (e.g., ADR, Epic, Ticket) are canonical representation labels bound to their tokens; the token is part of Identity and is never methodology-dependent. Methodology independence holds at the concept level: Engineering Domains (Section 8.1) organize knowledge; representations are conventions within a domain. Methodology terms that coincide with a token name (e.g., ADR) are token-named aliases; other methodology terms (e.g., PRD, RFC, Sprint) are external aliases — both registered in the Representation Alias Registry and never valid frontmatter type values (Rule R0).
+
 ---
 
 ## 11. Conceptual Lifecycle
