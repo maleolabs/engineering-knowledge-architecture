@@ -1,6 +1,6 @@
-# Glossary — EKA v1.0
+# Glossary — EKA v1.1
 
-Alphabetical glossary of all capitalized canonical terms from the EKA v1.0 specification. Definitions are reproduced from the canonical text (`standard/eka-specification-v1.0.md`) — not paraphrased. Section references are provided for navigation.
+Alphabetical glossary of all capitalized canonical terms from the EKA v1.1 specification. Definitions are reproduced from the canonical text (`standard/eka-specification-v1.1.md`) — not paraphrased. Section references are provided for navigation.
 
 ## A
 
@@ -36,6 +36,9 @@ Content maturity State Domain: values `Draft → Review → Approved`; post-appr
 transformation of ephemeral knowledge (working context, review findings) into durable knowledge (decisions, ADRs, Records). *(Section 3)*
 
 ## E
+
+### Engineering Domain
+the home classification of an Artifact: the stratum-aligned category of engineering knowledge to which the Artifact belongs. Classification property (P15 — reclassification never touches Identity); derived from the Artifact's Knowledge Dimension and token family, or declared by an extension; never Identity, never part of the State Vector. *(Section 8.1)*
 
 ### Exchange Layer
 the third architectural layer: "transformational boundary: serialization, validation, import/export, mediation of external systems". Owns "exchange contracts, round-trip rules, conformance validation"; does not own "Content and State (never becomes an owner)". *(Section 4.1)*
@@ -75,6 +78,9 @@ the first architectural layer: "knowledge store: Content, classification, preser
 
 ### Knowledge OS
 a future knowledge execution platform that consumes and produces EKA Artifacts through the Exchange Layer. Not part of the standard; a consumer of the standard. *(Section 3)*
+
+### Knowledge Stratum
+the authority level of an Engineering Domain: a fixed position in the strict linear order Discovery → Architecture → Planning → Execution → Operations (stratum 1 highest → 5). Always derived from the Engineering Domain — never declared by an Artifact, never part of the State Vector. One Artifact has exactly one Engineering Domain and therefore exactly one stratum. *(Section 8.1)*
 
 ## L
 
@@ -116,6 +122,9 @@ an Artifact preserved as history (Superseded, Archived, Retired, release record)
 ### Relationship
 an explicit relation between Artifacts referenced by Identity: supersedes, amends, derives-from, depends-on, validates. *(Section 3)*
 
+### Representation Alias
+a methodology term mapped onto a canonical token + Engineering Domain (e.g., PRD → req-, Sprint/Iteration → ctr-); never a frontmatter value, never an Artifact type in its own right. *(Section 8.1)*
+
 ### Revision
 tracking the Content evolution of the same instance — **not part of Identity**. "Revision (tracking the Content evolution of the same instance) — **not part of Identity**. Revision changes on every edit and must not break references." *(Sections 6.1, 6.3)*
 
@@ -145,6 +154,6 @@ Content that conforms to the structure established for its Artifact type, so tha
 
 ---
 
-*Canonical EKA v1.0 glossary — definitions are binding; see `eka-specification-v1.0.md` for full context.*
+*Canonical EKA v1.1 glossary — definitions are binding; see `eka-specification-v1.1.md` for full context.*
 
-**Terminology governance note:** this glossary is the source of Core term definitions. Official ecosystem naming (product identity, Specification Families, reference components, tooling, repository naming) and the deprecated terminology list are governed by the **EKA Naming and Terminology Specification v1.0** (`eka-naming-and-terminology-specification-v1.0.md`). New terms follow the terminology governance there — terms are extended, never forked.
+**Terminology governance note:** this glossary is the source of Core term definitions. Official ecosystem naming (product identity, Specification Families, reference components, tooling, repository naming) and the deprecated terminology list are governed by the **EKA Naming and Terminology Specification v1.1** (`eka-naming-and-terminology-specification-v1.1.md`). New terms follow the terminology governance there — terms are extended, never forked.
