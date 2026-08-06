@@ -1,50 +1,50 @@
-# <Nama Produk>
+# <Product Name>
 
-> Templat proyek EKA — disalin oleh proyek pengadopsi, bukan diubah di sini.
-> Tanggal templat: 2026-08-05
+> EKA project template — copied by adopting projects, not modified here.
+> Template date: 2026-08-05
 
-## Identitas yang Harus Diisi
+## Identity to Fill In
 
-| Item | Cara mengisi |
+| Item | How to fill |
 |---|---|
-| **Nama produk** | ganti judul `<Nama Produk>` di atas |
-| **`namespace`** | tentukan sekali; menjadi default `namespace` pada seluruh frontmatter artefak proyek |
+| **Product name** | replace the `<Product Name>` title above |
+| **`namespace`** | decide once; becomes the default `namespace` in every project artifact frontmatter |
 
-`namespace` adalah bagian pertama dari identitas `(Namespace, Type, ID, InstanceVersion)`. Pilih nilai yang stabil dan unik dalam organisasi, misalnya `anvil`. Jangan ganti setelah artefak pertama dibuat.
+`namespace` is the first part of the `(Namespace, Type, ID, InstanceVersion)` identity. Choose a stable value, unique within the organization, e.g. `anvil`. Do not change it after the first artifact is created.
 
-## Kepatuhan Serialisasi EKA
+## EKA Serialization Conformance
 
-Proyek ini menggunakan serialisasi EKA v1.0 (Git+Markdown).
+This project uses EKA v1.0 serialization (Git+Markdown).
 
-## Sumber Kebenaran
+## Source of Truth
 
-[docs/README.md](docs/README.md) adalah sumber kebenaran tunggal serialisasi EKA proyek ini. Baca sebelum menulis artefak pertama. Struktur, konvensi identitas/state/relasi, dan aturan kepemilikan dijelaskan di sana; rincian operasional ada di [docs/operating/protocol.md](docs/operating/protocol.md).
+[docs/README.md](docs/README.md) is the single source of truth for this project's EKA serialization. Read it before writing the first artifact. Structure, identity/state/relationship conventions, and ownership rules are described there; operational details live in [docs/operating/protocol.md](docs/operating/protocol.md).
 
-## Rantai Alur Kerja
+## Workflow Chain
 
-Setiap pengiriman nilai mengikuti rantai pemesanan (Ordering):
+Every delivered value follows the ordering chain:
 
 ```
 requirement → scope → capability → plan → container → work item → session → review
 ```
 
-| Langkah | Token | Folder |
+| Step | Token | Folder |
 |---|---|---|
-| requirement — kebutuhan | `req-` | `docs/requirements/` |
-| scope — konteks berfase | `scp-` | `docs/planning/` |
-| capability — kapabilitas | `epc-` | `docs/planning/` |
-| plan — rencana yang akan dikunci | `plan-` | `docs/planning/` |
-| container — eksekusi (tepat satu aktif) | `ctr-` | `docs/operating/containers/` |
-| work item — unit kerja | `sto-`/`ts-`/`bug-`/`td-`/`ch-`/`spk-` | `docs/operating/work-items/` |
-| session — catatan eksekusi | `ses-` | `docs/operating/sessions/` |
-| review — verifikasi | `rvw-` | `docs/quality/` |
+| requirement — a need | `req-` | `docs/requirements/` |
+| scope — phased context | `scp-` | `docs/planning/` |
+| capability — a capability | `epc-` | `docs/planning/` |
+| plan — a plan to be locked | `plan-` | `docs/planning/` |
+| container — execution (exactly one active) | `ctr-` | `docs/operating/containers/` |
+| work item — unit of work | `sto-`/`ts-`/`bug-`/`td-`/`ch-`/`spk-` | `docs/operating/work-items/` |
+| session — execution notes | `ses-` | `docs/operating/sessions/` |
+| review — verification | `rvw-` | `docs/quality/` |
 
-## Aturan Kontribusi Singkat
+## Brief Contribution Rules
 
-| Folder | Pemilik konten | Catatan |
+| Folder | Content owner | Notes |
 |---|---|---|
-| `docs/intent/` … `docs/vocabulary/` | per peran pada README tiap folder | artefak pengetahuan (Knowledge Layer); `dimension` wajib sama dengan folder |
-| `docs/operating/` | pemilik state per tipe (single-writer) | kontainer/tiket adalah proyeksi; jangan mengedit state di proyeksi |
-| `docs/exchange/` | kontrak (contract) | tempat aturan validasi & transfer; bukan tempat artefak domain |
+| `docs/intent/` … `docs/vocabulary/` | per role in each folder's README | knowledge artifacts (Knowledge Layer); `dimension` must equal folder |
+| `docs/operating/` | state owner per type (single-writer) | containers/tickets are projections; do not edit state in projections |
+| `docs/exchange/` | contract | where validation & transfer rules live; not a place for domain artifacts |
 
-Aturan inti: identitas hidup di frontmatter (filename hanyalah proyeksi), state hanya ditulis oleh pemilik tunggalnya, proyeksi dibaca ulang bukan diedit, dan semua transisi state tercatat di `change-log`. Detail: [docs/operating/protocol.md](docs/operating/protocol.md).
+Core rules: identity lives in frontmatter (filename is only a projection), state is written only by its single owner, projections are re-read not edited, and every state transition is recorded in `change-log`. Details: [docs/operating/protocol.md](docs/operating/protocol.md).

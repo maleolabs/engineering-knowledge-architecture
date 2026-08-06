@@ -1,38 +1,38 @@
 # spikes/ — Spike (`spk-`)
 
-> Anchor EKA: Operating Layer — state domain Execution State; subtipe work item `spk-`.
+> Anchor EKA: Operating Layer — State Domain Execution State; work item subtype `spk-`.
 
-## Tujuan
+## Purpose
 
-Spike adalah unit kerja investigasi terbatas-waktu untuk mengurangi ketidakpastian: membuktikan kelayakan, mengeksplorasi pendekatan, atau mengumpulkan data sebelum keputusan. Hasil spike **bukan** keputusan — hasilnya harus didistilasi ke tempat pengetahuan.
+A spike is a time-boxed investigation unit of work to reduce uncertainty: proving feasibility, exploring approaches, or gathering data before a decision. A spike's result is **not** a decision — its findings must be distilled into the knowledge store.
 
 ## Token & State Vector
 
-| Token | Folder | State yang dimiliki |
+| Token | Folder | Owned state |
 |---|---|---|
 | `spk-` | `work-items/spikes/` | `execution-state`, `existence-state` |
 
-Nilai `execution-state`: `planned → todo → in-progress → in-review → done` (forward-only, never skip, never revert). Nilai `existence-state`: `active → archived → retired`.
+`execution-state` values: `planned → todo → in-progress → in-review → done` (forward-only, never skip, never revert). `existence-state` values: `active → archived → retired`.
 
-## Struktur Konten Wajib
+## Required Content Structure
 
-- `## Description` — pertanyaan yang diselidiki dan batas waktu/lingkup.
-- `## Investigation Notes` — jejak penyelidikan: eksperimen, data, sumber.
-- `## Conclusion` — simpulan **wajib** memuat tautan ke tempat distilasi pengetahuan (mis. `fnd-` di research/ atau `dec-`/`adr-` di decisions/) — distilasi sebelum arsip (EKA 11.4).
+- `## Description` — the question under investigation and its time-box/scope.
+- `## Investigation Notes` — the investigation trail: experiments, data, sources.
+- `## Conclusion` — must contain links to the knowledge distillation destination (e.g. `fnd-` in research/ or `dec-`/`adr-` in decisions/) — distill before archiving (EKA 11.4).
 
-## Konvensi Nama
+## Naming Conventions
 
-`spk-<id>.md`, kebab-case, unik dalam (namespace, type). Tanpa akhiran `-v<nn>`. Contoh: `spk-kelayakan-proyeksi-tiket.md`.
+`spk-<id>.md`, kebab-case, unique within (namespace, type). No `-v<nn>` suffix. Example: `spk-ticket-projection-feasibility.md`.
 
-## Kepemilikan
+## Ownership
 
-| Peran | Tanggung jawab |
+| Role | Responsibility |
 |---|---|
-| Engineer (implementer) | pemilik tunggal state; penyelidikan |
-| Tech Lead | peninjau kesimpulan dan jalur distilasi |
+| Engineer (implementer) | single owner of state; investigation |
+| Tech Lead | reviewer of conclusions and distillation path |
 
-## Terkait
+## Related
 
-- [research/](../../../research/) — hasil riset distilasi ke `fnd-` (EKA 14.1).
-- [decisions/](../../../decisions/) — simpulan yang diadopsi menjadi `dec-`/`adr-`.
-- [specifications/](../../../specifications/) — temuan yang terbukti menjadi `spec-`.
+- [research/](../../../research/) — research results are distilled into `fnd-` (EKA 14.1).
+- [decisions/](../../../decisions/) — adopted conclusions become `dec-`/`adr-`.
+- [specifications/](../../../specifications/) — proven findings become `spec-`.

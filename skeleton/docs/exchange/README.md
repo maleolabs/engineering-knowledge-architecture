@@ -1,32 +1,32 @@
 # docs/exchange/ — Exchange Layer (EX)
 
-> Anchor EKA: Exchange Layer — validasi + transfer. EX tidak memiliki konten dan tidak memiliki state.
+> Anchor EKA: Exchange Layer — validation + transfer. EX owns no content and no state.
 
-## Peran
+## Role
 
-Exchange Layer mengelola **batas** serialisasi: memvalidasi konformitas artefak terhadap kontrak EKA dan mengatur impor/ekspor antar repositori. EX adalah lapisan yang "tidak memiliki keduanya" — tidak memiliki konten (milik Knowledge Layer) dan tidak memiliki state (milik Operating Layer).
+The Exchange Layer manages the **boundary** of the serialization: it validates artifact conformance against the EKA contract and governs import/export between repositories. EX is the layer that "owns neither" — it owns no content (owned by the Knowledge Layer) and no state (owned by the Operating Layer).
 
-## Yang Dimiliki EX (Kontrak)
+## What EX Owns (Contract)
 
-| Kontrak | Dimana |
+| Contract | Where |
 |---|---|
-| Aturan validasi konformitas (9 aturan mekanis) | [validation.md](validation.md) |
-| Konvensi impor/ekspor (round-trip, konflik identitas, skema) | [transfer.md](transfer.md) |
-| Tabel token, format referensi, dan format identitas | diserialisasi di README proyek; EX menegakkannya saat validasi |
+| Conformance Rules (9 mechanical rules) | [validation.md](validation.md) |
+| Import/export conventions (round-trip, identity conflicts, schema) | [transfer.md](transfer.md) |
+| Token table, reference format, and identity format | serialized in the project README; EX enforces them during validation |
 
-## Yang Tidak Dimiliki EX
+## What EX Does Not Own
 
-- **Konten** — isi artefak adalah milik pemilik dimensi (Knowledge Layer). EX hanya memeriksa bentuknya.
-- **State** — nilai state dan transisinya adalah milik pemilik state (Operating Layer). EX hanya memeriksa validitas nilainya, bukan mengubahnya.
+- **Content** — artifact content belongs to the dimension owner (Knowledge Layer). EX only checks its form.
+- **State** — state values and transitions belong to the state owner (Operating Layer). EX only checks value validity, never changes it.
 
-## Alur Pemakaian
+## Usage Flow
 
-1. Penulis membuat/mengubah artefak.
-2. Sebelum commit: jalankan checklist [validation.md](validation.md).
-3. Untuk pertukaran lintas repositori: ikuti [transfer.md](transfer.md).
-4. Pelanggaran = tolak commit sampai konform.
+1. A writer creates/modifies an artifact.
+2. Before commit: run the [validation.md](validation.md) checklist.
+3. For cross-repository exchange: follow [transfer.md](transfer.md).
+4. Violations = reject commit until conformant.
 
-## Terkait
+## Related
 
-- [../operating/protocol.md](../operating/protocol.md) — aturan yang divalidasi EX lahir dari OS protocol.
-- [../README.md](../README.md) — konvensi identitas, state, phase, relasi, klasifikasi, proyeksi.
+- [../operating/protocol.md](../operating/protocol.md) — the rules EX validates originate in the OS protocol.
+- [../README.md](../README.md) — identity, state, phase, relationship, classification, projection conventions.

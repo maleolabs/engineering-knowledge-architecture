@@ -27,36 +27,36 @@ change-log:
     by: Engineering Architecture
 ---
 
-# ADR-005 — Layout Dimensi: 12 folder knowledge = 12 Knowledge Dimension, 1:1
+# ADR-005 — Dimension Layout: 12 knowledge folders = 12 Knowledge Dimensions, 1:1
 
 ## Context
 
-Taksonomi legacy tercampur: 16 folder dengan isi bercampur dimensi (operations bercampur standards, planning sebagai catch-all, work-items/planning, specification-corpus sebagai misnomer vocabulary). EKA 8 menetapkan 12 Knowledge Dimension dengan pemisahan tegas (Operational ≠ Standards, Vocabulary ≠ Specifications, dst.); P15 menetapkan klasifikasi sebagai properti Artifact; P1 menetapkan Separation of Concerns antara pengetahuan dan eksekusi. Folder legacy mencampurkan ketiganya: klasifikasi, pipeline, dan lapisan.
+The legacy taxonomy was mixed: 16 folders with dimension-mixed contents (operations mixed with standards, planning as a catch-all, work-items/planning, specification-corpus as a vocabulary misnomer). EKA 8 establishes 12 Knowledge Dimensions with strict separation (Operational ≠ Standards, Vocabulary ≠ Specifications, etc.); P15 establishes classification as an Artifact property; P1 establishes Separation of Concerns between knowledge and execution. The legacy folders mixed all three: classification, pipeline, and layers.
 
 ## Decision
 
-1. **12 folder knowledge = 12 Knowledge Dimension 1:1** (EKA 8): `intent`, `requirements`, `architecture`, `decisions`, `specifications`, `standards`, `operations`, `quality`, `planning`, `records`, `research`, `vocabulary`.
-2. **`operating/`** — folder lapisan OS (containers, work-items, projections, sessions, protocol): state machine & protocol hidup di sini, bukan di folder dimensi (P1, EKA 4.1).
-3. **`exchange/`** — folder lapisan EX (`validation.md`, `transfer.md`): kontrak pertukaran (EKA 13).
-4. **Aturan lokasi**: artifact knowledge hidup di folder dimensinya; validasi menegakkan **`dimension == folder`** (field `dimension` di frontmatter harus sama dengan folder tempat file berada) — P15, P9.
-5. **Artifact operating dikecualikan** dari aturan `dimension == folder` (work item berdimensi Requirements/Records/Research namun hidup di `operating/work-items/` — dimensi OS menentukan home-nya, bukan Knowledge Dimension-nya).
-6. **Catch-all dibubarkan**: tidak ada folder yang menampung campuran dimensi (EKA 14.2, P15); content didistribusikan ke dimensi yang tepat.
+1. **12 knowledge folders = 12 Knowledge Dimensions, 1:1** (EKA 8): `intent`, `requirements`, `architecture`, `decisions`, `specifications`, `standards`, `operations`, `quality`, `planning`, `records`, `research`, `vocabulary`.
+2. **`operating/`** — OS-layer folder (containers, work-items, projections, sessions, protocol): the state machine and protocol live here, not in dimension folders (P1, EKA 4.1).
+3. **`exchange/`** — EX-layer folder (`validation.md`, `transfer.md`): exchange contracts (EKA 13).
+4. **Location rule**: knowledge artifacts live in their dimension folder; validation enforces **`dimension == folder`** (the `dimension` field in the frontmatter must equal the folder where the file resides) — P15, P9.
+5. **Operating artifacts are exempt** from the `dimension == folder` rule (a work item has dimension Requirements/Records/Research yet lives in `operating/work-items/` — the OS dimension determines its home, not its Knowledge Dimension).
+6. **Catch-alls dissolved**: no folder hosts a mix of dimensions (EKA 14.2, P15); content is distributed to the correct dimension.
 
 ## Consequences
 
-- **Positif**: klasifikasi stabil dan dapat divalidasi mekanis — `dimension == folder` (P15); reklasifikasi tidak memutus referensi karena referensi by Identity (P3).
-- **Positif**: pemisahan lapisan tegas (P1): knowledge di folder dimensi, eksekusi di `operating/`, exchange di `exchange/`.
-- **Positif**: catch-all legacy hilang; setiap artifact memiliki home taksonomi yang jelas.
-- **Negatif (disengaja)**: seluruh path legacy berubah (`breaking-changes.md` #1, #8, #9); migrasi mengikuti `migration-guide.md`.
+- **Positive**: stable, mechanically validated classification — `dimension == folder` (P15); reclassification never breaks references because references are by Identity (P3).
+- **Positive**: strict layer separation (P1): knowledge in dimension folders, execution in `operating/`, exchange in `exchange/`.
+- **Positive**: legacy catch-alls gone; every artifact has a clear taxonomic home.
+- **Negative (intentional)**: all legacy paths change (`breaking-changes.md` #1, #8, #9); migration follows `migration-guide.md`.
 
 ## Alternatives Considered
 
-- **Mempertahankan 16 folder legacy** — ditolak: pencampuran dimensi dan lapisan; melanggar P1, P15, EKA 8.
-- **Subfolder per dimensi di bawah satu folder knowledge** — ditolak: 1:1 folder↔dimensi dipilih agar validasi `dimension == folder` sederhana dan deterministik (P16: enforcement bervariasi, invariant identik).
-- **Klasifikasi hanya di frontmatter, folder bebas** — ditolak: folder adalah proyeksi klasifikasi (P9); tanpa proyeksi, navigasi dan validasi melemah.
+- **Keeping the 16 legacy folders** — rejected: mixes dimensions and layers; violates P1, P15, EKA 8.
+- **Subfolder per dimension under one knowledge folder** — rejected: 1:1 folder↔dimension was chosen so that `dimension == folder` validation stays simple and deterministic (P16: enforcement varies, invariants identical).
+- **Classification only in frontmatter, free-form folders** — rejected: the folder is a classification projection (P9); without the projection, navigation and validation weaken.
 
 ## References
 
-- EKA 8 (Knowledge Taxonomy — 12 dimensi), 14.2 (ekstensi; core closed, taxonomy open), 4.1 (Layer Model)
-- Prinsip P1 (Separation of Concerns), P9 (Structure as Projection of State), P15 (Classification is Property, Not Identity)
-- Terkait: [ADR-001](adr-001-identity-serialization.md), [ADR-006](adr-006-exchange-conventions.md), [ADR-007](adr-007-extension-research-finding.md)
+- EKA 8 (Knowledge Taxonomy — 12 dimensions), 14.2 (extensions; core closed, taxonomy open), 4.1 (Layer Model)
+- Principles P1 (Separation of Concerns), P9 (Structure as Projection of State), P15 (Classification is Property, Not Identity)
+- Related: [ADR-001](adr-001-identity-serialization.md), [ADR-006](adr-006-exchange-conventions.md), [ADR-007](adr-007-extension-research-finding.md)

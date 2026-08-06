@@ -1,44 +1,44 @@
-# Filosofi — Mengapa EKA Ada dan Mengapa Repositori Ini Disusun Demikian
+# Philosophy — Why EKA Exists and Why This Repository Is Structured This Way
 
-Dokumen ini adalah narasi posisi: alasan keberadaan EKA, wawasan arsitektur yang mendasarinya, dan konsekuensinya terhadap cara repositori ini disusun. Ini bukan bagian standard — ini catatan mengapa keputusan standard dan serialisasi diambil.
+This document is a position narrative: the reasons EKA exists, the architectural insights underlying it, and their consequences for how this repository is structured. It is not part of the standard — it records why the standard and serialization decisions were made.
 
-## Mengapa EKA ada
+## Why EKA exists
 
-Implementasi awal membuktikan dua tanggung jawab yang hidup berdampingan dalam satu repositori: menyimpan pengetahuan (Knowledge Base) dan menjalankan pekerjaan engineering (Engineering Operating System). Keduanya berjalan di atas struktur yang sama — dan di situlah konflasi lahir. Status diduplikasi di tiga tempat tanpa penulis tunggal, tujuh mesin status hidup berdampingan tanpa aturan bersama, Identity dikacaukan dengan lokasi, dan pipeline proses tercampur menjadi taksonomi folder.
+The early implementation proved two responsibilities coexisting in one repository: storing knowledge (Knowledge Base) and running engineering work (Engineering Operating System). Both ran on the same structure — and that is where the conflation was born. Status was duplicated in three places with no single writer, seven state machines coexisted without shared rules, Identity was confused with location, and process pipelines were mixed into a folder taxonomy.
 
-EKA adalah jawaban atas konflasi itu: bukan struktur baru, melainkan **model konseptual kanonik** yang memisahkan tanggung jawab secara eksplisit, lalu membiarkan setiap implementasi memilih mekanismenya sendiri. Repositori ini adalah salah satu serialisasi dari model itu.
+EKA is the answer to that conflation: not a new structure, but a **canonical conceptual model** that separates responsibilities explicitly, then lets each implementation choose its own mechanisms. This repository is one serialization of that model.
 
-## Wawasan dual-layer: Knowledge Base dan Operating System adalah dua lapisan dari satu sistem
+## The dual-layer insight: Knowledge Base and Operating System are two layers of one system
 
-Wawasan inti EKA: repositori engineering bukan sekadar tempat menyimpan dokumen, dan bukan sekadar mesin eksekusi — ia **keduanya sekaligus, sebagai dua lapisan dari satu sistem**. Lapisan pengetahuan menyimpan Content, klasifikasi, dan sejarah; lapisan operating menjalankan state machine, protocol, dan governance. Keduanya diikat oleh **Identity**: satu artifact yang sama dilihat Knowledge Base sebagai pengetahuan dan dilihat Operating System sebagai entitas ber-state.
+The core EKA insight: an engineering repository is not merely a place to store documents, and not merely an execution engine — it is **both at once, as two layers of one system**. The knowledge layer stores Content, classification, and history; the operating layer runs state machines, protocol, and governance. Both are bound by **Identity**: the same artifact is seen by the Knowledge Base as knowledge and by the Operating System as a stateful entity.
 
-Konsekuensi langsung bagi repositori ini: folder knowledge (12 dimensi) dan folder `operating/` bukan dua area yang kebetulan berdampingan — keduanya adalah dua lapisan yang kontraknya didefinisikan standard (Section 4–5). Satu artifact membawa Content di lapisan KB dan State di lapisan OS, tanpa saling menulis.
+Direct consequence for this repository: the knowledge folders (12 dimensions) and the `operating/` folder are not two areas that happen to sit side by side — they are two layers whose contracts are defined by the standard (Sections 4–5). One artifact carries Content in the KB layer and State in the OS layer, without either writing into the other.
 
-## Pipeline sebagai Protocol first-class, bukan kecelakaan taksonomi
+## Pipeline as first-class Protocol, not a taxonomy accident
 
-Pada struktur lama, alur kerja (PRD → MVP → epics → roadmap → sprint → tickets → work items → sessions) tampak sebagai hierarki folder. Itu adalah kesalahan kategori: pipeline adalah **urutan eksekusi**, properti Operating Layer, bukan properti klasifikasi. Ketika pipeline disandikan sebagai folder, setiap pergeseran proses memaksa pergeseran lokasi — dan Identity ikut bergeser.
+In the legacy structure, the workflow (PRD → MVP → epics → roadmap → sprint → tickets → work items → sessions) looked like a folder hierarchy. That was a category error: a pipeline is an **execution order**, a property of the Operating Layer, not a property of classification. When the pipeline was encoded as folders, every process shift forced a location shift — and Identity shifted with it.
 
-EKA memindahkan pipeline ke tempat yang benar: **Protocol** (EKA 3, 9). Urutan "requirement → scope → plan → container → work item → konteks kerja → validasi" didefinisikan sebagai properti Operating Layer yang menjawab "apa selanjutnya" secara deterministik. Konsekuensi repositori: tidak ada folder pipeline; yang ada adalah folder dimensi (untuk pengetahuan) dan folder operating (untuk eksekusi), dengan urutan diekspresikan lewat Relationship dan State — bukan lewat posisi folder.
+EKA moves the pipeline to its proper place: **Protocol** (EKA 3, 9). The order "requirement → scope → plan → container → work item → working context → validation" is defined as an Operating Layer property answering "what next" deterministically. Repository consequence: there are no pipeline folders; there are dimension folders (for knowledge) and operating folders (for execution), with order expressed through Relationship and State — not through folder position.
 
-## Phase adalah konteks, bukan kategori
+## Phase is context, not category
 
-Fase produk (Discovery, MVP, Milestone, Release) adalah **konteks sepanjang waktu**, bukan kategori permanen dan bukan state. Produk yang sama tetap produk yang sama saat berpindah fase — yang berubah adalah atribut konteksnya. Menyandikan phase sebagai folder membuat fase menjadi bagian lokasi, dan lokasi menjadi bagian Identity: pindah fase berarti "memindahkan" artifact, padahal Identity tidak boleh bergeser (P3).
+Product phases (Discovery, MVP, Milestone, Release) are **time-bound context**, not a permanent category and not state. The same product remains the same product when it changes phase — what changes is its context attribute. Encoding phase as folders made phase part of location, and location part of Identity: changing phase meant "moving" the artifact, while Identity must not shift (P3).
 
-Konsekuensi repositori: `phase` adalah field frontmatter pada artifact scope/plan saja; perpindahan fase adalah context update yang diotorisasi gate kesiapan (EKA 11.2) — bukan operasi pemindahan file. Identity decoupled dari phase.
+Repository consequence: `phase` is a frontmatter field on scope/plan artifacts only; phase changes are context updates authorized by the readiness gate (EKA 11.2) — not file moves. Identity is decoupled from phase.
 
-## State dimiliki single-writer
+## State is single-writer owned
 
-Duplikasi status adalah penyakit utama struktur lama: status hidup di metadata tabel dokumen, di tabel sprint, di dokumen ticket — tiga salinan, tanpa penulis yang jelas, dengan ritual sinkronisasi manual yang selalu tertinggal. EKA menetapkan: **setiap field state memiliki tepat satu owner** (P6). Semua tampilan lain adalah State Projection: diturunkan, divalidasi, dan tidak pernah menjadi writer.
+Status duplication was the main disease of the legacy structure: status lived in document metadata tables, sprint tables, and ticket documents — three copies, no clear writer, with manual sync rituals that always lagged behind. EKA establishes: **every state field has exactly one owner** (P6). All other views are State Projections: derived, validated, and never writers.
 
-Konsekuensi repositori: state hanya ditulis di frontmatter artifact pemiliknya (single-writer per domain), transisi dicatat di `change-log`, dan representasi turunan (tabel container, ticket) diberi label eksplisit sebagai proyeksi yang di-refresh on-read — bukan fakta independen yang diedit.
+Repository consequence: state is written only in the owning artifact's frontmatter (single-writer per domain), transitions are recorded in `change-log`, and derived representations (container tables, tickets) are explicitly labeled as projections refreshed on-read — not independent editable facts.
 
-## Repositori adalah satu serialisasi, bukan arsitekturnya
+## The repository is one serialization, not the architecture
 
-Disiplin terakhir yang menuntun seluruh struktur ini: **standard adalah kanon; repositori adalah contoh** (EKA 1.3, 16.2). EKA didefinisikan atas konsep — Identity, State, Layer, kontrak — bukan atas folder, pola penamaan, atau format. Repositori ini hanyalah satu cara menserialisasi konsep-konsep itu ke Git + Markdown. Konsekuensinya:
+The final discipline guiding the whole structure: **the standard is canon; the repository is an example** (EKA 1.3, 16.2). EKA is defined over concepts — Identity, State, Layer, contracts — not over folders, naming patterns, or formats. This repository is merely one way to serialize those concepts into Git + Markdown. Consequences:
 
-- Standard hidup utuh di `standard/` sebagai teks kanonik yang tidak tercampur keputusan serialisasi;
-- Konvensi serialisasi didokumentasikan eksplisit (bukan disembunyikan di kebiasaan) dan dijaga lewat ADR;
-- Struktur yang dapat disalin (`skeleton/`) adalah produk sampingan — serialisasi yang dapat dipakai proyek lain;
-- Setiap keputusan serialisasi dapat dipertanggungjawabkan ke section/prinsip standard (lihat `traceability-matrix.md`).
+- The standard lives intact in `standard/` as canonical text unmixed with serialization decisions;
+- Serialization conventions are documented explicitly (not hidden in habits) and maintained through ADRs;
+- The copyable structure (`skeleton/`) is a byproduct — a serialization other projects can use;
+- Every serialization decision can be accounted for against a standard section/principle (see `traceability-matrix.md`).
 
-Dengan disiplin ini, repositori tetap berguna enam bulan lagi — dan enam puluh bulan lagi, bahkan ketika media penyimpanan berganti: yang dipertahankan adalah konsep, bukan mekanisme.
+With this discipline, the repository remains useful six months from now — and sixty months, even when the storage medium changes: what is preserved is the concept, not the mechanism.

@@ -1,38 +1,38 @@
 # technical-stories/ — Technical Story (`ts-`)
 
-> Anchor EKA: Operating Layer — state domain Execution State; subtipe work item `ts-`.
+> Anchor EKA: Operating Layer — State Domain Execution State; work item subtype `ts-`.
 
-## Tujuan
+## Purpose
 
-Technical Story adalah unit kerja yang menghasilkan nilai teknis internal (infrastruktur, refactor, integrasi sistem) yang tidak langsung terlihat pengguna tetapi diperlukan untuk kualitas dan keberlanjutan sistem.
+A technical story is a unit of work delivering internal technical value (infrastructure, refactoring, system integration) that is not directly visible to users but is required for system quality and sustainability.
 
 ## Token & State Vector
 
-| Token | Folder | State yang dimiliki |
+| Token | Folder | Owned state |
 |---|---|---|
 | `ts-` | `work-items/technical-stories/` | `execution-state`, `existence-state` |
 
-Nilai `execution-state`: `planned → todo → in-progress → in-review → done` (forward-only, never skip, never revert). Nilai `existence-state`: `active → archived → retired`.
+`execution-state` values: `planned → todo → in-progress → in-review → done` (forward-only, never skip, never revert). `existence-state` values: `active → archived → retired`.
 
-## Struktur Konten Wajib
+## Required Content Structure
 
-- `## Description` — pekerjaan teknis dan alasannya.
-- `## Acceptance Criteria` — kondisi terukur yang memenuhi definisi selesai (termasuk verifikasi teknis).
+- `## Description` — the technical work and its rationale.
+- `## Acceptance Criteria` — measurable conditions satisfying the definition of done (including technical verification).
 
-## Konvensi Nama
+## Naming Conventions
 
-`ts-<id>.md`, kebab-case, unik dalam (namespace, type). Tanpa akhiran `-v<nn>`. Contoh: `ts-migrasi-format-frontmatter.md`.
+`ts-<id>.md`, kebab-case, unique within (namespace, type). No `-v<nn>` suffix. Example: `ts-frontmatter-format-migration.md`.
 
-## Kepemilikan
+## Ownership
 
-| Peran | Tanggung jawab |
+| Role | Responsibility |
 |---|---|
-| Tech Lead | definisi pekerjaan teknis |
-| Engineer (implementer) | pemilik tunggal state; eksekusi |
-| DevOps | kolaborator untuk pekerjaan infrastruktur |
+| Tech Lead | definition of technical work |
+| Engineer (implementer) | single owner of state; execution |
+| DevOps | collaborator for infrastructure work |
 
-## Terkait
+## Related
 
-- [architecture/](../../../architecture/) — pekerjaan teknis mengejawantahkan `arc-`.
-- [standards/](../../../standards/) — hasil harus mematuhi `std-`.
-- [containers/](../containers/) — technical story dimiliki kontainer aktif.
+- [architecture/](../../../architecture/) — technical work embodies `arc-`.
+- [standards/](../../../standards/) — results must conform to `std-`.
+- [containers/](../../containers/) — technical stories are owned by the active container.

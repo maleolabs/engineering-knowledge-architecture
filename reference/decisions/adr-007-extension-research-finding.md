@@ -29,42 +29,42 @@ change-log:
     by: Engineering Architecture
 ---
 
-# ADR-007 — Ekstensi: tipe Artifact `fnd-` (Research Finding)
+# ADR-007 — Extension: `fnd-` Artifact type (Research Finding)
 
 ## Context
 
-Dimensi **Research** (EKA 8) — "Temuan investigasi, hasil riset teknis; wajib jalur Distillation ke dimensi durable" — **tidak memiliki tipe Artifact** di Artifact Taxonomy EKA 10. Pada implementasi awal, hasil investigasi (spike, riset teknis) tidak memiliki home durable: temuan hilang atau terpendam di session ephemeral. EKA 14.1 menyediakan mekanisme ekstensi ringan untuk tipe Artifact baru; EKA 14.2.6 mewajibkan tipe baru mendeklarasikan State Vector owned **lengkap** (tidak ada pewarisan default implisit).
+The **Research** dimension (EKA 8) — "investigation findings, technical research results; mandatory Distillation path to durable dimensions" — **has no Artifact type** in the EKA 10 Artifact Taxonomy. In the initial implementation, investigation results (spikes, technical research) had no durable home: findings were lost or buried in ephemeral sessions. EKA 14.1 provides a lightweight extension mechanism for new Artifact types; EKA 14.2.6 requires new types to declare a **complete** owned State Vector (no implicit default inheritance).
 
 ## Decision
 
-Daftarkan tipe extension **Research Finding** (`fnd-`) melalui mekanisme ekstensi EKA 14.1:
+Register the **Research Finding** (`fnd-`) extension type via the EKA 14.1 extension mechanism:
 
-| Aspek | Deklarasi |
+| Aspect | Declaration |
 |---|---|
-| Token tipe | `fnd-` (masuk tabel 26 token, ADR-001) |
+| Type token | `fnd-` (enters the 26-token table, ADR-001) |
 | Knowledge Dimension | Research |
-| State Vector owned (lengkap) | `(Content State, Existence State)` — domain lain not-applicable |
-| Aturan Identity | Line + instance; ID unik dalam `(namespace, fnd)` |
-| Folder | `research/` (aturan `dimension == folder`, ADR-005) |
-| Relationship | `derives-from` (mis. dari spike `spk-`); output Distillation menuju dimensi durable (keputusan, ADR, Record) |
+| Owned State Vector (complete) | `(Content State, Existence State)` — other domains not-applicable |
+| Identity rules | Line + instance; ID unique within `(namespace, fnd)` |
+| Folder | `research/` (`dimension == folder` rule, ADR-005) |
+| Relationship | `derives-from` (e.g., from spike `spk-`); Distillation output toward durable dimensions (decisions, ADR, Record) |
 
-Konsekuensi governance: ekstensi terdaftar sebagai bagian standard (EKA 14.2.5: proposal → review → acceptance) dan **dapat di-exchange** (EKA 14.2.4) — tercakup schema versioning konvensi exchange (ADR-006).
+Governance consequences: the extension is registered as part of the standard (EKA 14.2.5: proposal → review → acceptance) and **is exchangeable** (EKA 14.2.4) — covered by the exchange conventions' schema versioning (ADR-006).
 
 ## Consequences
 
-- **Positif**: jalur Distillation spike → pengetahuan durable menjadi eksplisit (EKA 11.4): temuan riset (`fnd-`) didistilasi menjadi keputusan/ADR/Record, tidak menguap di session.
-- **Positif**: dimensi Research (EKA 8) kini memiliki home artifact; hasil investigasi terpreservasi (P12).
-- **Positif**: ekstensi sah dan exchangeable — tidak menyimpang dari invariant (EKA 14.2.1); backward compatible (14.2.2).
-- **Negatif**: satu tipe baru wajib dijaga kepatuhannya — deklarasi State Vector owned lengkap (Content, Existence) tidak boleh berubah implisit (14.2.6).
+- **Positive**: the spike → durable knowledge Distillation path becomes explicit (EKA 11.4): research findings (`fnd-`) are distilled into decisions/ADRs/Records instead of evaporating in sessions.
+- **Positive**: the Research dimension (EKA 8) now has an artifact home; investigation results are preserved (P12).
+- **Positive**: the extension is legitimate and exchangeable — it does not deviate from the invariants (EKA 14.2.1); backward compatible (14.2.2).
+- **Negative**: one new type must be kept compliant — the complete owned State Vector declaration (Content, Existence) must not change implicitly (14.2.6).
 
 ## Alternatives Considered
 
-- **Menggunakan tipe existing (`spec-`/`std-`/`rel-`)** — ditolak: Research ≠ Specifications/Standards/Records (EKA 8); Research akumulatif, bukan immutable, dan mewajibkan jalur Distillation.
-- **Tanpa tipe khusus (temuan hanya di session)** — ditolak: session ephemeral by design (EKA 10); melanggar P12 (Preservation Over Deletion) dan EKA 11.4.
-- **Research sebagai dimensi tanpa artifact type** — ditolak: dimensi tanpa tipe tidak dapat diproduksi/diekspor sebagai Artifact (EKA 14.1, 13.1).
+- **Using existing types (`spec-`/`std-`/`rel-`)** — rejected: Research ≠ Specifications/Standards/Records (EKA 8); Research is cumulative, not immutable, and mandates a Distillation path.
+- **No dedicated type (findings only in sessions)** — rejected: sessions are ephemeral by design (EKA 10); violates P12 (Preservation Over Deletion) and EKA 11.4.
+- **Research as a dimension without an artifact type** — rejected: a dimension without a type cannot be produced/exported as an Artifact (EKA 14.1, 13.1).
 
 ## References
 
-- EKA 8 (dimensi Research), 10 (Artifact Taxonomy), 11.4 (Distillation lifecycle), 14.1 (titik ekstensi), 14.2 (aturan ekstensi)
-- Prinsip P12 (Preservation Over Deletion), P15 (Classification is Property, Not Identity)
-- Terkait: [ADR-001](adr-001-identity-serialization.md), [ADR-005](adr-005-dimension-layout.md), [ADR-006](adr-006-exchange-conventions.md)
+- EKA 8 (Research dimension), 10 (Artifact Taxonomy), 11.4 (Distillation lifecycle), 14.1 (extension points), 14.2 (extension rules)
+- Principles P12 (Preservation Over Deletion), P15 (Classification is Property, Not Identity)
+- Related: [ADR-001](adr-001-identity-serialization.md), [ADR-005](adr-005-dimension-layout.md), [ADR-006](adr-006-exchange-conventions.md)

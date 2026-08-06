@@ -1,57 +1,57 @@
-# docs/decisions/ — Dimensi Decisions
+# docs/decisions/ — Decisions Dimension
 
-> Anchor EKA: Knowledge Layer — dimensi **decisions** (EKA 8).
+> Anchor EKA: Knowledge Layer — **decisions** dimension (EKA 8).
 
-## Tujuan
+## Purpose
 
-Dimensi decisions mewadahi keputusan yang sudah diambil beserta konteks, alternatif, dan konsekuensinya — agar keputusan tidak "hilang" saat orang yang mengambilnya pergi. Dimensi ini memiliki dua varian artefak dengan varian state yang berbeda.
+The decisions dimension houses decisions that have been made, along with their context, alternatives, and consequences — so decisions do not get "lost" when the people who made them leave. This dimension has two artifact variants with different state variants.
 
-## Yang Ada di Sini
+## What Lives Here
 
-| Token | Tipe | Format nama |
+| Token | Type | Name format |
 |---|---|---|
 | `adr-` | Architecture Decision Record | `adr-<id>.md` |
-| `dec-` | Decision Record (keputusan umum/operasional) | `dec-<id>.md` |
+| `dec-` | Decision Record (general/operational decision) | `dec-<id>.md` |
 
 ## State Vector
 
-| Tipe | Domain state yang dimiliki | Nilai `content-state` |
+| Type | Owned state domains | `content-state` values |
 |---|---|---|
 | `adr-` | `content-state`, `existence-state` | `proposed → accepted → superseded` |
 | `dec-` | `content-state`, `existence-state` | `draft → accepted → superseded` |
 
-Nilai `existence-state`: `active → archived → retired`. Catatan: varian `adr-` tidak menggunakan nilai `draft`/`review`/`approved`/`amended`; status keputusan langsung diekspresikan sebagai `proposed`/`accepted`/`superseded`.
+`existence-state` values: `active → archived → retired`. Note: the `adr-` variant does not use `draft`/`review`/`approved`/`amended`; decision status is expressed directly as `proposed`/`accepted`/`superseded`.
 
-## Struktur Konten yang Baik
+## Good Content Structure
 
-Struktur wajib (keluarga decision record):
+Required structure (decision record family):
 
-- `## Context` — latar belakang dan masalah yang memicu keputusan.
-- `## Decision` — keputusan yang diambil.
-- `## Consequences` — dampak positif dan negatif.
-- `## Alternatives Considered` — alternatif yang dievaluasi dan alasan penolakannya.
-- `## References` (opsional) — rujukan tambahan.
+- `## Context` — background and the problem that triggered the decision.
+- `## Decision` — the decision made.
+- `## Consequences` — positive and negative impacts.
+- `## Alternatives Considered` — alternatives evaluated and reasons for rejection.
+- `## References` (optional) — additional references.
 
-## Supersesi
+## Supersession
 
-- **`adr-`: supersesi wajib.** Saat sebuah ADR tidak lagi berlaku, buat ADR baru dan set `supersedes: [adr:<id-lama>]` pada yang baru serta `content-state: superseded` pada yang lama. ADR yang disupersesi tanpa rujukan pengganti adalah pelanggaran validasi.
-- **`dec-`: supersesi opsional.** Keputusan operasional dapat disupersesi, tetapi tidak diwajibkan; keputusan cukup dipindahkan ke `existence-state: archived` bila tidak lagi relevan.
+- **`adr-`: supersession is mandatory.** When an ADR is no longer valid, create a new ADR and set `supersedes: [adr:<old-id>]` on the new one and `content-state: superseded` on the old one. A superseded ADR without a replacement reference is a validation violation.
+- **`dec-`: supersession is optional.** Operational decisions may be superseded but are not required to be; a decision can simply move to `existence-state: archived` when no longer relevant.
 
-## Konvensi Nama
+## Naming Conventions
 
-`adr-<id>.md` dan `dec-<id>.md`, kebab-case, unik dalam (namespace, type). Tanpa akhiran `-v<nn>`. Contoh: `adr-serialisasi-identitas.md`, `dec-git-workflow.md`.
+`adr-<id>.md` and `dec-<id>.md`, kebab-case, unique within (namespace, type). No `-v<nn>` suffix. Examples: `adr-identity-serialization.md`, `dec-git-workflow.md`.
 
-## Kepemilikan
+## Ownership
 
-| Peran | Tanggung jawab |
+| Role | Responsibility |
 |---|---|
-| Tech Lead | pemilik `adr-` (keputusan arsitektur) |
-| Product Owner | pemilik `dec-` (keputusan produk/lingkup) |
-| Engineers / DevOps | kontributor `dec-` teknis-operasional |
+| Tech Lead | owner of `adr-` (architectural decisions) |
+| Product Owner | owner of `dec-` (product/scope decisions) |
+| Engineers / DevOps | contributors of technical-operational `dec-` |
 
-## Terkait
+## Related
 
-- [architecture/](../architecture/) — `adr-` menjelaskan mengapa `arc-` demikian.
-- [records/](../records/) — catatan kronologis keputusan saat release.
-- [sessions/](../sessions/) — hasil distilasi sesi wajib bermuara ke `dec-`/`adr-`.
-- [research/](../research/) — temuan riset mewajibkan jalur distilasi ke sini (EKA 11.4).
+- [architecture/](../architecture/) — `adr-` explains why `arc-` is the way it is.
+- [records/](../records/) — chronological decision records at release time.
+- [sessions/](../../operating/sessions/) — session distillation results must flow into `dec-`/`adr-`.
+- [research/](../research/) — research findings require a distillation path to here (EKA 11.4).

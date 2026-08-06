@@ -1,51 +1,51 @@
-# docs/standards/ — Dimensi Standards
+# docs/standards/ — Standards Dimension
 
-> Anchor EKA: Knowledge Layer — dimensi **standards** (EKA 8).
+> Anchor EKA: Knowledge Layer — **standards** dimension (EKA 8).
 
-## Tujuan
+## Purpose
 
-Dimensi standards mewadahi standar dan pedoman (guideline) yang mengikat perilaku, gaya, dan kualitas karya: konvensi kode, format dokumen, proses, dan kriteria mutu. Standar menetapkan **aturan yang harus diikuti**, berbeda dengan runbook yang menjelaskan **prosedur pelaksanaan**.
+The standards dimension houses standards and guidelines that bind behavior, style, and quality of work: code conventions, document formats, processes, and quality criteria. Standards establish **rules to be followed**, unlike runbooks, which describe **execution procedures**.
 
-## Yang Ada di Sini
+## What Lives Here
 
-| Token | Tipe | Format nama |
+| Token | Type | Name format |
 |---|---|---|
 | `std-` | Standard/Guideline | `std-<id>.md` |
 
 ## State Vector
 
-| Tipe | Domain state yang dimiliki |
+| Type | Owned state domains |
 |---|---|
 | `std-` | `content-state`, `existence-state` |
 
-Nilai `content-state`: `draft → review → approved → amended`. Nilai `existence-state`: `active → archived → retired`. Field lain = N/A.
+`content-state` values: `draft → review → approved → amended`. `existence-state` values: `active → archived → retired`. Fields not listed = N/A.
 
-## Struktur Konten yang Baik
+## Good Content Structure
 
-Struktur wajib (keluarga dokumen pengetahuan):
+Required structure (knowledge document family):
 
-- `## Purpose` — area apa yang diatur.
-- `## Content` — aturan/konvensi; boleh berbentuk checklist kepatuhan.
+- `## Purpose` — which area is governed.
+- `## Content` — rules/conventions; may take the form of a conformance checklist.
 
-## Konvensi Nama
+## Naming Conventions
 
-`std-<id>.md`, kebab-case, unik dalam (namespace, type). Tanpa akhiran `-v<nn>`. Contoh: `std-frontmatter-identitas.md`.
+`std-<id>.md`, kebab-case, unique within (namespace, type). No `-v<nn>` suffix. Example: `std-frontmatter-identity.md`.
 
-## Konvensi ≠ Prosedur
+## Conventions ≠ Procedures
 
-Standar menetapkan **konvensi** (apa yang boleh/tidak boleh). Prosedur langkah-demi-langkah dijalankan oleh runbook (`run-`) di dimensi operations; jika sebuah dokumen menjelaskan "cara melakukan", ia bukan standar.
+Standards establish **conventions** (what is allowed/not allowed). Step-by-step procedures are executed by runbooks (`run-`) in the operations dimension; if a document explains "how to do it", it is not a standard.
 
-## Kepemilikan
+## Ownership
 
-| Peran | Tanggung jawab |
+| Role | Responsibility |
 |---|---|
-| Tech Lead | pemilik tunggal standar teknis |
-| DevOps | pemilik standar operasional/deployment |
-| Semua peran | wajib mematuhi `std-` yang disetujui |
+| Tech Lead | single owner of technical standards |
+| DevOps | owner of operational/deployment standards |
+| All roles | must conform to approved `std-` |
 
-## Terkait
+## Related
 
-- [operations/](../operations/) — prosedur (`run-`) dipisahkan dari standar di sini.
-- [quality/](../quality/) — kepatuhan standar diverifikasi oleh `rvw-`.
-- [specifications/](../specifications/) — spesifikasi mengikuti standar.
-- [vocabulary/](../vocabulary/) — istilah yang dimuat standar harus terdefinisi.
+- [operations/](../operations/) — procedures (`run-`) are separated from standards here.
+- [quality/](../quality/) — standard conformance is verified by `rvw-`.
+- [specifications/](../specifications/) — specifications follow standards.
+- [vocabulary/](../vocabulary/) — terms used in standards must be defined.

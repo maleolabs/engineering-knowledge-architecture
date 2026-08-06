@@ -1,150 +1,150 @@
 # Glossary — EKA v1.0
 
-Glosarium alfabetis seluruh istilah kanonik berhuruf kapital dari spesifikasi EKA v1.0. Definisi direproduksi dari teks kanonik (`standard/eka-specification-v1.0.md`) — bukan parafrase. Rujukan section dicantumkan untuk navigasi.
+Alphabetical glossary of all capitalized canonical terms from the EKA v1.0 specification. Definitions are reproduced from the canonical text (`standard/eka-specification-v1.0.md`) — not paraphrased. Section references are provided for navigation.
 
 ## A
 
 ### Artifact
-entitas pengetahuan engineering yang memiliki Identity, Content, State Vector (domain State yang **dimiliki**), dan Relationship. Unit dasar model. *(Section 3)*
+an engineering knowledge entity that has Identity, Content, a State Vector (the State domains it **owns**), and Relationship. The basic unit of the model. *(Section 3)*
 
 ### Artifact Instance
-satu versi eksistensi dari sebuah Line: Line + `InstanceVersion`. *(Section 3)*
+one version of a Line's existence: Line + `InstanceVersion`. *(Section 3)*
 
 ### Artifact Line
-entitas Identity yang bertahan: satu `(Namespace, Type, ID)`. *(Section 3)*
+the enduring Identity entity: one `(Namespace, Type, ID)`. *(Section 3)*
 
 ## C
 
 ### Change Log
-catatan kronologis transisi State pada Artifact: domain, nilai lama, nilai baru, waktu, otoritas. Wajib untuk seluruh State Domain. *(Section 3)*
+the chronological record of State transitions on an Artifact: domain, old value, new value, time, authority. Mandatory for all State Domains. *(Section 3)*
 
 ### Command
-instruksi eksekusi deterministik yang dikonsumsi oleh eksekutor (manusia atau agent). Content Command adalah Content (milik Knowledge Layer); eksekusinya diatur Protocol (Operating Layer). *(Section 3)*
+a deterministic execution instruction consumed by an executor (human or agent). Command Content is Content (owned by the Knowledge Layer); its execution is governed by Protocol (Operating Layer). *(Section 3)*
 
 ### Container State
-Domain State Execution Container: nilai `Active → Completed`; responsibility "Execution Container terbuka/tertutup; konkurensi"; owner Operating Layer. Aturan transisi: "Completed adalah transisi derived: dipicu agregat Execution State (semua work item Done); exactly-one-Active (mutual exclusion)." *(Section 7.2)*
+the Execution Container's State Domain: values `Active → Completed`; responsibility "Execution Container open/closed; concurrency"; owner Operating Layer. Transition rules: "Completed is a derived transition: triggered by the Execution State aggregate (all work items Done); exactly-one-Active (mutual exclusion)." *(Section 7.2)*
 
 ### Content
-muatan semantik Artifact: intent, keputusan, desain, kendala, prosedur, catatan. Milik Knowledge Layer. *(Section 3)*
+the semantic payload of an Artifact: intent, decisions, design, constraints, procedures, notes. Belongs to the Knowledge Layer. *(Section 3)*
 
 ### Content State
-Domain State kematangan Content: nilai `Draft → Review → Approved`; terminal pasca-persetujuan: `Amended | Superseded`; responsibility "Kematangan Content sebagai pengetahuan; kanal governance"; owner "Knowledge Layer (gate: owner/approver)". Aturan transisi: "Forward-only; gate persetujuan; perubahan pasca-Approved hanya via amendmen/supersesi (P8)." *(Section 7.2)*
+Content maturity State Domain: values `Draft → Review → Approved`; post-approval terminal: `Amended | Superseded`; responsibility "Content maturity as knowledge; governance channel"; owner "Knowledge Layer (gate: owner/approver)". Transition rules: "Forward-only; approval gate; changes after Approved only via amendment/supersession (P8)." *(Section 7.2)*
 
 ## D
 
 ### Distillation
-transformasi pengetahuan ephemeral (konteks kerja, temuan review) menjadi pengetahuan durable (keputusan, ADR, Record). *(Section 3)*
+transformation of ephemeral knowledge (working context, review findings) into durable knowledge (decisions, ADRs, Records). *(Section 3)*
 
 ## E
 
 ### Exchange Layer
-Lapisan arsitektur ketiga: "Batas transformasional: serialisasi, validasi, import/export, mediasi sistem eksternal". Memiliki "Kontrak pertukaran, aturan round-trip, validasi kepatuhan"; tidak memiliki "Content dan State (tidak pernah menjadi owner)". *(Section 4.1)*
+the third architectural layer: "transformational boundary: serialization, validation, import/export, mediation of external systems". Owns "exchange contracts, round-trip rules, conformance validation"; does not own "Content and State (never becomes an owner)". *(Section 4.1)*
 
 ### Execution Container
-Artifact eksekusi yang membungkus work item dan membawa konvensi konkurensi (exactly-one-active). Domain State-nya: Container State. Contoh implementasi: sprint. *(Section 3)*
+an execution Artifact that wraps work items and carries a concurrency convention (exactly-one-active). Its State Domain: Container State. Example implementation: sprint. *(Section 3)*
 
 ### Execution State
-Domain State progress work item: nilai `Planned → Todo → In Progress → In Review → Done`; responsibility "Progress work item melalui Protocol"; owner "Operating Layer (single-writer: artifact work item)". Aturan transisi: "Strictly sequential; never skip; never revert; satu initial; satu terminal; tiap transisi tercatat di Change Log." *(Section 7.2)*
+work item progress State Domain: values `Planned → Todo → In Progress → In Review → Done`; responsibility "Work item progress through Protocol"; owner "Operating Layer (single-writer: work item artifact)". Transition rules: "Strictly sequential; never skip; never revert; one initial; one terminal; every transition recorded in the Change Log." *(Section 7.2)*
 
 ### Existence State
-Domain State presensi Artifact: nilai `Active → Archived → Retired`; responsibility "Presensi Artifact dalam proses aktif vs preservasi"; owner "Operating Layer (transisi); Knowledge Layer (prinsip preservasi, P12)". Aturan transisi: "Forward-only; **Archived** = reference-only (tanpa transisi State lain, tanpa mutasi Content, tetap tersedia di retrieval); **Retired** = preservasi terminal (tidak disurface di retrieval normal, Content immutable, Identity tidak berubah). Berlaku untuk semua tipe Artifact." *(Section 7.2)*
+Artifact presence State Domain: values `Active → Archived → Retired`; responsibility "Artifact presence in active process vs preservation"; owner "Operating Layer (transitions); Knowledge Layer (preservation principle, P12)". Transition rules: "Forward-only; **Archived** = reference-only (no other State transitions, no Content mutation, still available in retrieval); **Retired** = terminal preservation (not surfaced in normal retrieval, Content immutable, Identity unchanged). Applies to all Artifact types." *(Section 7.2)*
 
 ## G
 
 ### Gate
-kondisi yang harus dipenuhi sebelum transisi atau eksekusi boleh terjadi (gate persetujuan, gate kesiapan, gate review). *(Section 3)*
+a condition that must be satisfied before a transition or execution may occur (approval gate, readiness gate, review gate). *(Section 3)*
 
 ## I
 
 ### Identity
-properti Artifact yang membedakannya dari semua Artifact lain secara permanen: `(Namespace, Type, ID[, InstanceVersion])`. Lihat Section 6. *(Section 3)*
+the property of an Artifact that permanently distinguishes it from all other Artifacts: `(Namespace, Type, ID[, InstanceVersion])`. See Section 6. *(Section 3)*
 
 ### Identity Registry
-fungsi Knowledge Layer yang menjamin keunikan Identity, resolusi Identity ke Artifact, dan integritas referensi. *(Section 3)*
+a Knowledge Layer function that guarantees Identity uniqueness, Identity resolution to Artifacts, and referential integrity. *(Section 3)*
 
 ### InstanceVersion
-bagian dari Identity instance; diskriminator instance dalam satu Line. "InstanceVersion (versi yang menunjuk instance berbeda) — **bagian dari Identity instance**. Instance baru diciptakan dengan sengaja (contoh: plan v2 setelah v1 terkunci). Perubahan instance = perubahan Identity instance; Line tetap." *(Sections 6.1, 6.3)*
+part of the instance Identity; the instance discriminator within one Line. "InstanceVersion (the version pointing to a different instance) — **part of the instance Identity**. A new instance is created deliberately (example: plan v2 after v1 is locked). Instance change = instance Identity change; the Line remains." *(Sections 6.1, 6.3)*
 
 ## K
 
 ### Knowledge Dimension
-sumbu klasifikasi pengetahuan (Section 8). Properti Artifact, bukan Identity. *(Section 3)*
+an axis of knowledge classification (Section 8). An Artifact property, not Identity. *(Section 3)*
 
 ### Knowledge Layer
-Lapisan arsitektur pertama: "Store pengetahuan: Content, klasifikasi, preservasi, referensi". Memiliki "Content, klasifikasi (Knowledge Dimensions), Relationship, history/Records, administrasi Identity (Identity Registry)"; tidak memiliki "State proses, Protocol eksekusi". *(Section 4.1)*
+the first architectural layer: "knowledge store: Content, classification, preservation, references". Owns "Content, classification (Knowledge Dimensions), Relationship, history/Records, Identity administration (Identity Registry)"; does not own "process State, execution Protocol". *(Section 4.1)*
 
 ### Knowledge OS
-platform eksekusi pengetahuan masa depan yang mengonsumsi dan memproduksi Artifact EKA melalui Exchange Layer. Bukan bagian standard; konsumen standard. *(Section 3)*
+a future knowledge execution platform that consumes and produces EKA Artifacts through the Exchange Layer. Not part of the standard; a consumer of the standard. *(Section 3)*
 
 ## L
 
 ### Layer
-lapisan arsitektur dengan kontrak eksplisit: Knowledge Layer, Operating Layer, Exchange Layer (Section 4). *(Section 3)*
+an architectural layer with explicit contracts: Knowledge Layer, Operating Layer, Exchange Layer (Section 4). *(Section 3)*
 
 ## N
 
 ### Namespace
-ruang Identity yang memisahkan domain pengelolaan (produk, organisasi, sistem). *(Section 3)*
+an Identity space that separates management domains (products, organizations, systems). *(Section 3)*
 
 ## O
 
 ### Operating Layer
-Lapisan arsitektur kedua: "State machine & Protocol eksekusi". Memiliki "State Domain (Execution, Planning, Container, Existence), urutan, konkurensi, kuncian, Gate, Command"; tidak memiliki "Content (tidak pernah mengedit Content)". *(Section 4.1)*
+the second architectural layer: "State machine & execution Protocol". Owns "State Domains (Execution, Planning, Container, Existence), ordering, concurrency, locking, Gates, Command"; does not own "Content (never edits Content)". *(Section 4.1)*
 
 ## P
 
 ### Phase
-konteks produk/scope sepanjang waktu (Discovery, MVP, Milestone, Release). Phase adalah **context attribute** pada Artifact planning/scope: bukan kategori, bukan State Domain. **Phase change** adalah context update yang diotorisasi Gate kesiapan (Sections 7.5, 11.2). *(Section 3)*
+product/scope context over time (Discovery, MVP, Milestone, Release). Phase is a **context attribute** on planning/scope Artifacts: not a category, not a State Domain. **Phase change** is a context update authorized by a readiness Gate (Sections 7.5, 11.2). *(Section 3)*
 
 ### Planning State
-Domain State commitment plan: nilai `Draft → Approved → Immutable`; responsibility "Commitment plan: tentative → committed → locked"; owner Operating Layer. Aturan transisi: "Forward-only; Approved = siap dieksekusi; **Immutable dicapai atomik dengan peristiwa pembuatan Execution Container** (lock-atomic-with-generation); perubahan pasca-lock = instance baru (InstanceVersion)." *(Section 7.2)*
+plan commitment State Domain: values `Draft → Approved → Immutable`; responsibility "Plan commitment: tentative → committed → locked"; owner Operating Layer. Transition rules: "Forward-only; Approved = ready for execution; **Immutable is reached atomically with the Execution Container creation event** (lock-atomic-with-generation); post-lock changes = new instance (InstanceVersion)." *(Section 7.2)*
 
 ### Protocol
-aturan deterministik milik Operating Layer: urutan, transisi State, kuncian, gate, perintah eksekusi. *(Section 3)*
+deterministic rules owned by the Operating Layer: ordering, State transitions, locking, gates, execution commands. *(Section 3)*
 
 ### Projection Refresh
-mekanisme dan waktu validasi State Projection terhadap owner (on-read dan/atau event). *(Section 3)*
+the mechanism and timing of State Projection validation against the owner (on-read and/or event). *(Section 3)*
 
 ### Projection Semantics
-aturan komputasi State Projection: dari owner mana, agregasi bagaimana, apa yang ditampilkan. *(Section 3)*
+the computation rules of a State Projection: from which owner, how aggregation works, what is displayed. *(Section 3)*
 
 ## R
 
 ### Record
-Artifact yang dipreservasi sebagai sejarah (Superseded, Archived, Retired, release record) dengan Content immutable. *(Section 3)*
+an Artifact preserved as history (Superseded, Archived, Retired, release record) with immutable Content. *(Section 3)*
 
 ### Relationship
-relasi eksplisit antar Artifact yang direferensikan by Identity: supersedes, amends, derives-from, depends-on, validates. *(Section 3)*
+an explicit relation between Artifacts referenced by Identity: supersedes, amends, derives-from, depends-on, validates. *(Section 3)*
 
 ### Revision
-pelacakan evolusi Content instance yang sama — **bukan bagian dari Identity**. "Revision (pelacakan evolusi Content instance yang sama) — **bukan bagian dari Identity**. Revision berubah setiap edit dan tidak boleh memutus referensi." *(Sections 6.1, 6.3)*
+tracking the Content evolution of the same instance — **not part of Identity**. "Revision (tracking the Content evolution of the same instance) — **not part of Identity**. Revision changes on every edit and must not break references." *(Sections 6.1, 6.3)*
 
 ## S
 
 ### State
-fakta tentang posisi Artifact dalam proses tertentu. *(Section 3)*
+a fact about the position of an Artifact within a given process. *(Section 3)*
 
 ### State Domain
-dimensi State independen dengan semantik, owner, dan aturan transisinya sendiri (Section 7). Domain bersifat orthogonal. *(Section 3)*
+an independent State dimension with its own semantics, owner, and transition rules (Section 7). Domains are orthogonal. *(Section 3)*
 
 ### State Projection
-tampilan State yang diturunkan dari owner (contoh: agregat State work item → status Execution Container). Proyeksi tidak memiliki State sendiri; proyeksi tidak pernah menjadi writer. *(Section 3)*
+a State view derived from the owner (example: aggregate of work item State → Execution Container status). A projection has no State of its own; a projection never becomes a writer. *(Section 3)*
 
 ### State Vector
-tuple State Domain **yang dimiliki** oleh sebuah Artifact. State yang diproyeksikan (State Projection) bukan bagian State Vector. *(Section 3)*
+the tuple of State Domains **owned** by an Artifact. Projected State (State Projection) is not part of the State Vector. *(Section 3)*
 
 ## T
 
 ### Trigger
-hubungan antar domain/operasi di mana suatu peristiwa memicu validasi atau transisi pada domain lain (definisi formal interaksi, Section 7.5). *(Section 3)*
+a relationship between domains/operations in which an event triggers validation or a transition in another domain (formal definition of interaction, Section 7.5). *(Section 3)*
 
 ## W
 
 ### Well-formed Content
-Content yang mematuhi struktur yang ditetapkan untuk tipe Artifact-nya, sehingga dapat diparse dan dieksekusi secara deterministik. *(Section 3)*
+Content that conforms to the structure established for its Artifact type, so that it can be parsed and executed deterministically. *(Section 3)*
 
 ---
 
-*Glosarium kanonik EKA v1.0 — definisi mengikat; lihat `eka-specification-v1.0.md` untuk konteks penuh.*
+*Canonical EKA v1.0 glossary — definitions are binding; see `eka-specification-v1.0.md` for full context.*
 
-**Catatan tata kelola terminologi:** glosarium ini adalah sumber definisi istilah Core. Penamaan resmi ekosistem (product identity, Specification Families, reference components, tooling, repository naming) serta daftar terminologi deprecated diatur oleh **EKA Naming and Terminology Specification v1.0** (`eka-naming-and-terminology-specification-v1.0.md`). Istilah baru mengikuti tata kelola terminologi di sana — istilah diperluas, tidak pernah di-fork.
+**Terminology governance note:** this glossary is the source of Core term definitions. Official ecosystem naming (product identity, Specification Families, reference components, tooling, repository naming) and the deprecated terminology list are governed by the **EKA Naming and Terminology Specification v1.0** (`eka-naming-and-terminology-specification-v1.0.md`). New terms follow the terminology governance there — terms are extended, never forked.

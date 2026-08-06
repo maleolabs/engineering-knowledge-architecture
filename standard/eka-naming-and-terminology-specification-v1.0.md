@@ -199,14 +199,14 @@ One root tool, one name: **`eka`**. Capabilities are subcommands. There must be 
 | Aspect | Rule |
 |---|---|
 | Root binary | `eka` |
-| Subcommands | **verbs**: `validate`, `init`, `export`, `import` (implemented); `diagnose`, `sync`, `format`, `graph` (future candidates). `completion` (bash/zsh/fish/powershell) disediakan framework Cobra — bukan command EKA inti |
+| Subcommands | **verbs**: `validate`, `init`, `export`, `import` (implemented); `diagnose`, `sync`, `format`, `graph` (future candidates). `completion` (bash/zsh/fish/powershell) is provided by the Cobra framework — not a core EKA command |
 | Philosophy | commands are verbs; tools are nouns (the tool is "the Reference Validator"; it runs `eka validate`) |
 | Determinism | output byte-identical across runs; exit codes 0/1/2 as documented in `reference/cli.md` |
 | Read-only | validation never modifies the repository (EKA Exchange Specification §14.1.3) |
 
 7.2 The roadmap name `doctor` violates the verb rule. It is not implemented; it must be renamed **`diagnose`** before implementation. No compatibility cost.
 
-7.3 Engine packages are named after the domain they implement, not after verbs: `conformance/` (validation engine), `exchange/` (future import/export engine), etc. Package name = domain noun.
+7.3 Engine packages are named after the domain they implement, not after verbs: `conformance/` (validation engine), `exchange/` (import/export engine), etc. Package name = domain noun.
 
 7.4 SDKs and language bindings use one pattern only: **`eka-sdk-<language>`** (`eka-sdk-go`, `eka-sdk-python`). A separate `eka-<language>` pattern must not exist: `eka-go` would be ambiguous between "Go SDK" and "Go component" under Section 8.
 
@@ -279,10 +279,10 @@ The Conformance Rules set is **R0–R9** (ten rules). The phrase "nine rules" re
 
 ### 9.4 Language and localized prose rule
 
-- New normative specifications are written in **English**. The ratified EKA Core Specification v1.0 text is Indonesian; it remains authoritative as ratified, and a future English revision may be published without altering contract meaning.
-- Convention documents may be written in Indonesian. Defined terms may be translated in localized prose (artefak, aturan, zona), with two obligations:
-  1. the first occurrence in any document carries the official term: "Conformance Rule (aturan konformitas)", "Standard Zone (zona standard)";
-  2. the translation must never be used as a canonical name in English text.
+- All normative specifications and convention documents are written in **English**; English is the canonical language of the EKA ecosystem.
+- Localized translations may exist as accessibility aids, with two obligations:
+  1. the first occurrence of any defined term in a translation carries the official English term: "Conformance Rule (aturan konformitas)", "Standard Zone (zona standard)";
+  2. a translation is never used as a canonical name in English text; the English document remains authoritative.
 
 ### 9.5 "Standard" vs "specification" usage
 

@@ -1,47 +1,47 @@
-# docs/architecture/ — Dimensi Architecture
+# docs/architecture/ — Architecture Dimension
 
-> Anchor EKA: Knowledge Layer — dimensi **architecture** (EKA 8).
+> Anchor EKA: Knowledge Layer — **architecture** dimension (EKA 8).
 
-## Tujuan
+## Purpose
 
-Dimensi architecture mewadahi deskripsi arsitektur sistem: struktur komponen, interaksi, batasan teknis, dan alasan keputusan arsitektural. Dokumen `arc-` menggambarkan "bagaimana sistem disusun", sementara "mengapa disusun demikian" hidup di `adr-` pada dimensi decisions.
+The architecture dimension houses system architecture descriptions: component structure, interactions, technical constraints, and the rationale of architectural decisions. `arc-` documents describe "how the system is structured", while "why it is structured that way" lives in `adr-` in the decisions dimension.
 
-## Yang Ada di Sini
+## What Lives Here
 
-| Token | Tipe | Format nama |
+| Token | Type | Name format |
 |---|---|---|
 | `arc-` | Architecture Description | `arc-<id>.md` |
 
 ## State Vector
 
-| Tipe | Domain state yang dimiliki |
+| Type | Owned state domains |
 |---|---|
 | `arc-` | `content-state`, `existence-state` |
 
-Nilai `content-state`: `draft → review → approved → amended`. Nilai `existence-state`: `active → archived → retired`. Field lain = N/A.
+`content-state` values: `draft → review → approved → amended`. `existence-state` values: `active → archived → retired`. Fields not listed = N/A.
 
-## Struktur Konten yang Baik
+## Good Content Structure
 
-Struktur wajib (keluarga dokumen pengetahuan):
+Required structure (knowledge document family):
 
-- `## Purpose` — cakupan arsitektur yang dideskripsikan.
-- `## Content` — deskripsi komponen, interaksi, dan batasan (diagram boleh dirujuk lewat path).
+- `## Purpose` — the scope of the architecture described.
+- `## Content` — component, interaction, and constraint descriptions (diagrams may be referenced by path).
 
-## Konvensi Nama
+## Naming Conventions
 
-`arc-<id>.md`, kebab-case, unik dalam (namespace, type). Tanpa akhiran `-v<nn>`. Contoh: `arc-identitas-namespace.md`.
+`arc-<id>.md`, kebab-case, unique within (namespace, type). No `-v<nn>` suffix. Example: `arc-identity-namespace.md`.
 
-## Kepemilikan
+## Ownership
 
-| Peran | Tanggung jawab |
+| Role | Responsibility |
 |---|---|
-| Tech Lead | pemilik tunggal konten architecture |
-| Engineers | kontributor segmen arsitektur |
-| DevOps | kontributor aspek deployment-infrastruktur |
+| Tech Lead | single owner of architecture content |
+| Engineers | contributors of architecture segments |
+| DevOps | contributors for deployment-infrastructure aspects |
 
-## Terkait
+## Related
 
-- [decisions/](../decisions/) — `adr-` menjelaskan keputusan di balik `arc-`.
-- [specifications/](../specifications/) — `arc-` diwujudkan menjadi spesifikasi rinci.
-- [standards/](../standards/) — `std-` mengikat gaya dan konvensi teknis.
-- [requirements/](../requirements/) — arsitektur memenuhi kebutuhan.
+- [decisions/](../decisions/) — `adr-` explains the decisions behind `arc-`.
+- [specifications/](../specifications/) — `arc-` is realized as detailed specifications.
+- [standards/](../standards/) — `std-` binds technical style and conventions.
+- [requirements/](../requirements/) — architecture fulfills requirements.

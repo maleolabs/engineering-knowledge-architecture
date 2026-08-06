@@ -27,50 +27,50 @@ change-log:
     by: Engineering Architecture
 ---
 
-# ADR-006 — Konvensi Exchange: validation.md + transfer.md sebagai seam lapisan EX
+# ADR-006 — Exchange Conventions: validation.md + transfer.md as the EX-layer seam
 
 ## Context
 
-Visi Knowledge OS (EKA 1.4, 16.1) mensyaratkan seam pertukaran yang didefinisikan di level standard: repositori harus dapat diimpor/diekspor tanpa kehilangan Identity, State, Content, atau Relationship (EKA 13.1, P13). Tanpa konvensi exchange, repositori ini hanya gudang file — tidak siap menjadi konsumen/produsen Artifact bagi sistem eksternal.
+The Knowledge OS vision (EKA 1.4, 16.1) requires an exchange seam defined at the standard level: the repository must be importable/exportable without losing Identity, State, Content, or Relationship (EKA 13.1, P13). Without exchange conventions, this repository is just a file store — not ready to be a consumer/producer of Artifacts for external systems.
 
 ## Decision
 
-Seam exchange diwujudkan sebagai dua dokumen konvensi di `skeleton/docs/exchange/`:
+The exchange seam is realized as two convention documents in `skeleton/docs/exchange/`:
 
-1. **`validation.md`** — 9 aturan validasi kepatuhan (diekstrak dari kontrak standard):
-   1. Identity lengkap & unik: `(namespace, type, id)` unik; `instance-version` unik per Line (6.2.2).
-   2. Identity frontmatter canonical dan machine-parseable (6.2.6).
-   3. Nilai state valid terhadap value set domain masing-masing (7.2).
-   4. Transisi forward-only; `change-log` konsisten dengan state saat ini (P7, 5.2).
-   5. Single-writer: tidak ada dua owner untuk satu field state (P6).
-   6. Referensi by Identity; tidak ada dangling reference (6.2.3, 5.1).
-   7. Klasifikasi: `dimension == folder` untuk artifact knowledge (8, P15).
-   8. Phase: nilai valid + hanya pada `scp-`/`plan-` (11.2).
-   9. Content Well-formed per tipe artifact (3, 5.3).
-2. **`transfer.md`** — kontrak transfer, mengikuti EKA 13.2:
-   - **Round-trip lossless** (13.2.1) dan **idempotent**: re-import = no-op (13.2.2);
-   - **Referential integrity** lintas sistem (13.2.3);
-   - **Kebijakan konflik Identity**: import dengan Identity yang sudah ada = **tolak atau re-namespace eksplisit** — tidak pernah merge diam-diam (13.2.4);
-   - **Validasi sebelum commit** (13.2.5);
-   - **Schema versioning**: kontrak exchange berversi; import/export menyatakan versi kontrak yang dipatuhi (13.2.6).
+1. **`validation.md`** — 9 Conformance Rules (R1–R9) (extracted from the standard contracts):
+   1. Complete and unique Identity: `(namespace, type, id)` unique; `instance-version` unique per Line (6.2.2).
+   2. Frontmatter Identity canonical and machine-parseable (6.2.6).
+   3. State values valid against each domain's value set (7.2).
+   4. Forward-only transitions; `change-log` consistent with current state (P7, 5.2).
+   5. Single-writer: no two owners for one state field (P6).
+   6. References by Identity; no dangling references (6.2.3, 5.1).
+   7. Classification: `dimension == folder` for knowledge artifacts (8, P15).
+   8. Phase: valid value and only on `scp-`/`plan-` (11.2).
+   9. Content Well-formed per artifact type (3, 5.3).
+2. **`transfer.md`** — the transfer contract, following EKA 13.2:
+   - **Lossless round-trip** (13.2.1) and **idempotent**: re-import = no-op (13.2.2);
+   - **Referential integrity** across systems (13.2.3);
+   - **Identity conflict policy**: importing an already-existing Identity = **reject or explicit re-namespace** — never silent merge (13.2.4);
+   - **Validation before commit** (13.2.5);
+   - **Schema versioning**: versioned exchange contract; import/export declares the contract version complied with (13.2.6).
 
-Kedua dokumen adalah dokumen konvensi (tanpa `type`/`id`) — bukan Artifact; mereka menjelaskan kontrak, tidak membawa state.
+Both documents are convention documents (without `type`/`id`) — not Artifacts; they describe the contracts and carry no state.
 
 ## Consequences
 
-- **Positif**: repositori import/export-ready tanpa redesign — seam exchange sudah didefinisikan sejak awal (EKA 13).
-- **Positif**: validator mekanis dapat dibangun dari 9 aturan `validation.md` (P16).
-- **Positif**: konflik Identity tidak pernah diselesaikan diam-diam — invariant round-trip lossless terjaga (P13).
-- **Negatif**: konvensi ini mengikat — setiap struktur baru harus lulus validasi; ekspor/import wajib menyatakan versi kontrak.
+- **Positive**: the repository is import/export-ready without redesign — the exchange seam is defined from the start (EKA 13).
+- **Positive**: a mechanical validator can be built from the 9 `validation.md` rules (P16).
+- **Positive**: Identity conflicts are never resolved silently — the lossless round-trip invariant is preserved (P13).
+- **Negative**: these conventions bind — every new structure must pass validation; export/import must declare the contract version.
 
 ## Alternatives Considered
 
-- **Tanpa seam exchange** — ditolak: EKA 1.3/13.1 mewajibkan dukungan exchange lossless pada setiap implementasi.
-- **Eksporter/importer bespoke yang ditulis belakangan** — ditolak: seam harus didefinisikan di level kontrak sejak awal, bukan retrofit; integrasi Knowledge OS membutuhkan batas eksplisit (EKA 4.2).
-- **Konvensi exchange di standard, bukan di repositori** — ditolak: standard menetapkan kontrak; repositori menetapkan serialisasi konkretnya (EKA 12.4, 13.3).
+- **No exchange seam** — rejected: EKA 1.3/13.1 require lossless exchange support on every implementation.
+- **Bespoke exporter/importer written later** — rejected: the seam must be defined at the contract level from the start, not retrofitted; Knowledge OS integration requires an explicit boundary (EKA 4.2).
+- **Exchange conventions in the standard, not in the repository** — rejected: the standard establishes the contracts; the repository establishes their concrete serialization (EKA 12.4, 13.3).
 
 ## References
 
-- EKA 1.3, 1.4, 4.2, 13.1 (yang harus dipertahankan), 13.2 (round-trip requirements), 13.3 (kontrak format serialisasi)
-- Prinsip P13 (Lossless Exchange), P16 (Enforcement Capability Varies, Invariants Don't)
-- Terkait: [ADR-005](adr-005-dimension-layout.md), [ADR-007](adr-007-extension-research-finding.md)
+- EKA 1.3, 1.4, 4.2, 13.1 (what must be preserved), 13.2 (round-trip requirements), 13.3 (serialization format contracts)
+- Principles P13 (Lossless Exchange), P16 (Enforcement Capability Varies, Invariants Don't)
+- Related: [ADR-005](adr-005-dimension-layout.md), [ADR-007](adr-007-extension-research-finding.md)

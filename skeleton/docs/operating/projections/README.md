@@ -1,29 +1,29 @@
 # projections/ — Ticket (`tkt-`)
 
-> Anchor EKA: Operating Layer — proyeksi murni; **tidak memiliki** state domain apa pun.
+> Anchor EKA: Operating Layer — pure projection; **owns** no State Domain.
 
-## Tujuan
+## Purpose
 
-Ticket adalah proyeksi satu work item ke bentuk ringkas: perintah (commands) yang dapat dieksekusi dan status yang diproyeksikan. Ticket **bukan pemilik state** — ia bayangan dari owner state work item di belakangnya.
+A ticket is a projection of one work item into a compact form: executable commands and projected status. A ticket is **not a state owner** — it is a shadow of the work item's owner state behind it.
 
 ## Token & State Vector
 
-| Token | Folder | State yang dimiliki |
+| Token | Folder | Owned state |
 |---|---|---|
-| `tkt-` | `operating/projections/` | **tidak ada (state vector kosong)** |
+| `tkt-` | `operating/projections/` | **none (empty state vector)** |
 
-Ticket tidak memuat field state apa pun (`content-state`, `execution-state`, `planning-state`, `container-state`, `existence-state` semuanya N/A). Status yang terlihat di ticket hanyalah salinan untuk dibaca.
+Tickets carry no state fields at all (`content-state`, `execution-state`, `planning-state`, `container-state`, `existence-state` are all N/A). The status visible on a ticket is only a read copy.
 
-## Relasi
+## Relationship
 
-Ticket mewakili satu work item: `derives-from: [ctr:<id>, <type-work-item>:<id>]` — menunjuk kontainer aktif dan work item sumbernya. Referensi harus dapat di-resolve; jika work item sumber berubah status, ticket wajib di-refresh (lihat di bawah).
+A ticket represents one work item: `derives-from: [ctr:<id>, <type-work-item>:<id>]` — pointing to the active container and its source work item. References must resolve; if the source work item changes state, the ticket must be refreshed (see below).
 
-## Konten
+## Content
 
-- `## Commands` — perintah deterministic per jenis work item (mis. "jalankan test untuk X", "perbarui changelog") — tetap sama setiap refresh.
-- `## Projected Status` — status yang diproyeksikan dari owner state work item (Execution State, dsb.) — diisi ulang setiap refresh.
+- `## Commands` — deterministic commands per work item type (e.g. "run the tests for X", "update the changelog") — identical on every refresh.
+- `## Projected Status` — status projected from the work item's owner state (Execution State, etc.) — repopulated on every refresh.
 
-Header wajib di bagian atas:
+Required header at the top:
 
 ```
 > Generated — State Projection. Do NOT edit state here; refresh on read.
@@ -31,25 +31,25 @@ Header wajib di bagian atas:
 
 ## Refresh on Read
 
-Proyeksi di-refresh setiap kali dibaca (default). Mekanisme event-driven otomatis (proyeksi diperbarui saat state berubah) diserahkan pada tooling masa depan; sampai tooling itu ada, **proyeksi adalah hasil pembacaan saat itu juga** — bukan sumber kebenaran.
+Projections are refreshed on every read (default). Automated event-driven mechanisms (projection updated when state changes) are left to future tooling; until such tooling exists, **a projection is the result of the read at that moment** — not a source of truth.
 
-## Jangan Edit State di Proyeksi
+## Do Not Edit State in Projections
 
-Mengubah status di ticket **tidak mengubah** work item dan merupakan pelanggaran single-writer (P6). Perubahan status hanya dilakukan oleh pemilik state work item; setelah itu ticket di-refresh.
+Changing status in a ticket **does not change** the work item and violates single-writer (P6). Status changes are made only by the work item's state owner; the ticket is refreshed afterwards.
 
-## Konvensi Nama
+## Naming Conventions
 
-`tkt-<id>.md`, kebab-case, unik dalam (namespace, type). Tanpa akhiran `-v<nn>`. Contoh: `tkt-sto-login-email.md`.
+`tkt-<id>.md`, kebab-case, unique within (namespace, type). No `-v<nn>` suffix. Example: `tkt-sto-login-email.md`.
 
-## Kepemilikan
+## Ownership
 
-| Peran | Tanggung jawab |
+| Role | Responsibility |
 |---|---|
-| OS (proyeksi) | "penulis" isi ticket — dihasilkan ulang, bukan diedit manual |
-| Semua peran | hanya membaca; lapor anomali (ticket ≠ owner state) ke pemilik state |
+| OS (projection) | "writer" of ticket content — regenerated, never manually edited |
+| All roles | read-only; report anomalies (ticket ≠ owner state) to the state owner |
 
-## Terkait
+## Related
 
-- [work-items/](../work-items/) — sumber owner state yang diproyeksikan.
-- [containers/](../containers/) — tabel work item kontainer adalah proyeksi sejenis.
-- [validation.md](../../exchange/validation.md) — aturan 8: proyeksi tidak memuat state milik artefak lain.
+- [work-items/](../work-items/) — the projected owner-state source.
+- [containers/](../containers/) — container work item tables are a similar projection.
+- [validation.md](../../exchange/validation.md) — Rule 8: projections must not carry state owned by other artifacts.

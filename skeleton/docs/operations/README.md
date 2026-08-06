@@ -1,51 +1,51 @@
-# docs/operations/ — Dimensi Operations
+# docs/operations/ — Operations Dimension
 
-> Anchor EKA: Knowledge Layer — dimensi **operations** (EKA 8).
+> Anchor EKA: Knowledge Layer — **operations** dimension (EKA 8).
 
-## Tujuan
+## Purpose
 
-Dimensi operations mewadahi pengetahuan operasional untuk menjalankan dan memelihara sistem: runbook, prosedur deployment, pemulihan, dan tugas rutin. Dokumen di sini adalah **prosedur** ("bagaimana melakukan"), dipisahkan dari **standar** ("aturan yang harus diikuti") yang hidup di dimensi standards.
+The operations dimension houses operational knowledge for running and maintaining the system: runbooks, deployment procedures, recovery, and routine tasks. Documents here are **procedures** ("how to do"), separated from **standards** ("rules to follow"), which live in the standards dimension.
 
-## Yang Ada di Sini
+## What Lives Here
 
-| Token | Tipe | Format nama |
+| Token | Type | Name format |
 |---|---|---|
 | `run-` | Runbook | `run-<id>.md` |
 
 ## State Vector
 
-| Tipe | Domain state yang dimiliki |
+| Type | Owned state domains |
 |---|---|
 | `run-` | `content-state`, `existence-state` |
 
-Nilai `content-state`: `draft → review → approved → amended`. Nilai `existence-state`: `active → archived → retired`. Field lain = N/A.
+`content-state` values: `draft → review → approved → amended`. `existence-state` values: `active → archived → retired`. Fields not listed = N/A.
 
-## Struktur Konten yang Baik
+## Good Content Structure
 
-Struktur wajib (keluarga dokumen pengetahuan):
+Required structure (knowledge document family):
 
-- `## Purpose` — situasi/prosedur apa yang dijelaskan.
-- `## Content` — langkah-langkah prosedur, prasyarat, dan hasil yang diharapkan.
+- `## Purpose` — which situation/procedure is described.
+- `## Content` — procedure steps, prerequisites, and expected results.
 
-## Konvensi Nama
+## Naming Conventions
 
-`run-<id>.md`, kebab-case, unik dalam (namespace, type). Tanpa akhiran `-v<nn>`. Contoh: `run-deploy-staging.md`.
+`run-<id>.md`, kebab-case, unique within (namespace, type). No `-v<nn>` suffix. Example: `run-deploy-staging.md`.
 
-## Prosedur vs Standar
+## Procedures vs Standards
 
-Pemisahan dilakukan pada EKA 8: **standards** (`std-`) menetapkan aturan dan konvensi; **operations** (`run-`) menjelaskan prosedur eksekusi. Runbook mengikuti standar, bukan menggantikannya. Jika sebuah runbook menetapkan aturan baru, aturan itu harus diangkat menjadi `std-`.
+The separation is made at EKA 8: **standards** (`std-`) establish rules and conventions; **operations** (`run-`) explain execution procedures. Runbooks follow standards, they do not replace them. If a runbook establishes a new rule, that rule must be promoted to `std-`.
 
-## Kepemilikan
+## Ownership
 
-| Peran | Tanggung jawab |
+| Role | Responsibility |
 |---|---|
-| DevOps | pemilik tunggal runbook |
-| Tech Lead | peninjau runbook yang menyentuh arsitektur |
-| Engineers | penulis runbook untuk komponen yang dibangunnya |
+| DevOps | single owner of runbooks |
+| Tech Lead | reviewer of runbooks touching architecture |
+| Engineers | authors of runbooks for the components they build |
 
-## Terkait
+## Related
 
-- [standards/](../standards/) — prosedur di sini tunduk pada `std-`.
-- [records/](../records/) — `rel-` mencatat release yang dieksekusi dengan runbook.
-- [quality/](../quality/) — efektivitas prosedur diverifikasi lewat `rvw-`.
-- [sessions/](../sessions/) — temuan operasional dapat terdistilasi menjadi `run-` baru.
+- [standards/](../standards/) — procedures here are subject to `std-`.
+- [records/](../records/) — `rel-` records releases executed with runbooks.
+- [quality/](../quality/) — procedure effectiveness is verified via `rvw-`.
+- [sessions/](../../operating/sessions/) — operational findings can be distilled into new `run-`.

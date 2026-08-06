@@ -1,33 +1,33 @@
 # docs/operating/ — Operating Layer (OS)
 
-> Anchor EKA: Operating Layer — state machine + protocol. OS memegang state; OS tidak pernah mengedit konten.
+> Anchor EKA: Operating Layer — state machine + protocol. OS holds state; OS never edits content.
 
-## Ringkasan
+## Summary
 
-Folder ini menserialisasikan **state** dan **eksekusi** proyek: siapa pemilik state, bagaimana transisi terjadi, dan bagaimana state dibaca tanpa diedit.
+This folder serializes the project's **state** and **execution**: who owns state, how transitions happen, and how state is read without being edited.
 
-- **State ownership (P6):** setiap state domain dimiliki oleh tepat satu tipe artefak (lihat State Vector di README tiap subfolder). Absennya field = N/A untuk tipe itu.
-- **Single-writer:** hanya pemilik state yang menulis field statenya; setiap transisi dicatat di `change-log`. Tidak ada dua penulis untuk satu field.
-- **Proyeksi tidak pernah menulis state:** tabel work item dalam kontainer dan `tkt-` hanyalah bayangan; di-refresh saat dibaca, bukan diedit.
-- **Dua kanal perubahan:** tata kelola konten (content governance) dan protokol state (state protocol) adalah dua mekanisme terpisah yang tidak boleh dicampur.
-- **Konten hidup di Knowledge Layer** (dimensi knowledge di `docs/`); OS hanya mengatur state artefak itu — OS tidak mengubah isinya.
+- **State ownership (P6):** every State Domain is owned by exactly one artifact type (see the State Vector in each subfolder's README). Absence of a field = N/A for that type.
+- **Single-writer:** only the state owner writes its state fields; every transition is recorded in `change-log`. No field has two writers.
+- **Projections never write state:** work item tables in containers and `tkt-` are mere shadows; refreshed on read, never edited.
+- **Two change channels:** content governance and state protocol are two separate mechanisms that must not be mixed.
+- **Content lives in the Knowledge Layer** (knowledge dimensions in `docs/`); OS only manages the state of those artifacts — OS does not change their content.
 
-## Dokumen
+## Documents
 
-| File | Peran |
+| File | Role |
 |---|---|
-| [protocol.md](protocol.md) | Operating Manual — konvensi, bukan artefak (tanpa `type`/`id`) |
+| [protocol.md](protocol.md) | Operating Manual — convention, not an artifact (no `type`/`id`) |
 
-## Subfolder
+## Subfolders
 
-| Folder | Isi | Anchor state domain |
+| Folder | Content | Anchored State Domain |
 |---|---|---|
-| [work-items/](work-items/) | 6 subtipe unit kerja: `sto-`, `ts-`, `bug-`, `td-`, `ch-`, `spk-` | Execution State |
-| [containers/](containers/) | `ctr-` Execution Container — tepat satu aktif | Container State |
-| [sessions/](sessions/) | `ses-` Session — catatan eksekusi | Existence State |
-| [projections/](projections/) | `tkt-` Ticket — state vector kosong (proyeksi murni) | — (tidak memiliki state) |
+| [work-items/](work-items/) | 6 work item subtypes: `sto-`, `ts-`, `bug-`, `td-`, `ch-`, `spk-` | Execution State |
+| [containers/](containers/) | `ctr-` Execution Container — exactly one active | Container State |
+| [sessions/](sessions/) | `ses-` Session — execution notes | Existence State |
+| [projections/](projections/) | `tkt-` Ticket — empty state vector (pure projection) | — (owns no state) |
 
-## Titik Kontak dengan Layer Lain
+## Touch Points with Other Layers
 
-- Knowledge Layer: state konten (content-state) artefak pengetahuan dibaca OS saat menilai kesiapan, tetapi isinya dikelola oleh pemilik dimensi.
-- Exchange Layer: validasi membaca state dari sini; lihat [../exchange/](../exchange/).
+- Knowledge Layer: OS reads the content state (`content-state`) of knowledge artifacts when assessing readiness, but content is managed by the dimension owner.
+- Exchange Layer: validation reads state from here; see [../exchange/](../exchange/).

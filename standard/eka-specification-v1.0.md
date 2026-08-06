@@ -4,503 +4,502 @@
 |---|---|
 | **Version** | 1.0 |
 | **Status** | Ratified |
-| **Otoritas** | Standar kanonik model pengetahuan engineering |
-| **Cakupan** | Konsep, invariant, dan kontrak — bukan mekanisme implementasi |
+| **Authority** | The canonical standard of the engineering knowledge model |
+| **Scope** | Concepts, invariants, and contracts — not implementation mechanisms |
 
-**Pembacaan dokumen ini:** istilah dengan huruf kapital awal merujuk definisi di Section 3. Kata "harus/wajib" menandakan requirement yang mengikat seluruh implementasi. Kata "dapat/boleh" menandakan pilihan implementasi dalam batas kontrak.
+**Reading this document:** capitalized terms refer to the definitions in Section 3. The word "must" denotes a requirement binding on all implementations. The word "may" denotes an implementation option within the bounds of the contract.
 
 ---
 
 ## 1. Engineering Knowledge Architecture Overview
 
-### 1.1 Definisi standard
+### 1.1 Definition of the standard
 
-EKA adalah model konseptual kanonik untuk pengetahuan engineering: definisi Artifact, Identity, State, taksonomi pengetahuan, arsitektur lapisan, dan kontrak pertukaran antar sistem. Standard ini lahir dari dua tanggung jawab yang terbukti hidup berdampingan pada implementasi awal: **Knowledge Base** (penyimpanan dan preservasi pengetahuan) dan **Engineering Operating System** (eksekusi deterministik, koordinasi agent, governance). Keduanya adalah dua lapisan dari satu sistem, diikat oleh Identity artifact.
+EKA is the canonical conceptual model for engineering knowledge: the definition of Artifact, Identity, State, knowledge taxonomies, the layer architecture, and exchange contracts between systems. This standard originated from two responsibilities that proved to coexist in the initial implementation: the **Knowledge Base** (storage and preservation of knowledge) and the **Engineering Operating System** (deterministic execution, agent coordination, governance). Both are two layers of one system, bound together by Artifact Identity.
 
-### 1.2 Ruang lingkup
+### 1.2 Scope
 
-Standard ini menetapkan:
-- Konsep fundamental (Section 3) dan prinsip (Section 2);
-- Arsitektur lapisan dan kontraknya (Sections 4–5);
-- Identity Model (Section 6) dan State Taxonomy (Section 7);
-- Taksonomi pengetahuan, eksekusi, dan artifact (Sections 8–10);
-- Model lifecycle konseptual (Section 11);
-- Kontrak penyimpanan-independen dan pertukaran (Sections 12–13);
-- Model ekstensi dan evolusi (Sections 14–16).
+This standard establishes:
+- fundamental concepts (Section 3) and principles (Section 2);
+- the layer architecture and its contracts (Sections 4–5);
+- the Identity Model (Section 6) and State Taxonomy (Section 7);
+- knowledge, execution, and artifact taxonomies (Sections 8–10);
+- the conceptual lifecycle model (Section 11);
+- storage-independent and exchange contracts (Sections 12–13);
+- the extension and evolution model (Sections 14–16).
 
-Standard ini **tidak** menetapkan: format serialisasi, layout penyimpanan, struktur direktori, template dokumen, skema penamaan, bahasa query, atau mekanisme enforcement spesifik. Seluruhnya adalah keputusan implementasi yang wajib mematuhi kontrak di dokumen ini.
+This standard does **not** establish: serialization formats, storage layout, directory structure, document templates, naming schemes, query languages, or specific enforcement mechanisms. All of these are implementation decisions that must comply with the contract in this document.
 
-### 1.3 Hubungan dengan implementasi
+### 1.3 Relationship to implementations
 
-**Satu implementasi adalah satu serialisasi dari arsitektur ini — bukan arsitekturnya.** Implementasi dapat berupa: repositori git, database relasional, graph database, object store, AI-native knowledge store, Knowledge OS, atau pipeline import/export. Setiap implementasi wajib: (a) memenuhi seluruh invariant (Section 5.4), (b) menyediakan resolusi Identity, (c) mendukung exchange lossless melalui kontrak Exchange Layer (Section 13).
+**An implementation is one serialization of this architecture — not the architecture itself.** An implementation may be: a git repository, a relational database, a graph database, an object store, an AI-native knowledge store, a Knowledge OS, or an import/export pipeline. Every implementation must: (a) satisfy all invariants (Section 5.4), (b) provide Identity resolution, (c) support lossless exchange through the Exchange Layer contract (Section 13).
 
-### 1.4 Posisi jangka panjang
+### 1.4 Long-term position
 
-EKA adalah model pengetahuan engineering kanonik yang dapat diintegrasikan dengan Knowledge OS masa depan melalui mekanisme import/export terstandar. Arsitektur bertahan terhadap pergantian media penyimpanan karena dibangun di atas konsep — Identity, State, Layer, kontrak — bukan di atas mekanisme.
+EKA is the canonical engineering knowledge model that can be integrated with a future Knowledge OS through standardized import/export mechanisms. The architecture survives changes of storage medium because it is built on concepts — Identity, State, Layer, contracts — not on mechanisms.
 
 ---
 
 ## 2. Architectural Principles
 
-| # | Prinsip | Rasional |
+| # | Principle | Rationale |
 |---|---|---|
-| P1 | **Separation of Concerns** | Tanggung jawab pengetahuan dan eksekusi dipisahkan menjadi lapisan dengan kontrak eksplisit. Fusion keduanya dalam satu hierarki adalah sumber konflasi. |
-| P2 | **Explicit State** | State selalu eksplisit sebagai metadata ber-owner — tidak pernah implisit di struktur. Struktur boleh menjadi proyeksi State, tetapi bukan fakta independen. |
-| P3 | **Stable Identity** | Identity immutable dan independen dari lokasi, penyimpanan, State, dan klasifikasi. Referensi selalu memakai Identity, tidak pernah lokasi. |
-| P4 | **Protocol vs Content Distinction** | Protocol adalah properti Operating Layer; Content adalah properti Knowledge Layer. Setiap artifact yang melayani keduanya mendefinisikan keduanya secara terpisah. |
-| P5 | **Layer Independence** | Setiap lapisan dapat berevolusi tanpa merombak yang lain: taksonomi berubah tanpa menyentuh protocol; protocol diperkuat tanpa menggeser home pengetahuan. |
-| P6 | **Single Writer** | Setiap field State memiliki tepat satu owner. Tampilan lain adalah State Projection — di-generate atau divalidasi, tidak pernah diedit sebagai fakta independen. |
-| P7 | **Forward-Only Transitions** | Seluruh State Domain bergerak maju tanpa regresi. Koreksi dilakukan dengan instance baru + Relationship, bukan mutasi. |
-| P8 | **Approved-Content Immutability** | Content yang telah melewati gate persetujuan tidak dimutasi diam-diam. Perubahan hanya melalui kanal governance. Prasyarat preservasi. |
-| P9 | **Structure as Projection of State** | Organisasi/posisi struktural diturunkan dari State dan Identity — struktur tidak pernah menjadi fakta kedua yang dapat melenceng dari State. |
-| P10 | **Two Change Channels** | Kanal Content (governance) dan kanal State (protocol) terpisah. Mencampur keduanya adalah pelanggaran. |
-| P11 | **Determinism by Protocol** | Urutan eksekusi didefinisikan protocol: "apa selanjutnya" selalu terjawab. Enforcement adalah kapabilitas implementasi; requirement-nya adalah standard. |
-| P12 | **Preservation Over Deletion** | Sejarah adalah pengetahuan. Keputusan yang salah pun dipertahankan. Superseded/Archived adalah Record, bukan sampah. |
-| P13 | **Lossless Exchange** | Pertukaran antar sistem tidak boleh kehilangan atau menduplikasi Identity, State, Content, atau Relationship. |
-| P14 | **Minimum Canonical Core** | Standard menetapkan konsep dan kontrak; implementasi memilih mekanisme. Semakin kecil inti, semakin besar umur standard. |
-| P15 | **Classification is Property, Not Identity** | Knowledge Dimension adalah properti artifact; perubahan klasifikasi tidak pernah memutus referensi. |
-| P16 | **Enforcement Capability Varies, Invariants Don't** | Mekanisme enforcement berbeda antar implementasi (constraint struktural, constraint database, validasi); invariant yang harus ditegakkan identik. |
+| P1 | **Separation of Concerns** | Knowledge and execution responsibilities are separated into layers with explicit contracts. Fusing both into a single hierarchy is the source of conflation. |
+| P2 | **Explicit State** | State is always explicit as owned metadata — never implicit in structure. Structure may be a projection of State, but never an independent fact. |
+| P3 | **Stable Identity** | Identity is immutable and independent of location, storage, State, and classification. References always use Identity, never location. |
+| P4 | **Protocol vs Content Distinction** | Protocol is a property of the Operating Layer; Content is a property of the Knowledge Layer. Every artifact serving both defines the two separately. |
+| P5 | **Layer Independence** | Each layer may evolve without overhauling the others: taxonomy changes without touching protocol; protocol is strengthened without shifting the home of knowledge. |
+| P6 | **Single Writer** | Every State field has exactly one owner. Any other view is a State Projection — generated or validated, never edited as an independent fact. |
+| P7 | **Forward-Only Transitions** | All State Domains move forward without regression. Corrections are made with a new instance + Relationship, not by mutation. |
+| P8 | **Approved-Content Immutability** | Content that has passed the approval gate is not silently mutated. Changes occur only through the governance channel. A prerequisite for preservation. |
+| P9 | **Structure as Projection of State** | Structural organization/position is derived from State and Identity — structure never becomes a second fact that can drift from State. |
+| P10 | **Two Change Channels** | The Content channel (governance) and the State channel (protocol) are separate. Mixing them is a violation. |
+| P11 | **Determinism by Protocol** | Execution order is defined by protocol: "what next" is always answered. Enforcement is an implementation capability; the requirement is the standard. |
+| P12 | **Preservation Over Deletion** | History is knowledge. Even wrong decisions are preserved. Superseded/Archived are Records, not garbage. |
+| P13 | **Lossless Exchange** | Exchange between systems must not lose or duplicate Identity, State, Content, or Relationship. |
+| P14 | **Minimum Canonical Core** | The standard establishes concepts and contracts; implementations choose mechanisms. The smaller the core, the longer the life of the standard. |
+| P15 | **Classification is Property, Not Identity** | Knowledge Dimension is an artifact property; a classification change never breaks references. |
+| P16 | **Enforcement Capability Varies, Invariants Don't** | Enforcement mechanisms differ across implementations (structural constraints, database constraints, validation); the invariants to be enforced are identical. |
 
 ---
 
 ## 3. Core Concepts
 
-Definisi presisi — setiap istilah dipakai dengan makna tunggal di seluruh dokumen ini.
+Precise definitions — every term is used with a single meaning throughout this document.
 
-- **Artifact** — entitas pengetahuan engineering yang memiliki Identity, Content, State Vector (domain State yang **dimiliki**), dan Relationship. Unit dasar model.
-- **Content** — muatan semantik Artifact: intent, keputusan, desain, kendala, prosedur, catatan. Milik Knowledge Layer.
-- **Well-formed Content** — Content yang mematuhi struktur yang ditetapkan untuk tipe Artifact-nya, sehingga dapat diparse dan dieksekusi secara deterministik.
-- **Identity** — properti Artifact yang membedakannya dari semua Artifact lain secara permanen: `(Namespace, Type, ID[, InstanceVersion])`. Lihat Section 6.
-- **Artifact Line** — entitas Identity yang bertahan: satu `(Namespace, Type, ID)`.
-- **Artifact Instance** — satu versi eksistensi dari sebuah Line: Line + `InstanceVersion`.
-- **State** — fakta tentang posisi Artifact dalam proses tertentu.
-- **State Vector** — tuple State Domain **yang dimiliki** oleh sebuah Artifact. State yang diproyeksikan (State Projection) bukan bagian State Vector.
-- **State Domain** — dimensi State independen dengan semantik, owner, dan aturan transisinya sendiri (Section 7). Domain bersifat orthogonal.
-- **State Projection** — tampilan State yang diturunkan dari owner (contoh: agregat State work item → status Execution Container). Proyeksi tidak memiliki State sendiri; proyeksi tidak pernah menjadi writer.
-- **Projection Semantics** — aturan komputasi State Projection: dari owner mana, agregasi bagaimana, apa yang ditampilkan.
-- **Projection Refresh** — mekanisme dan waktu validasi State Projection terhadap owner (on-read dan/atau event).
-- **Knowledge Dimension** — sumbu klasifikasi pengetahuan (Section 8). Properti Artifact, bukan Identity.
-- **Protocol** — aturan deterministik milik Operating Layer: urutan, transisi State, kuncian, gate, perintah eksekusi.
-- **Layer** — lapisan arsitektur dengan kontrak eksplisit: Knowledge Layer, Operating Layer, Exchange Layer (Section 4).
-- **Namespace** — ruang Identity yang memisahkan domain pengelolaan (produk, organisasi, sistem).
-- **Relationship** — relasi eksplisit antar Artifact yang direferensikan by Identity: supersedes, amends, derives-from, depends-on, validates.
-- **Gate** — kondisi yang harus dipenuhi sebelum transisi atau eksekusi boleh terjadi (gate persetujuan, gate kesiapan, gate review).
-- **Command** — instruksi eksekusi deterministik yang dikonsumsi oleh eksekutor (manusia atau agent). Content Command adalah Content (milik Knowledge Layer); eksekusinya diatur Protocol (Operating Layer).
-- **Execution Container** — Artifact eksekusi yang membungkus work item dan membawa konvensi konkurensi (exactly-one-active). Domain State-nya: Container State. Contoh implementasi: sprint.
-- **Phase** — konteks produk/scope sepanjang waktu (Discovery, MVP, Milestone, Release). Phase adalah **context attribute** pada Artifact planning/scope: bukan kategori, bukan State Domain. **Phase change** adalah context update yang diotorisasi Gate kesiapan (Sections 7.5, 11.2).
-- **Record** — Artifact yang dipreservasi sebagai sejarah (Superseded, Archived, Retired, release record) dengan Content immutable.
-- **Distillation** — transformasi pengetahuan ephemeral (konteks kerja, temuan review) menjadi pengetahuan durable (keputusan, ADR, Record).
-- **Change Log** — catatan kronologis transisi State pada Artifact: domain, nilai lama, nilai baru, waktu, otoritas. Wajib untuk seluruh State Domain.
-- **Identity Registry** — fungsi Knowledge Layer yang menjamin keunikan Identity, resolusi Identity ke Artifact, dan integritas referensi.
-- **Trigger** — hubungan antar domain/operasi di mana suatu peristiwa memicu validasi atau transisi pada domain lain (definisi formal interaksi, Section 7.5).
-- **Knowledge OS** — platform eksekusi pengetahuan masa depan yang mengonsumsi dan memproduksi Artifact EKA melalui Exchange Layer. Bukan bagian standard; konsumen standard.
+- **Artifact** — an engineering knowledge entity that has Identity, Content, a State Vector (the State domains it **owns**), and Relationship. The basic unit of the model.
+- **Content** — the semantic payload of an Artifact: intent, decisions, design, constraints, procedures, notes. Belongs to the Knowledge Layer.
+- **Well-formed Content** — Content that conforms to the structure established for its Artifact type, so that it can be parsed and executed deterministically.
+- **Identity** — the property of an Artifact that permanently distinguishes it from all other Artifacts: `(Namespace, Type, ID[, InstanceVersion])`. See Section 6.
+- **Artifact Line** — the enduring Identity entity: one `(Namespace, Type, ID)`.
+- **Artifact Instance** — one version of a Line's existence: Line + `InstanceVersion`.
+- **State** — a fact about the position of an Artifact within a given process.
+- **State Vector** — the tuple of State Domains **owned** by an Artifact. Projected State (State Projection) is not part of the State Vector.
+- **State Domain** — an independent State dimension with its own semantics, owner, and transition rules (Section 7). Domains are orthogonal.
+- **State Projection** — a State view derived from the owner (example: aggregate of work item State → Execution Container status). A projection has no State of its own; a projection never becomes a writer.
+- **Projection Semantics** — the computation rules of a State Projection: from which owner, how aggregation works, what is displayed.
+- **Projection Refresh** — the mechanism and timing of State Projection validation against the owner (on-read and/or event).
+- **Knowledge Dimension** — an axis of knowledge classification (Section 8). An Artifact property, not Identity.
+- **Protocol** — deterministic rules owned by the Operating Layer: ordering, State transitions, locking, gates, execution commands.
+- **Layer** — an architectural layer with explicit contracts: Knowledge Layer, Operating Layer, Exchange Layer (Section 4).
+- **Namespace** — an Identity space that separates management domains (products, organizations, systems).
+- **Relationship** — an explicit relation between Artifacts referenced by Identity: supersedes, amends, derives-from, depends-on, validates.
+- **Gate** — a condition that must be satisfied before a transition or execution may occur (approval gate, readiness gate, review gate).
+- **Command** — a deterministic execution instruction consumed by an executor (human or agent). Command Content is Content (owned by the Knowledge Layer); its execution is governed by Protocol (Operating Layer).
+- **Execution Container** — an execution Artifact that wraps work items and carries a concurrency convention (exactly-one-active). Its State Domain: Container State. Example implementation: sprint.
+- **Phase** — product/scope context over time (Discovery, MVP, Milestone, Release). Phase is a **context attribute** on planning/scope Artifacts: not a category, not a State Domain. **Phase change** is a context update authorized by a readiness Gate (Sections 7.5, 11.2).
+- **Record** — an Artifact preserved as history (Superseded, Archived, Retired, release record) with immutable Content.
+- **Distillation** — transformation of ephemeral knowledge (working context, review findings) into durable knowledge (decisions, ADRs, Records).
+- **Change Log** — the chronological record of State transitions on an Artifact: domain, old value, new value, time, authority. Mandatory for all State Domains.
+- **Identity Registry** — a Knowledge Layer function that guarantees Identity uniqueness, Identity resolution to Artifacts, and referential integrity.
+- **Trigger** — a relationship between domains/operations in which an event triggers validation or a transition in another domain (formal definition of interaction, Section 7.5).
+- **Knowledge OS** — a future knowledge execution platform that consumes and produces EKA Artifacts through the Exchange Layer. Not part of the standard; a consumer of the standard.
 
 ---
 
 ## 4. Layer Model
 
-### 4.1 Tiga lapisan
+### 4.1 The three layers
 
-| Layer | Peran | Memiliki | Tidak memiliki |
+| Layer | Role | Owns | Does not own |
 |---|---|---|---|
-| **Knowledge Layer (KB)** | Store pengetahuan: Content, klasifikasi, preservasi, referensi | Content, klasifikasi (Knowledge Dimensions), Relationship, history/Records, administrasi Identity (Identity Registry) | State proses, Protocol eksekusi |
-| **Operating Layer (OS)** | State machine & Protocol eksekusi | State Domain (Execution, Planning, Container, Existence), urutan, konkurensi, kuncian, Gate, Command | Content (tidak pernah mengedit Content) |
-| **Exchange Layer (EX)** | Batas transformasional: serialisasi, validasi, import/export, mediasi sistem eksternal | Kontrak pertukaran, aturan round-trip, validasi kepatuhan | Content dan State (tidak pernah menjadi owner) |
+| **Knowledge Layer (KB)** | Knowledge store: Content, classification, preservation, references | Content, classification (Knowledge Dimensions), Relationship, history/Records, Identity administration (Identity Registry) | process State, execution Protocol |
+| **Operating Layer (OS)** | State machine & execution Protocol | State Domains (Execution, Planning, Container, Existence), ordering, concurrency, locking, Gates, Command | Content (never edits Content) |
+| **Exchange Layer (EX)** | Transformational boundary: serialization, validation, import/export, mediation of external systems | exchange contracts, round-trip rules, conformance validation | Content and State (never becomes an owner) |
 
-### 4.2 Keputusan: Exchange Layer sebagai lapisan ketiga
+### 4.2 Decision: the Exchange Layer as a third layer
 
-Exchange Layer wajib ada sebagai lapisan terpisah karena:
+The Exchange Layer must exist as a separate layer because:
 
-1. **Invariant berbeda**: exchange memiliki invariant sendiri (round-trip lossless, idempotensi, referential integrity) yang tidak dimiliki KB maupun OS.
-2. **Arah interaksi berbeda**: KB dan OS berinteraksi secara internal; EX berinteraksi dengan sistem eksternal — mediasi membutuhkan kontrak batas eksplisit.
-3. **Visi Knowledge OS**: integrasi masa depan membutuhkan seam yang didefinisikan di level standard, bukan di level implementasi.
+1. **Different invariants**: exchange has its own invariants (lossless round-trip, idempotency, referential integrity) that neither KB nor OS has.
+2. **Different interaction direction**: KB and OS interact internally; EX interacts with external systems — mediation requires an explicit boundary contract.
+3. **Knowledge OS vision**: future integration requires a seam defined at the standard level, not at the implementation level.
 
-EX tidak memiliki Content maupun State — ia adalah lapisan batas yang memvalidasi dan mentransformasikan representasi.
+EX owns neither Content nor State — it is a boundary layer that validates and transforms representations.
 
-### 4.3 Independensi lapisan
+### 4.3 Layer independence
 
-- KB dapat mengubah taksonomi tanpa mengubah Protocol OS (P5).
-- OS dapat menambah protocol variant tanpa mengubah klasifikasi KB.
-- EX dapat menambah format serialisasi tanpa mengubah KB/OS.
-- Ketiganya terikat oleh: **Identity** (Section 6), **invariant global** (Section 5.4), dan **kontrak antarlapisan** (Section 5.3).
+- KB may change its taxonomy without changing OS Protocol (P5).
+- OS may add protocol variants without changing KB classification.
+- EX may add serialization formats without changing KB/OS.
+- All three are bound by: **Identity** (Section 6), **global invariants** (Section 5.4), and **inter-layer contracts** (Section 5.3).
 
 ---
 
 ## 5. Layer Contracts
 
-### 5.1 Knowledge Layer — kontrak
+### 5.1 Knowledge Layer — contract
 
-- **Responsibilities**: menyimpan Content; mengklasifikasikan Artifact ke Knowledge Dimensions; memelihara cross-reference (referential integrity); mempreservasi history (P8, P12); menyediakan semantik retrieval; mengadministrasikan Identity (Identity Registry).
-- **Ownership**: Content; klasifikasi; Relationship records; history; Identity.
-- **Allowed interactions**: melayani pembacaan Content ke OS dan EX; menerima penulisan State dari OS (sebagai metadata pada Artifact); menerima Artifact baru dari OS melalui creation protocol (Identity diberikan oleh Identity Registry); menjalankan transisi Content State melalui Gate persetujuan.
-- **Invariants**: Content Approved/Immutable tidak dimutasi (P8); referensi selalu valid (tidak ada dangling reference); klasifikasi berubah tanpa mengubah Identity (P15); Identity immutable (P3).
-- **Synchronization boundaries**: hanya Content State yang dimiliki di sini. State Domain lain hanya direfleksikan — KB membaca State untuk query, tidak menulisnya.
-- **Extension points**: Knowledge Dimension baru; tipe Artifact baru; Relationship type baru (Section 14).
+- **Responsibilities**: storing Content; classifying Artifacts into Knowledge Dimensions; maintaining cross-references (referential integrity); preserving history (P8, P12); providing retrieval semantics; administering Identity (Identity Registry).
+- **Ownership**: Content; classification; Relationship records; history; Identity.
+- **Allowed interactions**: serving Content reads to OS and EX; accepting State writes from OS (as metadata on the Artifact); accepting new Artifacts from OS through the creation protocol (Identity issued by the Identity Registry); executing Content State transitions through the approval Gate.
+- **Invariants**: Approved/Immutable Content is not mutated (P8); references are always valid (no dangling references); classification changes without changing Identity (P15); Identity is immutable (P3).
+- **Synchronization boundaries**: only Content State is owned here. Other State Domains are only reflected — KB reads State for queries, it does not write it.
+- **Extension points**: new Knowledge Dimension; new Artifact type; new Relationship type (Section 14).
 
-### 5.2 Operating Layer — kontrak
+### 5.2 Operating Layer — contract
 
-- **Responsibilities**: menjalankan Protocol eksekusi (urutan, transisi State, Gate); mengelola konkurensi (exactly-one-active); mengelola kuncian/immutability (lock sebelum konsumsi); mendefinisikan Command; menyediakan what-next discoverability.
-- **Ownership**: Execution State, Planning State, Container State, transisi Existence State; Projection Semantics (container view, ticket view).
-- **Allowed interactions**: membaca Content dari KB (eksekusi: Command membaca instruksi; Execution Container di-generate dari plan); menulis State ke Artifact (single-writer per field, P6); membuat Artifact baru (Execution Container, ticket, session) melalui creation protocol dengan Identity dari Identity Registry; memvalidasi State Projection terhadap owner.
-- **Invariants**: transisi forward-only (P7); satu writer per State field (P6); exactly-one-active Execution Container; **lock-atomic-with-generation** — peristiwa pembuatan Execution Container mengunci plan dan membuat container secara atomik; setiap transisi tercatat di Change Log; OS tidak pernah mengubah Content — hanya State.
-- **Synchronization boundaries**: State Domain dimiliki di sini; State Projection di-generate/divalidasi di sini; Content hanya dibaca.
-- **Extension points**: protocol variant baru, Command type baru, Gate type baru (Section 14).
+- **Responsibilities**: running the execution Protocol (ordering, State transitions, Gates); managing concurrency (exactly-one-active); managing locking/immutability (lock before consumption); defining Commands; providing what-next discoverability.
+- **Ownership**: Execution State, Planning State, Container State, Existence State transitions; Projection Semantics (container view, ticket view).
+- **Allowed interactions**: reading Content from KB (execution: Command reads instructions; Execution Container is generated from the plan); writing State to Artifacts (single-writer per field, P6); creating new Artifacts (Execution Container, ticket, session) through the creation protocol with Identity from the Identity Registry; validating State Projections against the owner.
+- **Invariants**: forward-only transitions (P7); one writer per State field (P6); exactly-one-active Execution Container; **lock-atomic-with-generation** — the Execution Container creation event locks the plan and creates the container atomically; every transition is recorded in the Change Log; OS never changes Content — only State.
+- **Synchronization boundaries**: State Domains are owned here; State Projections are generated/validated here; Content is only read.
+- **Extension points**: new protocol variant, new Command type, new Gate type (Section 14).
 
-### 5.3 Kontrak antarlapisan — titik kopling
+### 5.3 Inter-layer contracts — coupling points
 
-| Kopling | Arah | Konten kontrak |
+| Coupling | Direction | Contract content |
 |---|---|---|
-| **OS membaca Content** | KB → OS | Content Artifact yang dieksekusi harus Well-formed dan deterministik; Identity resolvable. |
-| **OS menulis State** | OS → KB | State ditulis sebagai metadata pada Artifact; tidak mengubah Content; tercatat di Change Log. |
-| **OS memproduksi Artifact** | OS → KB | Creation protocol: Identity diminta dari Identity Registry; Content Artifact baru valid menurut taksonomi. |
-| **KB menjaga konsistensi Content dengan State** | KB ↔ OS | Content plan yang locked tidak boleh berubah (kuncian mem-gate kanal Content); Gate State mem-bolehkan/melarang transisi Content. |
-| **EX memvalidasi & mentransfer** | EX ↔ KB/OS | Import/export melewati kontrak standard; EX memvalidasi kepatuhan sebelum commit; tidak pernah menulis State atau Content secara langsung. |
+| **OS reads Content** | KB → OS | Content of the executed Artifact must be Well-formed and deterministic; Identity resolvable. |
+| **OS writes State** | OS → KB | State is written as metadata on the Artifact; does not change Content; recorded in the Change Log. |
+| **OS produces Artifact** | OS → KB | Creation protocol: Identity is requested from the Identity Registry; new Artifact Content is valid per the taxonomy. |
+| **KB keeps Content consistent with State** | KB ↔ OS | Locked plan Content must not change (the lock gates the Content channel); State Gates allow/forbid Content transitions. |
+| **EX validates & transfers** | EX ↔ KB/OS | Import/export passes through the standard contract; EX validates conformance before commit; never writes State or Content directly. |
 
-### 5.4 Invariant global
+### 5.4 Global invariants
 
-1. **Identity immutable** — Identity tidak berubah oleh State, lokasi, klasifikasi, atau revisi Content (P3).
-2. **Single owner per State field** — satu penulis; semua tampilan lain adalah State Projection (P6).
-3. **Structure as projection of State** — posisi/representasi struktural diturunkan dari State; tidak pernah fakta independen (P9).
-4. **State changes only via Protocol** — tidak ada jalur perubahan State selain transisi Protocol (P11).
-5. **Two separate change channels** — kanal Content (governance) dan kanal State (Protocol) tidak pernah bercampur (P10).
-6. **Approved Content immutable** — preservasi (P8, P12).
-7. **Round-trip lossless** — exchange tidak kehilangan/menduplikasi apa pun (P13).
+1. **Identity immutable** — Identity is not changed by State, location, classification, or Content revision (P3).
+2. **Single owner per State field** — one writer; all other views are State Projections (P6).
+3. **Structure as projection of State** — structural position/representation is derived from State; never an independent fact (P9).
+4. **State changes only via Protocol** — no State change path exists other than Protocol transitions (P11).
+5. **Two separate change channels** — the Content channel (governance) and the State channel (Protocol) never mix (P10).
+6. **Approved Content immutable** — preservation (P8, P12).
+7. **Round-trip lossless** — exchange loses/duplicates nothing (P13).
 
-### 5.5 Semantik sinkronisasi
+### 5.5 Synchronization semantics
 
-- **Projection Refresh**: State Projection divalidasi terhadap owner pada dua titik — saat dibaca (on-read) dan saat owner berubah (event). Kebijakan preferensi antara keduanya adalah open question (Section 15); invariant "proyeksi tidak pernah menjadi writer" bersifat absolut.
-- **Trigger**: peristiwa tertentu (transisi State, operasi OS) memicu validasi atau transisi di domain lain. Trigger didefinisikan per pasangan domain (Section 7.5).
+- **Projection Refresh**: a State Projection is validated against the owner at two points — when read (on-read) and when the owner changes (event). The preference policy between the two is an open question (Section 15); the invariant "a projection never becomes a writer" is absolute.
+- **Trigger**: certain events (State transitions, OS operations) trigger validation or a transition in another domain. Triggers are defined per domain pair (Section 7.5).
 
 ---
 
 ## 6. Identity Model
 
-### 6.1 Komposisi Identity
+### 6.1 Identity composition
 
 **Identity instance** = `(Namespace, Type, ID, InstanceVersion)`.
 **Identity line** = `(Namespace, Type, ID)`.
 
-| Properti | Bagian dari Identity? | Alasan |
+| Property | Part of Identity? | Reason |
 |---|---|---|
-| **Namespace** | **Ya** | Memisahkan ruang Identity (produk, organisasi, sistem). Dua Artifact dengan ID sama di Namespace berbeda adalah dua Artifact. |
-| **Artifact Type** | **Ya** | Type menentukan State Domain yang berlaku dan Protocol yang mengikat. Type adalah kualifikasi Identity, bukan klasifikasi. |
-| **ID** | **Ya** | Token unik dalam `(Namespace, Type)`. |
-| **InstanceVersion** | **Ya (diskriminator instance)** | Membedakan instance dalam satu Line (plan v1 vs v2). Lihat 6.3. |
-| **Knowledge Dimension (klasifikasi)** | **Tidak** | Properti retrieval. Reklasifikasi tidak boleh memutus referensi (P15). |
-| **Location / organisasi** | **Tidak** | Lokasi adalah proyeksi; Identity independen dari lokasi (P9). |
-| **Storage backend** | **Tidak** | Identity bertahan lintas penyimpanan (Section 12). |
-| **State (semua domain)** | **Tidak** | State berubah; Identity tidak pernah (P3). |
-| **Revision (riwayat edit Content)** | **Tidak** | Revision melacak evolusi Content instance yang sama; mengubah revision tidak mengubah Identity. |
+| **Namespace** | **Yes** | Separates Identity spaces (products, organizations, systems). Two Artifacts with the same ID in different Namespaces are two Artifacts. |
+| **Artifact Type** | **Yes** | Type determines the applicable State Domains and the binding Protocol. Type is an Identity qualifier, not a classification. |
+| **ID** | **Yes** | Unique token within `(Namespace, Type)`. |
+| **InstanceVersion** | **Yes (instance discriminator)** | Distinguishes instances within one Line (plan v1 vs v2). See 6.3. |
+| **Knowledge Dimension (classification)** | **No** | Retrieval property. Reclassification must not break references (P15). |
+| **Location / organization** | **No** | Location is a projection; Identity is independent of location (P9). |
+| **Storage backend** | **No** | Identity survives across storage (Section 12). |
+| **State (all domains)** | **No** | State changes; Identity never does (P3). |
+| **Revision (Content edit history)** | **No** | Revision tracks the evolution of the same instance's Content; changing Revision does not change Identity. |
 
-### 6.2 Aturan Identity
+### 6.2 Identity rules
 
-1. Identity ditetapkan sekali saat creation, tidak pernah diubah.
-2. ID unik dalam `(Namespace, Type)`; InstanceVersion unik dalam Line.
-3. Referensi selalu by Identity — tidak pernah by lokasi, nama tampilan, atau klasifikasi.
-4. Dua Artifact sama iff Identity-nya sama; Relationship tidak pernah mengubah Identity.
-5. Type Artifact menentukan State Vector yang berlaku (Section 10) — binding type→state adalah bagian standard, bukan pilihan implementasi.
-6. Identity harus dapat diserialisasi secara **lossless, unambiguous, dan machine-parseable** di semua implementasi. Mekanisme serialisasi adalah keputusan implementasi.
-7. Supersession, amendment, dan derivation diekspresikan sebagai **Relationship antar Identity**, bukan perubahan Identity.
+1. Identity is established once at creation and never changed.
+2. ID is unique within `(Namespace, Type)`; InstanceVersion is unique within a Line.
+3. References are always by Identity — never by location, display name, or classification.
+4. Two Artifacts are the same iff their Identity is the same; Relationship never changes Identity.
+5. Artifact Type determines the applicable State Vector (Section 10) — the type→state binding is part of the standard, not an implementation choice.
+6. Identity must be serializable **losslessly, unambiguously, and machine-parseably** in all implementations. The serialization mechanism is an implementation decision.
+7. Supersession, amendment, and derivation are expressed as **Relationships between Identities**, not Identity changes.
 
-### 6.3 Semantik versi
+### 6.3 Version semantics
 
-Dua makna versi, dua jawaban:
+Two meanings of version, two answers:
 
-- **InstanceVersion** (versi yang menunjuk instance berbeda) — **bagian dari Identity instance**. Instance baru diciptakan dengan sengaja (contoh: plan v2 setelah v1 terkunci). Perubahan instance = perubahan Identity instance; Line tetap.
-- **Revision** (pelacakan evolusi Content instance yang sama) — **bukan bagian dari Identity**. Revision berubah setiap edit dan tidak boleh memutus referensi.
+- **InstanceVersion** (the version pointing to a different instance) — **part of the instance Identity**. A new instance is created deliberately (example: plan v2 after v1 is locked). Instance change = instance Identity change; the Line remains.
+- **Revision** (tracking the Content evolution of the same instance) — **not part of Identity**. Revision changes on every edit and must not break references.
 
-Aturan: **Line Identity tidak pernah berubah; Instance Identity berubah hanya saat instance baru sengaja diciptakan; Revision tidak pernah menyentuh Identity.** Supersession adalah Relationship antar dua Line — bukan pergantian Identity.
+Rule: **Line Identity never changes; Instance Identity changes only when a new instance is deliberately created; Revision never touches Identity.** Supersession is a Relationship between two Lines — not an Identity replacement.
 
-### 6.4 Studi kasus pelanggaran: kolisi ruang Identity
+### 6.4 Violation case study: Identity space collision
 
-Implementasi awal menyandikan empat tipe Artifact (scope definition, plan, Execution Container, ticket) dalam satu ruang ID bersama dengan prefiks yang sama, sehingga Type tidak dapat dibedakan secara deterministik dari representasi Identity-nya: sebuah representasi dapat dibaca sebagai scope definition maupun plan. Analisis pelanggaran:
+The initial implementation encoded four Artifact types (scope definition, plan, Execution Container, ticket) in one shared ID space with the same prefix, so Type could not be distinguished deterministically from its Identity representation: one representation could be read as either a scope definition or a plan. Violation analysis:
 
-- Aturan 6.2.1–6.2.2 dilanggar: Type tidak tegas → ID tidak unik per `(Namespace, Type)`.
-- Aturan 6.2.3 dilanggar secara konseptual: Identity disandikan melalui lokasi dan konvensi representasi, bukan properti Artifact.
-- Akar masalah: Identity diturunkan dari struktur, bukan dari properti Artifact; dan tahap proses (pipeline) ikut menjadi bagian representasi Identity.
+- Rules 6.2.1–6.2.2 are violated: Type is not explicit → ID is not unique per `(Namespace, Type)`.
+- Rule 6.2.3 is violated conceptually: Identity is encoded through location and representation conventions, not as an Artifact property.
+- Root cause: Identity is derived from structure, not from Artifact properties; and the process stage (pipeline) became part of the Identity representation.
 
-Pelajaran mengikat untuk semua implementasi: **Identity tidak boleh disandikan dalam lokasi, tahap proses, atau konvensi representasi.** Identity adalah properti pertama-class yang ditetapkan Identity Registry.
+Binding lesson for all implementations: **Identity must not be encoded in location, process stage, or representation conventions.** Identity is a first-class property established by the Identity Registry.
 
 ---
 
 ## 7. State Taxonomy
 
-### 7.1 Evaluasi kandidat domain
+### 7.1 Candidate domain evaluation
 
-| Kandidat | Keputusan | Alasan |
+| Candidate | Decision | Reason |
 |---|---|---|
-| **Artifact State (unified)** | **Tolak** | Monolit State adalah akar masalah duplikasi status: satu Artifact punya banyak dimensi State independen. State selalu berupa State Vector. |
-| **Execution State** | **Terima** | Progress work item melalui Protocol. |
-| **Lifecycle State (generic)** | **Tolak sebagai domain tunggal** | "Lifecycle" adalah komposisi State Domain sepanjang waktu; Phase produk adalah context, bukan State Domain. Yang bertahan: Existence State (domain) + Phase (context). |
-| **Governance/Content State** | **Terima** (dinamai Content State) | Kematangan Content melalui gate persetujuan. |
-| **Review State** | **Tolak sebagai domain** | Review adalah Gate pada transisi (stage Review di Content State; nilai "In Review" di Execution State) + tipe Artifact (review record). Tidak ada State independen yang tersisa setelah pemisahan itu. |
-| **Release State** | **Tolak sebagai domain** | Release adalah Phase context + Gate kesiapan yang dievaluasi atas agregat State Domain lain. |
-| **Planning State** | **Terima** | Commitment level plan: Draft → Approved → Immutable. |
-| **Container State** | **Terima** | Execution Container terbuka/tertutup + konkurensi. |
-| **Existence State** | **Terima** | Presensi Artifact: aktif vs dipreservasi. |
+| **Artifact State (unified)** | **Reject** | A State monolith is the root cause of status duplication: one Artifact has many independent State dimensions. State is always a State Vector. |
+| **Execution State** | **Accept** | Work item progress through Protocol. |
+| **Lifecycle State (generic)** | **Reject as a single domain** | "Lifecycle" is a composition of State Domains over time; product Phase is context, not a State Domain. What survives: Existence State (domain) + Phase (context). |
+| **Governance/Content State** | **Accept** (named Content State) | Content maturity through the approval gate. |
+| **Review State** | **Reject as a domain** | Review is a Gate on transitions (the Review stage in Content State; the "In Review" value in Execution State) + an Artifact type (review record). No independent State remains after that separation. |
+| **Release State** | **Reject as a domain** | Release is a Phase context + a readiness Gate evaluated over the aggregate of other State Domains. |
+| **Planning State** | **Accept** | Plan commitment level: Draft → Approved → Immutable. |
+| **Container State** | **Accept** | Execution Container open/closed + concurrency. |
+| **Existence State** | **Accept** | Artifact presence: active vs preserved. |
 
-### 7.2 Domain formal
+### 7.2 Formal domains
 
-Aturan umum domain: setiap domain memiliki tepat satu **initial state** dan tepat satu **terminal state** (State tanpa transisi keluar); seluruh transisi forward-only (P7); koreksi dilakukan dengan instance baru + Relationship, bukan regresi. **Nilai domain hanya mencakup State yang dimiliki (owned); kondisi derived — misalnya "Completed" pada konteks kerja — bukan nilai domain, melainkan kondisi pemicu transisi.**
+General domain rules: every domain has exactly one **initial state** and exactly one **terminal state** (State with no outgoing transitions); all transitions are forward-only (P7); corrections are made with a new instance + Relationship, not regression. **Domain values cover only owned State; derived conditions — for example "Completed" in a working context — are not domain values but transition-triggering conditions.**
 
-| Domain | Nilai | Responsibility | Owner | Aturan transisi |
+| Domain | Values | Responsibility | Owner | Transition rules |
 |---|---|---|---|---|
-| **Content State** | Draft → Review → Approved; terminal pasca-persetujuan: Amended \| Superseded | Kematangan Content sebagai pengetahuan; kanal governance | Knowledge Layer (gate: owner/approver) | Forward-only; gate persetujuan; perubahan pasca-Approved hanya via amendmen/supersesi (P8). **Varian**: standard (terminal Amended), decision record (stage Approval bernama Accepted; supersesi opsional), ADR (stage Approval bernama Accepted; supersesi wajib menunjuk pengganti). Varian boleh mengganti nama stage dan meniadakan stage opsional, tetapi wajib mempertahankan posisi semantik: pra-persetujuan → gate persetujuan → terminal pasca-persetujuan. |
-| **Execution State** | Planned → Todo → In Progress → In Review → Done | Progress work item melalui Protocol | Operating Layer (single-writer: artifact work item) | Strictly sequential; never skip; never revert; satu initial; satu terminal; tiap transisi tercatat di Change Log. |
-| **Planning State** | Draft → Approved → Immutable | Commitment plan: tentative → committed → locked | Operating Layer | Forward-only; Approved = siap dieksekusi; **Immutable dicapai atomik dengan peristiwa pembuatan Execution Container** (lock-atomic-with-generation); perubahan pasca-lock = instance baru (InstanceVersion). |
-| **Container State** | Active → Completed | Execution Container terbuka/tertutup; konkurensi | Operating Layer | **Completed adalah transisi derived**: dipicu agregat Execution State (semua work item Done); exactly-one-Active (mutual exclusion). |
-| **Existence State** | Active → Archived → Retired | Presensi Artifact dalam proses aktif vs preservasi | Operating Layer (transisi); Knowledge Layer (prinsip preservasi, P12) | Forward-only; **Archived** = reference-only (tanpa transisi State lain, tanpa mutasi Content, tetap tersedia di retrieval); **Retired** = preservasi terminal (tidak disurface di retrieval normal, Content immutable, Identity tidak berubah). Berlaku untuk semua tipe Artifact. |
+| **Content State** | Draft → Review → Approved; post-approval terminal: Amended \| Superseded | Content maturity as knowledge; governance channel | Knowledge Layer (gate: owner/approver) | Forward-only; approval gate; changes after Approved only via amendment/supersession (P8). **Variants**: standard (terminal Amended), decision record (Approval stage named Accepted; supersession optional), ADR (Approval stage named Accepted; supersession must point to a successor). Variants may rename stages and eliminate optional stages, but must preserve the semantic position: pre-approval → approval gate → post-approval terminal. |
+| **Execution State** | Planned → Todo → In Progress → In Review → Done | Work item progress through Protocol | Operating Layer (single-writer: work item artifact) | Strictly sequential; never skip; never revert; one initial; one terminal; every transition recorded in the Change Log. |
+| **Planning State** | Draft → Approved → Immutable | Plan commitment: tentative → committed → locked | Operating Layer | Forward-only; Approved = ready for execution; **Immutable is reached atomically with the Execution Container creation event** (lock-atomic-with-generation); post-lock changes = new instance (InstanceVersion). |
+| **Container State** | Active → Completed | Execution Container open/closed; concurrency | Operating Layer | **Completed is a derived transition**: triggered by the Execution State aggregate (all work items Done); exactly-one-Active (mutual exclusion). |
+| **Existence State** | Active → Archived → Retired | Artifact presence in active process vs preservation | Operating Layer (transitions); Knowledge Layer (preservation principle, P12) | Forward-only; **Archived** = reference-only (no other State transitions, no Content mutation, still available in retrieval); **Retired** = terminal preservation (not surfaced in normal retrieval, Content immutable, Identity unchanged). Applies to all Artifact types. |
 
-### 7.3 Pemetaan mesin status implementasi awal → domain
+### 7.3 Mapping of initial implementation status machines → domains
 
-| Mesin status implementasi awal | Domain |
+| Initial implementation status machine | Domain |
 |---|---|
-| Living documents Draft→Review→Approved→Amended | Content State (varian standard) |
-| ADR Proposed→Accepted→Superseded | Content State (varian ADR) |
-| Decisions Draft→Accepted→Superseded (opsional) | Content State (varian decision) |
+| Living documents Draft→Review→Approved→Amended | Content State (standard variant) |
+| ADR Proposed→Accepted→Superseded | Content State (ADR variant) |
+| Decisions Draft→Accepted→Superseded (optional) | Content State (decision variant) |
 | Roadmap Draft→Approved→Immutable | Planning State |
 | Sprints Active→Completed | Container State |
-| Sessions Active→Completed→Archived | Existence State (Completed = kondisi derived dari work item yang direferensikan) |
+| Sessions Active→Completed→Archived | Existence State (Completed = derived condition of the referenced work item) |
 | Work items Planned→Todo→In Progress→In Review→Done | Execution State |
 
-Bukti empiris independensi domain: implementasi awal membutuhkan tujuh mesin status berbeda karena satu mesin tidak dapat mengekspresikan tujuh semantik. State Taxonomy mengorganisirnya menjadi domain dengan aturan eksplisit.
+Empirical evidence of domain independence: the initial implementation needed seven different status machines because one machine cannot express seven semantics. The State Taxonomy organizes them into domains with explicit rules.
 
 ### 7.4 State Vector
 
-Setiap Artifact membawa **State Vector** = tuple State Domain yang **dimiliki** (owned) sesuai tipenya; domain yang tidak berlaku ditandai not-applicable. Contoh: work item = `(Execution State, Existence State)` — Content State tidak berlaku; plan = `(Content State, Planning State, Existence State)`; Execution Container = `(Container State, Existence State)`; ADR = `(Content State, Existence State)`.
+Every Artifact carries a **State Vector** = the tuple of State Domains it **owns** per its type; domains that do not apply are marked not-applicable. Examples: work item = `(Execution State, Existence State)` — Content State does not apply; plan = `(Content State, Planning State, Existence State)`; Execution Container = `(Container State, Existence State)`; ADR = `(Content State, Existence State)`.
 
-**Artifact yang seluruh statenya diproyeksikan memiliki State Vector kosong** (contoh: ticket = `(∅)`; State-nya adalah State Projection atas work item yang direferensikan). Ini menyelesaikan duplikasi status secara formal: status pada representasi turunan (container view, ticket view) adalah State Projection dari owner, divalidasi melalui Projection Refresh — menggantikan invariant "harus selalu setuju" tanpa penulis.
+**An Artifact whose entire State is projected has an empty State Vector** (example: ticket = `(∅)`; its State is a State Projection over the referenced work item). This formally resolves status duplication: status on derived representations (container view, ticket view) is a State Projection of the owner, validated through Projection Refresh — replacing the writer-less "must always agree" invariant.
 
-### 7.5 Interaksi antar domain
+### 7.5 Interactions between domains
 
-| Interaksi | Sumber → Target | Semantik |
+| Interaction | Source → Target | Semantics |
 |---|---|---|
-| Pembuatan Execution Container (generation event) | Operasi Operating Layer → Planning State | Peristiwa pembuatan container dari plan memicu transisi plan ke Immutable; atomik dengan pembuatan (lock-atomic-with-generation). |
-| Agregat State work item | Execution State → Container State | Semua work item dalam container Done memicu container Completed (transisi derived). |
-| Lock plan → kanal Content | Planning State → Content State | Plan Immutable mem-gate perubahan Content pada instance itu (kanal governance terkunci). |
-| Content readiness → commitment | Content State → Planning State | Gate Approval pada plan mensyaratkan Content siap (Approved di Planning State mengkomposisi kematangan Content). |
-| Container Completed → preservasi | Container State → Existence State | Container selesai dapat di-archive. |
-| Gate kesiapan release | Execution + Planning + Container (+ Gate review, Gate persetujuan) → **phase change** | Evaluasi agregat State untuk mengotorisasi perubahan Phase (context update; bukan state transition). Lihat 11.2. |
+| Execution Container creation (generation event) | Operating Layer operation → Planning State | The container creation event from a plan triggers the plan's transition to Immutable; atomic with the creation (lock-atomic-with-generation). |
+| Work item State aggregate | Execution State → Container State | All work items in the container Done triggers container Completed (derived transition). |
+| Plan lock → Content channel | Planning State → Content State | An Immutable plan gates Content changes on that instance (governance channel locked). |
+| Content readiness → commitment | Content State → Planning State | The approval Gate on a plan requires Content to be ready (Approved in Planning State composes Content maturity). |
+| Container Completed → preservation | Container State → Existence State | A finished container may be archived. |
+| Release readiness Gate | Execution + Planning + Container (+ review Gate, approval Gate) → **phase change** | Aggregate State evaluation to authorize a Phase change (context update; not a state transition). See 11.2. |
 
-### 7.6 Independensi vs unifikasi — keputusan
+### 7.6 Independence vs unification — the decision
 
-State Domain **tetap independen** (tidak diunifikasi). Alasan: (1) bukti empiris implementasi awal — semantik berbeda membutuhkan mesin berbeda; (2) owner berbeda (KB vs OS); (3) laju perubahan berbeda (Content berubah lambat via governance; State eksekusi berubah cepat via Protocol); (4) unifikasi mengembalikan masalah duplikasi status. Interaksi dikelola eksplisit via Trigger dan Gate (7.5), bukan dengan menggabungkan domain.
+State Domains **remain independent** (not unified). Reasons: (1) empirical evidence from the initial implementation — different semantics require different machines; (2) different owners (KB vs OS); (3) different rates of change (Content changes slowly via governance; execution State changes fast via Protocol); (4) unification reintroduces the status duplication problem. Interactions are managed explicitly via Triggers and Gates (7.5), not by merging domains.
 
 ---
 
 ## 8. Knowledge Taxonomy
 
-Dimensi klasifikasi Knowledge Layer. Satu Artifact memiliki **satu dimensi primer** + dimensi sekunder opsional. Klasifikasi adalah properti retrieval — reklasifikasi tidak mengubah Identity (P15).
+Knowledge Layer classification dimensions. One Artifact has **one primary dimension** + optional secondary dimension(s). Classification is a retrieval property — reclassification does not change Identity (P15).
 
-| Dimensi | Isi | Stabilitas | Catatan |
+| Dimension | Contents | Stability | Notes |
 |---|---|---|---|
-| **Product Intent** | Visi, strategi, prinsip, non-negotiables | Sangat stabil | Strategi adalah dimensi yang sebelumnya tidak terwakili secara eksplisit. |
-| **Requirements** | Dokumen requirement — "apa yang harus dibangun dan mengapa" — beserta amendmen | Stabil (berevolusi via governance) | |
-| **Architecture** | Deskripsi sistem, domain models, batas komponen | Stabil | |
-| **Decisions** | Keputusan ireversibel (ADR) dan reversibel (decision log); termasuk keputusan produk | Stabil, akumulatif | |
-| **Specifications** | Spesifikasi fungsional, non-fungsional (NFR), API, data | Stabil saat Approved | Dimensi yang sebelumnya tidak terwakili secara eksplisit; berbeda dari Vocabulary. |
-| **Standards & Guidelines** | Standar engineering, konvensi, definisi done | Stabil, governance tinggi | Sebelumnya tercampur dengan pengetahuan operasional. |
-| **Operational Knowledge** | Runbook, deployment, migration, checklist | Medium (berubah per environment) | Terpisah dari Standards & Guidelines. |
-| **Governance & Quality** | Review findings, audit, quality gates | Akumulatif | Quality sebelumnya hanya sebagai peran, bukan dimensi. |
-| **Planning Knowledge** | Content plan (roadmap, milestone definition) dan artifact relasi (traceability) | Medium (commitment) | Traceability adalah Relationship artifact. |
-| **Records** | Release record, change log, snapshot historis | Immutable | Release record sebelumnya tidak terwakili. |
-| **Research** | Temuan investigasi, hasil riset teknis | Akumulatif | Wajib jalur Distillation ke dimensi durable. |
-| **Vocabulary** | Glossary, istilah kanonik, model lifecycle | Sangat stabil | Bukan Specifications — pemisahan ini wajib dijaga. |
+| **Product Intent** | Vision, strategy, principles, non-negotiables | Very stable | Strategy is a dimension not previously represented explicitly. |
+| **Requirements** | Requirement documents — "what must be built and why" — with their amendments | Stable (evolves via governance) | |
+| **Architecture** | System descriptions, domain models, component boundaries | Stable | |
+| **Decisions** | Irreversible decisions (ADR) and reversible ones (decision log); including product decisions | Stable, cumulative | |
+| **Specifications** | Functional and non-functional (NFR) specifications, API, data | Stable when Approved | Dimension not previously represented explicitly; distinct from Vocabulary. |
+| **Standards & Guidelines** | Engineering standards, conventions, definition of done | Stable, high governance | Previously mixed with operational knowledge. |
+| **Operational Knowledge** | Runbooks, deployment, migration, checklists | Medium (changes per environment) | Separate from Standards & Guidelines. |
+| **Governance & Quality** | Review findings, audits, quality gates | Cumulative | Quality was previously only a role, not a dimension. |
+| **Planning Knowledge** | Plan Content (roadmap, milestone definition) and artifact relationships (traceability) | Medium (commitment) | Traceability is a Relationship artifact. |
+| **Records** | Release record, change log, historical snapshots | Immutable | Release record was not previously represented. |
+| **Research** | Investigation findings, technical research results | Cumulative | Distillation path to durable dimensions mandatory. |
+| **Vocabulary** | Glossary, canonical terms, lifecycle model | Very stable | Not Specifications — this separation must be maintained. |
 
 ---
 
 ## 9. Execution Taxonomy
 
-Klasifikasi elemen Protocol Operating Layer:
+Classification of Operating Layer Protocol elements:
 
-| Elemen | Definisi | Responsibility | Invariant |
+| Element | Definition | Responsibility | Invariant |
 |---|---|---|---|
-| **Ordering (chain)** | Urutan hubungan stage: requirement → scope → capability → plan → container → work item → konteks kerja → validasi | Menjawab "apa selanjutnya" secara deterministik; Protocol, bukan properti lokasi | Urutan didefinisikan eksplisit; eksekusi mengikuti urutan |
-| **State Transitions** | Aturan perpindahan nilai dalam State Domain | Menjalankan Protocol per domain (Section 7.2) | Forward-only; never skip; never revert; tercatat di Change Log |
-| **Concurrency Control** | Kuncian mutual exclusion atas Execution Container | Exactly-one-active container | Satu container aktif; pembuatan berikutnya menunggu |
-| **Versioning / Immutability** | Lock plan saat eksekusi dimulai; perubahan = instance baru | Konsistensi rencana vs eksekusi | Lock-atomic-with-generation; Content locked tidak berubah |
-| **Gates** | Kondisi sebelum transisi/eksekusi: gate persetujuan, gate kesiapan, gate review | Mengontrol kapan transisi sah | Gate dievaluasi atas State owner, bukan proyeksi |
-| **Commands** | Instruksi eksekusi deterministik yang dikonsumsi eksekutor | Menerjemahkan Content Artifact menjadi aksi eksekusi | Content Command Well-formed; output deterministik |
-| **Agent Coordination** | Semantik interaksi agent dengan sistem | Identity parseable, State eksplisit, Content deterministik, urutan tegas | Agent membaca State/Identity tanpa ambiguitas |
-| **Execution Containers** | Execution window yang membungkus work item | Agregasi, konkurensi, snapshot | State container derived dari work item |
-| **Projection Semantics** | Aturan komputasi State Projection (container view, ticket view): dari owner mana, agregasi bagaimana | Menyediakan view tanpa menambah writer | Proyeksi tidak pernah menjadi writer (P6, P9) |
+| **Ordering (chain)** | Stage relationship order: requirement → scope → capability → plan → container → work item → working context → validation | Answers "what next" deterministically; Protocol, not a location property | Order is explicitly defined; execution follows the order |
+| **State Transitions** | Rules for moving values within a State Domain | Runs the Protocol per domain (Section 7.2) | Forward-only; never skip; never revert; recorded in the Change Log |
+| **Concurrency Control** | Mutual exclusion locking over the Execution Container | Exactly-one-active container | One active container; subsequent creation waits |
+| **Versioning / Immutability** | Lock the plan when execution starts; changes = new instance | Plan vs execution consistency | Lock-atomic-with-generation; locked Content does not change |
+| **Gates** | Conditions before transition/execution: approval gate, readiness gate, review gate | Controls when a transition is legal | Gates are evaluated over owner State, not projections |
+| **Commands** | Deterministic execution instructions consumed by executors | Translates Content Artifacts into execution actions | Command Content Well-formed; deterministic output |
+| **Agent Coordination** | Semantics of agent–system interaction | Identity parseable, State explicit, Content deterministic, strict ordering | Agents read State/Identity without ambiguity |
+| **Execution Containers** | Execution window wrapping work items | Aggregation, concurrency, snapshot | Container State derived from work items |
+| **Projection Semantics** | Computation rules of State Projections (container view, ticket view): from which owner, how aggregation works | Provides views without adding writers | A projection never becomes a writer (P6, P9) |
 
 ---
 
 ## 10. Artifact Taxonomy
 
-Sistem tipe Artifact konseptual — bukan desain penyimpanan. Setiap tipe mendefinisikan: Knowledge Dimension, State Domain yang **dimiliki**, dan catatan Identity/Relationship.
+Conceptual Artifact type system — not a storage design. Every type defines: Knowledge Dimension, the State Domains it **owns**, and Identity/Relationship notes.
 
-| Tipe Artifact | Knowledge Dimension | State Domains dimiliki | Catatan Identity & relasi |
+| Artifact type | Knowledge Dimension | Owned State Domains | Identity & relationship notes |
 |---|---|---|---|
-| Vision / Manifesto | Product Intent | Content, Existence | Line tunggal; amendmen jarang |
-| Strategy | Product Intent | Content, Existence | Tipe baru (sebelumnya tidak terwakili) |
-| Requirement (PRD) | Requirements | Content, Existence | Line + amendmen sebagai instance/Relationship |
-| Scope Definition | Planning Knowledge + Requirements | Content, Existence | **Phase context** (Discovery/MVP/Milestone/Release) sebagai atribut — bukan kategori |
-| Epic | Planning Knowledge | Content, Existence | Relasi derives-from Scope |
-| Plan (roadmap) | Planning Knowledge | Content, Planning, Existence | InstanceVersion signifikan (v1, v2, ...); lock via generation |
-| Execution Container (sprint) | — (Content = snapshot proyeksi) | Container, Existence | Content derived; dibuat oleh OS |
-| Ticket | — (Content = instruksi eksekusi / Command) | **∅ (tidak ada; State adalah State Projection atas work item yang direferensikan)** | Execution view: proyeksi, bukan writer (P6) |
-| Work Item (story, technical story, bug, tech debt, chore, spike) | Requirements / Records / Research | Execution, Existence | Single-writer Execution State; Content dapat didistilasi ke dimensi knowledge |
-| Session | — (ephemeral by design) | Existence | Content ephemeral; Completed = kondisi derived; wajib Distillation sebelum Archived |
+| Vision / Manifesto | Product Intent | Content, Existence | Single Line; amendments rare |
+| Strategy | Product Intent | Content, Existence | New type (previously not represented) |
+| Requirement (PRD) | Requirements | Content, Existence | Line + amendments as instance/Relationship |
+| Scope Definition | Planning Knowledge + Requirements | Content, Existence | **Phase context** (Discovery/MVP/Milestone/Release) as attribute — not category |
+| Epic | Planning Knowledge | Content, Existence | derives-from Scope relationship |
+| Plan (roadmap) | Planning Knowledge | Content, Planning, Existence | InstanceVersion significant (v1, v2, ...); lock via generation |
+| Execution Container (sprint) | — (Content = projection snapshot) | Container, Existence | Content derived; created by OS |
+| Ticket | — (Content = execution instruction / Command) | **∅ (none; State is a State Projection over the referenced work item)** | Execution view: projection, not writer (P6) |
+| Work Item (story, technical story, bug, tech debt, chore, spike) | Requirements / Records / Research | Execution, Existence | Single-writer Execution State; Content may be distilled into knowledge dimensions |
+| Session | — (ephemeral by design) | Existence | Content ephemeral; Completed = derived condition; Distillation mandatory before Archived |
 | Review | Governance & Quality | Content, Existence | Gate semantics; findings → Decisions |
-| ADR | Decisions | Content (varian ADR), Existence | Supersession = Relationship ke Line lain |
-| Decision Record | Decisions | Content (varian decision), Existence | Supersesi opsional |
+| ADR | Decisions | Content (ADR variant), Existence | Supersession = Relationship to another Line |
+| Decision Record | Decisions | Content (decision variant), Existence | Supersession optional |
 | Architecture Description | Architecture | Content, Existence | |
-| Specification | Specifications | Content, Existence | Tipe baru (sebelumnya tidak terwakili) |
-| Standard / Guideline | Standards & Guidelines | Content, Existence | Tipe baru (sebelumnya tidak terwakili) |
+| Specification | Specifications | Content, Existence | New type (previously not represented) |
+| Standard / Guideline | Standards & Guidelines | Content, Existence | New type (previously not represented) |
 | Runbook / Operational Guide | Operational Knowledge | Content, Existence | |
-| Release Record | Records | Content, Existence | Tipe baru (sebelumnya tidak terwakili); berisi agregat eksekusi + gate release |
+| Release Record | Records | Content, Existence | New type (previously not represented); carries execution aggregate + release gate |
 | Glossary / Term | Vocabulary | Content, Existence | |
-| Traceability / Relationship Artifact | Planning Knowledge | Content, Existence | Content = kumpulan Relationship by Identity |
+| Traceability / Relationship Artifact | Planning Knowledge | Content, Existence | Content = set of Relationships by Identity |
 
-Aturan: Type menentukan State Vector (binding type→state adalah bagian standard); tipe baru adalah ekstensi (Section 14) dengan kewajiban mendeklarasikan State Vector owned lengkap.
+Rule: Type determines the State Vector (the type→state binding is part of the standard); new types are extensions (Section 14) with the obligation to declare the complete owned State Vector.
 
 ---
 
 ## 11. Conceptual Lifecycle
 
-### 11.1 Dua kanal perubahan sepanjang waktu
+### 11.1 Two change channels over time
 
-- **Evolusi Content**: Draft → Review → Approved → Amended/Superseded (Content State) — Content matang dan dipreservasi; Approved Content immutable (P8).
-- **Progress eksekusi**: Planned → … → Done (Execution State) — work item bergerak maju; koreksi via instance baru, bukan revert.
+- **Content evolution**: Draft → Review → Approved → Amended/Superseded (Content State) — Content matures and is preserved; Approved Content is immutable (P8).
+- **Execution progress**: Planned → … → Done (Execution State) — work items move forward; corrections via a new instance, not revert.
 
-Keduanya orthogonal: sebuah Artifact dapat memiliki Content Approved dan State eksekusi In Progress secara simultan; tipe menentukan domain mana yang berlaku (Section 10).
+Both are orthogonal: an Artifact may have Approved Content and In Progress execution State simultaneously; the type determines which domains apply (Section 10).
 
-### 11.2 Phase sebagai konteks, bukan kategori
+### 11.2 Phase as context, not category
 
-Discovery, MVP, Milestone, Release adalah **Phase context** pada Artifact planning/scope — atribut, bukan kategori dan bukan State Domain. Aturan:
+Discovery, MVP, Milestone, Release are **Phase context** on planning/scope Artifacts — an attribute, not a category and not a State Domain. Rules:
 
-- Phase menempel pada Scope Definition / Plan sebagai context attribute.
-- **Phase change** (perubahan phase) adalah context update yang diotorisasi **Gate kesiapan**, dievaluasi atas agregat State:
-  **release-ready** = (semua work item dalam scope Done) ∧ (seluruh Execution Container Completed) ∧ (plan locked / Immutable) ∧ (gate review lulus) ∧ (gate persetujuan Content lulus).
-- Phase tidak pernah menjadi bagian Identity (P3) — Scope Definition tetap identitas yang sama saat produk berpindah fase; yang berubah adalah context attribute-nya.
+- Phase attaches to Scope Definition / Plan as a context attribute.
+- **Phase change** is a context update authorized by a **readiness Gate**, evaluated over the State aggregate: **release-ready** = (all work items in scope Done) ∧ (all Execution Containers Completed) ∧ (plan locked / Immutable) ∧ (review gate passed) ∧ (Content approval gate passed).
+- Phase never becomes part of Identity (P3) — a Scope Definition remains the same identity when the product changes phase; what changes is its context attribute.
 
-### 11.3 Lifecycle produk vs lifecycle Artifact
+### 11.3 Product lifecycle vs Artifact lifecycle
 
-- **Artifact lifecycle**: pergerakan State Domain per Artifact (Section 7) — Content matang, eksekusi selesai, plan dikunci, Artifact di-archive atau di-retire.
-- **Product lifecycle**: rangkaian Phase context pada Scope Artifact — Discovery → MVP → Growth → Maturity → Sunset. Setiap fase menghasilkan Artifact-nya sendiri (scope baru, plan baru, Release Record baru) dengan Identity baru; fase lama tetap sebagai Record (P12).
+- **Artifact lifecycle**: the movement of State Domains per Artifact (Section 7) — Content matures, execution completes, plans are locked, Artifacts are archived or retired.
+- **Product lifecycle**: the sequence of Phase contexts on the Scope Artifact — Discovery → MVP → Growth → Maturity → Sunset. Each phase produces its own Artifacts (new scope, new plan, new Release Record) with new Identity; the old phase remains as a Record (P12).
 
 ### 11.4 Distillation lifecycle
 
-Ephemeral → durable: Session (Existence) dan Review menghasilkan keputusan/ADR (Content State) melalui jalur Distillation **wajib** sebelum Archived. Preservasi: Artifact Superseded/Archived/Retired tetap ada sebagai Record dengan Content immutable dan Relationship supersession yang utuh.
+Ephemeral → durable: Session (Existence) and Review produce decisions/ADRs (Content State) through the **mandatory** Distillation path before Archived. Preservation: Superseded/Archived/Retired Artifacts remain as Records with immutable Content and intact supersession Relationships.
 
 ---
 
 ## 12. Storage Independence Model
 
-### 12.1 Eksperimen pikiran
+### 12.1 Thought experiment
 
-Asumsikan media penyimpanan saat ini hilang; pengetahuan disimpan di relational database, graph database, object store, Atrium, atau platform masa depan. Yang diuji: Identity Model, State Taxonomy, Knowledge Taxonomy, kontrak lapisan.
+Assume the current storage medium disappears; knowledge is stored in a relational database, graph database, object store, Atrium, or future platform. What is tested: the Identity Model, State Taxonomy, Knowledge Taxonomy, layer contracts.
 
-### 12.2 Yang bertahan (bagian standard)
+### 12.2 What survives (part of the standard)
 
-| Konsep | Alasan bertahan |
+| Concept | Why it survives |
 |---|---|
-| **Identity Model** | Identity = properti konseptual `(Namespace, Type, ID[, InstanceVersion])`. Di database relasional menjadi key; di graph menjadi node property; di object store menjadi key. Referensi by Identity berlaku di semua. |
-| **State Taxonomy** | State Domain adalah semantik, bukan penyimpanan. State Projection = view (relasional), query (graph), computed (object store). Single-writer tetap enforceable. |
-| **Knowledge Taxonomy** | Klasifikasi adalah properti Artifact; backend apa pun dapat mengindeksnya. |
-| **Layer Contracts & Invariant global** | Kontrak mendefinisikan perilaku, bukan penyimpanan. Seluruh 7 invariant (5.4) tetap berlaku. |
-| **Exchange Contracts** | Round-trip, idempotensi, referential integrity — independen dari medium. |
+| **Identity Model** | Identity = conceptual property `(Namespace, Type, ID[, InstanceVersion])`. In a relational database it becomes a key; in a graph, a node property; in an object store, a key. References by Identity hold in all of them. |
+| **State Taxonomy** | State Domains are semantics, not storage. State Projection = view (relational), query (graph), computed (object store). Single-writer remains enforceable. |
+| **Knowledge Taxonomy** | Classification is an Artifact property; any backend can index it. |
+| **Layer Contracts & Global Invariants** | Contracts define behavior, not storage. All 7 invariants (5.4) remain in force. |
+| **Exchange Contracts** | Round-trip, idempotency, referential integrity — independent of the medium. |
 
-### 12.3 Yang termasuk implementasi
+### 12.3 What belongs to the implementation
 
-- Format serialisasi, skema penyimpanan, struktur indeks.
-- **Addressing fisik** (path, key, URL) — standard hanya mensyaratkan: setiap Identity **resolvable** ke tepat satu Artifact dalam satu sistem.
-- **Retrieval**: standard mensyaratkan semantik query yang dideklarasikan dapat diimplementasikan; bahasa query adalah implementasi.
-- **Enforcement capability**: constraint struktural pada implementasi berbasis berkas; constraint pada database relasional; validation layer pada graph. **Requirement invariant identik; mekanisme enforcement bervariasi** (P16). Nilai "struktur sebagai state machine yang selalu sinkron" pada implementasi awal adalah kapabilitas implementasi; standard mewarisi requirement-nya (determinisme, P11), bukan mekanismenya.
+- Serialization formats, storage schemas, index structures.
+- **Physical addressing** (path, key, URL) — the standard only requires: every Identity **resolvable** to exactly one Artifact within one system.
+- **Retrieval**: the standard requires that declared query semantics be implementable; the query language is an implementation matter.
+- **Enforcement capability**: structural constraints on file-based implementations; constraints in relational databases; a validation layer on graphs. **Invariant requirements are identical; enforcement mechanisms vary** (P16). The initial implementation's value of "structure as a state machine that is always in sync" is an implementation capability; the standard inherits its requirement (determinism, P11), not its mechanism.
 
-### 12.4 Sikap standard terhadap serialisasi
+### 12.4 The standard's stance on serialization
 
-Standard menetapkan kontrak (apa yang harus dipertahankan, aturan round-trip, validasi); implementasi menetapkan format. Serialisasi Identity harus canonical dan unambiguous di semua implementasi (aturan 6.2.6).
+The standard establishes the contract (what must be preserved, round-trip rules, validation); the implementation establishes the format. Identity serialization must be canonical and unambiguous in all implementations (rule 6.2.6).
 
 ---
 
 ## 13. Import / Export Model
 
-### 13.1 Yang harus dipertahankan dalam exchange
+### 13.1 What must be preserved in exchange
 
-| Elemen | Requirement |
+| Element | Requirement |
 |---|---|
-| **Identity** | Namespace, Type, ID, InstanceVersion — utuh; tanpa duplikasi; canonical. |
-| **State** | Seluruh State Vector (semua domain dimiliki) dengan nilai eksak + history transisi (Change Log). |
-| **Content** | Content lengkap, Well-formed sesuai tipe. |
-| **Relationships** | Semua relasi by Identity (supersedes, amends, derives-from, depends-on, validates) — referential integrity lintas sistem. |
-| **Classification** | Assignment Knowledge Dimension (primer + sekunder). |
-| **History** | Link supersesi/amendmen, Change Log, status preservasi (Archived/Retired). |
+| **Identity** | Namespace, Type, ID, InstanceVersion — intact; without duplication; canonical. |
+| **State** | The complete State Vector (all owned domains) with exact values + transition history (Change Log). |
+| **Content** | Complete Content, Well-formed per its type. |
+| **Relationships** | All relationships by Identity (supersedes, amends, derives-from, depends-on, validates) — referential integrity across systems. |
+| **Classification** | Knowledge Dimension assignment (primary + secondary). |
+| **History** | Supersession/amendment links, Change Log, preservation status (Archived/Retired). |
 
 ### 13.2 Round-trip requirements
 
-1. **Lossless**: tidak ada kehilangan atau duplikasi Identity/State/Content/Relationship.
-2. **Idempotent**: re-import = no-op (atau replace bersih yang dideklarasikan) — tidak pernah menggandakan Artifact.
-3. **Referential integrity**: tidak ada dangling reference setelah import; referensi lintas sistem ter-resolve atau ditolak eksplisit.
-4. **Kebijakan konflik Identity**: import dengan Identity yang sudah ada = **tolak atau re-namespace eksplisit** — tidak pernah merge diam-diam.
-5. **Validasi sebelum commit**: import memvalidasi kepatuhan terhadap standard (Identity unik, State valid, Content Well-formed) sebelum menulis.
-6. **Schema versioning**: kontrak exchange sendiri berversi; import/export menyatakan versi kontrak yang dipatuhi.
+1. **Lossless**: no loss or duplication of Identity/State/Content/Relationship.
+2. **Idempotent**: re-import = no-op (or a declared clean replace) — never duplicates Artifacts.
+3. **Referential integrity**: no dangling references after import; cross-system references are resolved or explicitly rejected.
+4. **Identity conflict policy**: importing an Identity that already exists = **reject or explicit re-namespace** — never a silent merge.
+5. **Validation before commit**: import validates conformance to the standard (Identity unique, State valid, Content Well-formed) before writing.
+6. **Schema versioning**: the exchange contract itself is versioned; import/export declares the contract version it complies with.
 
-### 13.3 Kontrak format serialisasi (bukan formatnya)
+### 13.3 The serialization format contract (not the format)
 
-Format apa pun wajib: menyandikan Identity secara canonical; merepresentasikan State Vector lengkap; mengekspresikan Relationship by Identity; dapat divalidasi secara mekanis terhadap standard; dapat dibaca oleh Exchange Layer tanpa interpretasi ambigu. Format itu sendiri adalah keputusan implementasi.
+Any format must: encode Identity canonically; represent the complete State Vector; express Relationships by Identity; be mechanically validatable against the standard; be readable by the Exchange Layer without ambiguous interpretation. The format itself is an implementation decision.
 
 ---
 
 ## 14. Extension Model
 
-### 14.1 Titik ekstensi
+### 14.1 Extension points
 
-| Titik | Berat | Mekanisme |
+| Point | Weight | Mechanism |
 |---|---|---|
-| Artifact type baru | Ringan | Definisi tipe: Knowledge Dimension + **State Vector owned lengkap** + aturan Identity; terdaftar di taksonomi. |
-| Knowledge Dimension baru | Ringan-sedang | Sumbu klasifikasi baru; tidak boleh memutus klasifikasi lama (P15). |
-| Relationship type baru | Ringan | Semantik relasi baru antar Identity. |
-| Protocol variant / Command / Gate baru | Sedang | Variasi Protocol dalam invariant yang ada. |
-| State Domain baru | Berat | Hanya jika semantik State tidak tertampung domain yang ada; wajib definisi penuh (owner, aturan, interaksi). |
-| Phase vocabulary baru | Ringan | Nilai Phase context baru. |
+| New Artifact type | Light | Type definition: Knowledge Dimension + **complete owned State Vector** + Identity rules; registered in the taxonomy. |
+| New Knowledge Dimension | Light–medium | New classification axis; must not break existing classifications (P15). |
+| New Relationship type | Light | New relationship semantics between Identities. |
+| New Protocol variant / Command / Gate | Medium | Protocol variation within existing invariants. |
+| New State Domain | Heavy | Only if the State semantics are not covered by existing domains; full definition required (owner, rules, interactions). |
+| New Phase vocabulary | Light | New Phase context values. |
 
-### 14.2 Aturan ekstensi
+### 14.2 Extension rules
 
-1. Ekstensi **tidak boleh melemahkan invariant** (5.4).
-2. **Backward compatibility**: seluruh Artifact yang ada tetap valid di bawah ekstensi.
-3. **Core closed, taxonomy open**: Identity, kontrak lapisan, dan invariant adalah core yang tertutup terhadap ekstensi (perubahan = revisi standard); taksonomi (tipe, dimensi, domain, protocol) terbuka dengan governance.
-4. Ekstensi harus **dapat di-exchange** (tercover schema versioning, Section 13).
-5. Governance ekstensi: proposal → review → acceptance (terdaftar sebagai bagian standard). Ini menutup celah ekstensi tanpa prinsip yang teridentifikasi pada implementasi awal.
-6. Tipe Artifact baru **wajib mendeklarasikan State Vector owned lengkap** — tidak ada pewarisan default implisit.
+1. Extensions **must not weaken invariants** (5.4).
+2. **Backward compatibility**: all existing Artifacts remain valid under the extension.
+3. **Core closed, taxonomy open**: Identity, layer contracts, and invariants are the core, closed to extension (changes = standard revision); taxonomies (types, dimensions, domains, protocol) are open under governance.
+4. Extensions must be **exchangeable** (covered by schema versioning, Section 13).
+5. Extension governance: proposal → review → acceptance (registered as part of the standard). This closes the extension-without-principles gap identified in the initial implementation.
+6. New Artifact types **must declare the complete owned State Vector** — no implicit default inheritance.
 
 ---
 
 ## 15. Open Questions
 
-**Resolved during ratification:** (1) release dimodelkan sebagai Phase context + Gate kesiapan, bukan State Domain; (2) Exchange Layer adalah lapisan arsitektur, bukan cross-cutting concern; (3) tipe Artifact baru wajib mendeklarasikan State Vector owned lengkap (diangkat menjadi aturan 14.2.6).
+**Resolved during ratification:** (1) release is modeled as a Phase context + readiness Gate, not a State Domain; (2) the Exchange Layer is an architectural layer, not a cross-cutting concern; (3) new Artifact types must declare the complete owned State Vector (elevated to rule 14.2.6).
 
-Pertanyaan yang tetap terbuka, dengan trade-off masing-masing:
+Questions that remain open, each with its own trade-offs:
 
-1. **Planning State vs Content State (unifikasi)** — Keputusan saat ini: terpisah (commitment ≠ maturity). Trade-off: terpisah menambah domain; unifikasi menyederhanakan tetapi mencampur "Content matang" dengan "rencana terkunci" yang memiliki Trigger berbeda.
-2. **Semantik Line pada supersession** — Apakah supersession adalah dua Line dengan Relationship (keputusan saat ini) atau satu Line dengan instance? Keputusan saat ini menyederhanakan historiografi per-keputusan; alternatif menyederhanakan penelusuran rantai keputusan tetapi mengaburkan bahwa keputusan baru adalah Artifact berbeda.
-3. **Kedalaman kontrak query semantics** — Seberapa presisi semantik retrieval harus didefinisikan di standard (agar konsisten lintas implementasi) vs diserahkan ke implementasi (agar inovasi tidak terbatasi)?
-4. **Generasi Identity terdistribusi/offline** — Tanpa Identity Registry pusat, bagaimana dua sistem menghasilkan ID bebas-kolisi (ID global vs Namespace terdelegasi vs registry)? Mempengaruhi kontrak exchange.
-5. **Kebijakan Projection Refresh** — Event-driven (validasi tiap transisi) vs on-read (validasi saat dibaca): trade-off konsistensi real-time vs biaya. Invariant "proyeksi bukan writer" tidak berubah; mekanisme refresh belum dikunci.
-6. **Kedalaman kontrak struktur Content (well-formedness)** — Seberapa ketat struktur Content per tipe Artifact (agar machine-parseable) vs fleksibel (agar ekspresif)? Terlalu ketat membatasi; terlalu longgar merusak determinisme Command.
-7. **Klasifikasi multi-dimensi** — Aturan saat ini: satu dimensi primer + sekunder opsional. Konflik antar dimensi dan kewajiban dimensi sekunder belum sepenuhnya ditentukan.
+1. **Planning State vs Content State (unification)** — Current decision: separate (commitment ≠ maturity). Trade-off: separation adds a domain; unification simplifies but mixes "mature Content" with "locked plan", which have different Triggers.
+2. **Line semantics on supersession** — Is supersession two Lines with a Relationship (current decision) or one Line with instances? The current decision simplifies per-decision historiography; the alternative simplifies tracing decision chains but obscures that the new decision is a different Artifact.
+3. **Depth of the query semantics contract** — How precisely must retrieval semantics be defined in the standard (for consistency across implementations) vs left to implementations (so innovation is not constrained)?
+4. **Distributed/offline Identity generation** — Without a central Identity Registry, how do two systems generate collision-free IDs (global ID vs delegated Namespace vs registry)? Affects the exchange contract.
+5. **Projection Refresh policy** — Event-driven (validate on every transition) vs on-read (validate when read): the trade-off of real-time consistency vs cost. The invariant "a projection is not a writer" is unchanged; the refresh mechanism is not yet locked.
+6. **Depth of the Content structure contract (well-formedness)** — How strict must Content structure be per Artifact type (for machine-parseability) vs flexible (for expressiveness)? Too strict constrains; too loose breaks Command determinism.
+7. **Multi-dimensional classification** — Current rule: one primary dimension + optional secondary. Conflicts between dimensions and the obligation of the secondary dimension are not fully specified.
 
 ---
 
 ## 16. Future Evolution
 
-### 16.1 Milestone konseptual
+### 16.1 Conceptual milestones
 
-1. **Ratifikasi standard ini** sebagai model kanonik engineering knowledge (kontrak, invariant, taksonomi dasar).
-2. **Exchange contract v1**: definisi round-trip, idempotensi, referential integrity, schema versioning + conformance suite (validator kepatuhan).
-3. **Referensi implementasi**: (a) konformasi implementasi awal terhadap standard; (b) implementasi berbasis database relasional; (c) implementasi berbasis graph — membuktikan storage independence (Section 12).
-4. **Integrasi Knowledge OS**: Exchange Layer menjadi seam — Knowledge OS mengimpor/mengekspor Artifact dengan Identity, State, dan Relationship utuh; knowledge menjadi queryable dan operable oleh sistem eksternal.
-5. **Ekosistem**: validator, importer, tooling agent yang mematuhi kontrak; ekstensi terdaftar via governance Section 14.
+1. **Ratification of this standard** as the canonical engineering knowledge model (contracts, invariants, base taxonomies).
+2. **Exchange contract v1**: definition of round-trip, idempotency, referential integrity, schema versioning + conformance suite (conformance validator).
+3. **Reference implementations**: (a) conforming the initial implementation to the standard; (b) a relational-database-based implementation; (c) a graph-based implementation — proving storage independence (Section 12).
+4. **Knowledge OS integration**: the Exchange Layer becomes the seam — the Knowledge OS imports/exports Artifacts with intact Identity, State, and Relationship; knowledge becomes queryable and operable by external systems.
+5. **Ecosystem**: validator, importer, agent tooling that comply with the contract; extensions registered via Section 14 governance.
 
-### 16.2 Peran implementasi awal ke depan
+### 16.2 The initial implementation's role going forward
 
-Implementasi awal berubah status: dari "arsitektur itu sendiri" menjadi **satu serialisasi referensi** yang (a) mendemonstrasikan kepatuhan terhadap standard, (b) menjadi baseline onboarding, (c) tetap berfungsi sebagai Engineering Operating System untuk proyek yang memilih medium tersebut. Standard menjadi kanon; implementasi menjadi contoh.
+The initial implementation changes status: from "the architecture itself" to **one reference serialization** that (a) demonstrates conformance to the standard, (b) serves as the onboarding baseline, (c) continues to function as an Engineering Operating System for projects that choose that medium. The standard becomes the canon; the implementation becomes the example.
 
-### 16.3 Invariant evolusi
+### 16.3 Evolution invariants
 
-Evolusi standard tidak pernah mengubah: Identity (P3), invariant global (5.4), prinsip dua kanal (P10), dan komposisi lapisan (KB + OS + EX). Yang boleh berevolusi: taksonomi (dimensi, tipe, domain, protocol) melalui governance ekstensi. Fondasi yang tidak dapat dinegosiasikan oleh iterasi mana pun: **knowledge base dan operating system sebagai dua lapisan dari satu sistem, diikat Identity, State dimiliki Operating Layer, pipeline sebagai Protocol first-class.**
+Evolution of the standard never changes: Identity (P3), global invariants (5.4), the two-channel principle (P10), and layer composition (KB + OS + EX). What may evolve: taxonomies (dimensions, types, domains, protocol) through extension governance. Foundations that no iteration can negotiate: **knowledge base and operating system as two layers of one system, bound by Identity, State owned by the Operating Layer, pipeline as a first-class Protocol.**
 
 ---
 

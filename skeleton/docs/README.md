@@ -1,65 +1,65 @@
-# docs/ — Sumber Kebenaran Serialisasi EKA
+# docs/ — Source of Truth for EKA Serialization
 
-> Anchor EKA: serialisasi keseluruhan — Knowledge Layer (konten), Operating Layer (state), Exchange Layer (validasi & transfer).
-> Standar: EKA v1.0, tanggal 2026-08-05.
+> Anchor EKA: overall serialization — Knowledge Layer (content), Operating Layer (state), Exchange Layer (validation & transfer).
+> Standard: EKA v1.0, dated 2026-08-05.
 
-## Status Folder Ini
+## Status of This Folder
 
-Folder ini adalah **serialisasi EKA v1.0** (proyeksi EKA ke Git + Markdown), **bukan arsitektur EKA itu sendiri**. Arsitektur — tiga layer (Knowledge/Operating/Exchange), lima state domain, dan protokol — adalah konsep; folder ini hanyalah representasi file-nya. Artinya: mengubah folder tidak mengubah EKA, dan EKA dapat diserialisasikan ke media lain tanpa kehilangan makna.
+This folder is the **EKA v1.0 serialization** (EKA projected to Git + Markdown), **not EKA architecture itself**. The architecture — three layers (Knowledge/Operating/Exchange), five State Domains, and the Protocol — is conceptual; this folder is only its file representation. In other words: changing the folder does not change EKA, and EKA can be serialized to other media without losing meaning.
 
-## Peta Navigasi (15 Entri)
+## Navigation Map (15 Entries)
 
-| Entri | Anchor EKA | Isi |
+| Entry | Anchor EKA | Content |
 |---|---|---|
-| [README.md](.) (ini) | serialisasi | sumber kebenaran + ringkasan konvensi |
-| [intent/](intent/) | dimensi intent | `vis-` Vision/Manifesto, `str-` Strategy |
-| [requirements/](requirements/) | dimensi requirements | `req-` Requirement |
-| [architecture/](architecture/) | dimensi architecture | `arc-` Architecture Description |
-| [decisions/](decisions/) | dimensi decisions | `adr-` ADR, `dec-` Decision Record |
-| [specifications/](specifications/) | dimensi specifications | `spec-` Specification |
-| [standards/](standards/) | dimensi standards | `std-` Standard/Guideline |
-| [operations/](operations/) | dimensi operations | `run-` Runbook |
-| [quality/](quality/) | dimensi quality | `rvw-` Review |
-| [planning/](planning/) | dimensi planning | `scp-`, `epc-`, `plan-`, `trc-` |
-| [records/](records/) | dimensi records | `rel-` Release Record |
-| [research/](research/) | dimensi research | `fnd-` Research Finding (EKA 14.1) |
-| [vocabulary/](vocabulary/) | dimensi vocabulary | `gls-` Glossary/Term |
-| [operating/](operating/) | Operating Layer | state, protocol, work items, kontainer, sesi, proyeksi |
-| [exchange/](exchange/) | Exchange Layer | validasi, transfer |
+| [README.md](.) (this file) | serialization | source of truth + convention summary |
+| [intent/](intent/) | intent dimension | `vis-` Vision/Manifesto, `str-` Strategy |
+| [requirements/](requirements/) | requirements dimension | `req-` Requirement |
+| [architecture/](architecture/) | architecture dimension | `arc-` Architecture Description |
+| [decisions/](decisions/) | decisions dimension | `adr-` ADR, `dec-` Decision Record |
+| [specifications/](specifications/) | specifications dimension | `spec-` Specification |
+| [standards/](standards/) | standards dimension | `std-` Standard/Guideline |
+| [operations/](operations/) | operations dimension | `run-` Runbook |
+| [quality/](quality/) | quality dimension | `rvw-` Review |
+| [planning/](planning/) | planning dimension | `scp-`, `epc-`, `plan-`, `trc-` |
+| [records/](records/) | records dimension | `rel-` Release Record |
+| [research/](research/) | research dimension | `fnd-` Research Finding (EKA 14.1) |
+| [vocabulary/](vocabulary/) | vocabulary dimension | `gls-` Glossary/Term |
+| [operating/](operating/) | Operating Layer | state, protocol, work items, containers, sessions, projections |
+| [exchange/](exchange/) | Exchange Layer | validation, transfer |
 
-## Ringkasan Konvensi Serialisasi
+## Serialization Conventions Summary
 
-### Identitas
-- Identitas = `(namespace, type, id, instance-version)`; **hidup di frontmatter**, filename hanyalah proyeksi.
-- Field: `namespace` (default: nama produk), `type` (token, harus cocok dengan filename), `id` (kebab-case, unik dalam pasangan (namespace, type)), `instance-version` (int, default 1; wajib untuk `scp-`/`plan-`), `revision` (int, default 1; hanya untuk edit konten).
-- Pola filename: `<type-token>-<id>.md`; untuk tipe berversi (`scp-`, `plan-`): `<type-token>-<id>-v<instance-version>.md` (selalu, termasuk v1). Akhiran `-v<nn>` dilarang untuk tipe lain. Detail: [planning/README.md](planning/README.md).
+### Identity
+- Identity = `(namespace, type, id, instance-version)`; **lives in frontmatter**, filename is only a projection.
+- Fields: `namespace` (default: product name), `type` (token, must match filename), `id` (kebab-case, unique within (namespace, type)), `instance-version` (int, default 1; required for `scp-`/`plan-`), `revision` (int, default 1; only for content edits).
+- Filename pattern: `<type-token>-<id>.md`; for versioned types (`scp-`, `plan-`): `<type-token>-<id>-v<instance-version>.md` (always, including v1). The `-v<nn>` suffix is forbidden for other types. Details: [planning/README.md](planning/README.md).
 
 ### State
-- Lima domain state yang dimiliki (OWNED): Content State, Execution State, Planning State, Container State, Existence State. Absennya sebuah field = tidak berlaku (N/A) untuk tipe itu.
-- Setiap field state hanya ditulis oleh **satu pemilik** (single-writer, P6); proyeksi tidak pernah menulis state.
-- Transisi **forward-only**; setiap transisi tercatat di `change-log`.
-- Detail nilai dan aturan transisi: [operating/protocol.md](operating/protocol.md).
+- Five owned State Domains: Content State, Execution State, Planning State, Container State, Existence State. Absence of a field = not applicable (N/A) for that type.
+- Each state field is written by only **one owner** (single-writer, P6); projections never write state.
+- Transitions are **forward-only**; every transition is recorded in `change-log`.
+- Values and transition rules: [operating/protocol.md](operating/protocol.md).
 
 ### Phase
-- `phase` adalah **atribut konteks** pada artefak `scp-`/`plan-`, **bukan folder**. Nilai: `discovery | mvp | milestone | release | growth | maturity | sunset`.
-- Perubahan phase dicatat di `change-log` dengan `domain: phase`.
+- `phase` is a **context attribute** on `scp-`/`plan-` artifacts, **not a folder**. Values: `discovery | mvp | milestone | release | growth | maturity | sunset`.
+- Phase changes are recorded in `change-log` with `domain: phase`.
 
-### Relasi
-- Field: `amends`, `supersedes`, `derives-from`, `depends-on`, `validates` — daftar referensi berformat `<type-token>:<id>[:<instance-version>]` (lintas-namespace: `<namespace>/<type-token>:<id>`).
-- Hanya ditulis pada artefak yang mereferensikan; referensi harus dapat di-resolve (lihat validasi).
+### Relationships
+- Fields: `amends`, `supersedes`, `derives-from`, `depends-on`, `validates` — reference lists in `<type-token>:<id>[:<instance-version>]` form (cross-namespace: `<namespace>/<type-token>:<id>`).
+- Written only on the referring artifact; references must resolve (see validation).
 
-### Klasifikasi
-- `dimension` (primer) + `dimensions-secondary` (daftar) — untuk artefak pengetahuan; `dimension` wajib sama dengan folder rumahnya. Artefak operasional (work items) memakai `dimension` informasional saja; `ctr-`/`tkt-`/`ses-` tidak membawa `dimension`.
+### Classification
+- `dimension` (primary) + `dimensions-secondary` (list) — for knowledge artifacts; `dimension` must equal the home folder. Operational artifacts (work items) use `dimension` informationally only; `ctr-`/`tkt-`/`ses-` carry no `dimension`.
 
-### Proyeksi
-- Tabel kontainer dan tiket membawa header `> Generated — State Projection. Do NOT edit state here; refresh on read.`
-- Proyeksi di-refresh saat dibaca, bukan diedit manual.
+### Projections
+- Container and ticket tables carry the header `> Generated — State Projection. Do NOT edit state here; refresh on read.`
+- Projections are refreshed on read, never edited manually.
 
-## Artefak vs Dokumen Konvensi
+## Artifacts vs Convention Documents
 
-- **Artefak:** file yang frontmatter-nya berisi `type` **dan** `id`. Contoh: `req-login.md`, `ctr-gelombang-1.md`, `plan-rilis-1-v1.md`.
-- **Dokumen konvensi:** file tanpa keduanya — semua README, `operating/protocol.md`, `exchange/validation.md`, `exchange/transfer.md`. Dokumen konvensi menjelaskan aturan dan tidak membawa state.
+- **Artifacts:** files whose frontmatter contains `type` **and** `id`. Examples: `req-login.md`, `ctr-wave-1.md`, `plan-release-1-v1.md`.
+- **Convention documents:** files with neither — all READMEs, `operating/protocol.md`, `exchange/validation.md`, `exchange/transfer.md`. Convention documents explain the rules and carry no state.
 
-## Validasi
+## Validation
 
-Sebelum commit artefak baru atau perubahan state, jalankan checklist mekanis di [exchange/validation.md](exchange/validation.md). Untuk impor/ekspor antar repositori: [exchange/transfer.md](exchange/transfer.md).
+Before committing a new artifact or a state change, run the mechanical checklist in [exchange/validation.md](exchange/validation.md). For import/export between repositories: [exchange/transfer.md](exchange/transfer.md).

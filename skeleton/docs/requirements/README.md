@@ -1,51 +1,51 @@
-# docs/requirements/ — Dimensi Requirements
+# docs/requirements/ — Requirements Dimension
 
-> Anchor EKA: Knowledge Layer — dimensi **requirements** (EKA 8).
+> Anchor EKA: Knowledge Layer — **requirements** dimension (EKA 8).
 
-## Tujuan
+## Purpose
 
-Dimensi requirements mewadahi kebutuhan yang harus dipenuhi produk, diturunkan dari intent dan disepakati bersama pemangku kepentingan. Setiap `req-` adalah satu kebutuhan yang dapat diuji keterpenuhannya oleh `rvw-` atau work item.
+The requirements dimension houses the needs the product must fulfill, derived from intent and agreed with stakeholders. Each `req-` is a single requirement whose fulfillment can be verified by `rvw-` or a work item.
 
-## Yang Ada di Sini
+## What Lives Here
 
-| Token | Tipe | Format nama |
+| Token | Type | Name format |
 |---|---|---|
 | `req-` | Requirement | `req-<id>.md` |
 
 ## State Vector
 
-| Tipe | Domain state yang dimiliki |
+| Type | Owned state domains |
 |---|---|
 | `req-` | `content-state`, `existence-state` |
 
-Nilai `content-state`: `draft → review → approved → amended`. Nilai `existence-state`: `active → archived → retired`. Field lain yang tidak terdaftar = N/A.
+`content-state` values: `draft → review → approved → amended`. `existence-state` values: `active → archived → retired`. Fields not listed = N/A.
 
-## Struktur Konten yang Baik
+## Good Content Structure
 
-Struktur wajib (keluarga dokumen pengetahuan):
+Required structure (knowledge document family):
 
-- `## Purpose` — kebutuhan apa yang dijelaskan.
-- `## Content` — pernyataan kebutuhan, kriteria penerimaan, dan konteksnya.
+- `## Purpose` — which requirement is described.
+- `## Content` — the requirement statement, acceptance criteria, and its context.
 
-## Konvensi Nama
+## Naming Conventions
 
-`req-<id>.md`, kebab-case, unik dalam (namespace, type). Tanpa akhiran `-v<nn>`. Contoh: `req-login-email.md`.
+`req-<id>.md`, kebab-case, unique within (namespace, type). No `-v<nn>` suffix. Example: `req-login-email.md`.
 
-## Amendemen = Instance Baru
+## Amendment = New Instance
 
-Perubahan terhadap kebutuhan yang sudah disetujui **tidak** mengedit dokumen lama secara membabi buta: buat instance baru `req-<id-baru>.md` dengan `content-state: amended` pada dokumen lama (atau arkivkan yang lama) dan field `amends: [req:<id-lama>]` pada yang baru. Rantai amendemen dapat ditelusuri melalui `amends`.
+Changes to an approved requirement do **not** blindly edit the old document: create a new instance `req-<new-id>.md` with `content-state: amended` on the old document (or archive the old one) and the `amends: [req:<old-id>]` field on the new one. The amendment chain is traceable through `amends`.
 
-## Kepemilikan
+## Ownership
 
-| Peran | Tanggung jawab |
+| Role | Responsibility |
 |---|---|
-| Product Owner | pemilik tunggal konten requirements |
-| Engineers | peninjau kelayakan teknis saat `review` |
-| Semua peran | mengusulkan kebutuhan baru |
+| Product Owner | single owner of requirements content |
+| Engineers | reviewers of technical feasibility at `review` |
+| All roles | propose new requirements |
 
-## Terkait
+## Related
 
-- [intent/](../intent/) — sumber penurunan kebutuhan.
-- [specifications/](../specifications/) — `req-` dirinci menjadi `spec-`.
-- [quality/](../quality/) — `rvw-` dapat memvalidasi pemenuhan kebutuhan.
-- [planning/](../planning/) — `scp-` menyeleksi kebutuhan dalam cakupan.
+- [intent/](../intent/) — source of requirement derivation.
+- [specifications/](../specifications/) — `req-` is detailed into `spec-`.
+- [quality/](../quality/) — `rvw-` can validate requirement fulfillment.
+- [planning/](../planning/) — `scp-` selects requirements into scope.

@@ -1,48 +1,48 @@
 # sessions/ — Session (`ses-`)
 
-> Anchor EKA: Operating Layer — state domain **Existence State**; artefak sesi.
+> Anchor EKA: Operating Layer — State Domain **Existence State**; session artifact.
 
-## Tujuan
+## Purpose
 
-Session adalah catatan ephemeral dari satu kesempatan kerja: apa yang dikerjakan, konteks saat itu, catatan implementasi, dan verifikasi yang dilakukan. Sesi **tidak membawa status kemajuan permanen** — kemajuan dipegang oleh state domain lain (Execution State work item).
+A session is an ephemeral record of one working opportunity: what was done, the context at the time, implementation notes, and verification performed. Sessions **carry no permanent progress status** — progress is held by other State Domains (work item Execution State).
 
 ## Token & State Vector
 
-| Token | Folder | State yang dimiliki |
+| Token | Folder | Owned state |
 |---|---|---|
 | `ses-` | `operating/sessions/` | `existence-state` |
 
-Hanya satu domain yang dimiliki: `existence-state` (`active → archived → retired`). Field state lain (content-state, execution-state, planning-state, container-state) **tidak berlaku** (N/A) untuk sesi.
+Only one domain is owned: `existence-state` (`active → archived → retired`). Other state fields (content-state, execution-state, planning-state, container-state) are **not applicable** (N/A) to sessions.
 
-## "Completed" = Kondisi Turunan
+## "Completed" = Derived Condition
 
-Sesi tidak memiliki nilai "completed" di frontmatter. "Completed" adalah **kondisi turunan** — sesi dianggap selesai ketika kerja yang dicatatnya sudah terwakili pada work item (menuju `done`) dan verifikasinya tercatat. Setelah itu sesi hanya memindahkan `existence-state` ke `archived` (atau `retired`).
+Sessions have no "completed" value in frontmatter. "Completed" is a **derived condition** — a session is considered complete when the work it records is represented on a work item (moving toward `done`) and its verification is recorded. After that, the session only moves `existence-state` to `archived` (or `retired`).
 
-## Konten Ephemeral
+## Ephemeral Content
 
-Sesi bersifat ephemeral — ditulis cepat, dibaca cepat, dan tidak menjadi rujukan permanen. Struktur wajib:
+Sessions are ephemeral — written fast, read fast, and never a permanent reference. Required structure:
 
-- `## Context` — apa yang sedang dikerjakan dan konteksnya (rujuk `ctr-`/work item).
-- `## Notes` — catatan eksekusi, keputusan mikro, kendala.
-- `## Verification` — bukti verifikasi yang dilakukan (build, test, manual check).
+- `## Context` — what is being worked on and its context (reference the `ctr-`/work item).
+- `## Notes` — execution notes, micro-decisions, constraints.
+- `## Verification` — evidence of verification performed (build, test, manual check).
 
-## Distilasi Wajib Sebelum Arsip (EKA 11.4)
+## Mandatory Distillation Before Archival (EKA 11.4)
 
-Sebelum `ses-` diarsipkan, temuan yang layak **wajib didistilasi**: keputusan → `dec-`/`adr-`; temuan riset → `fnd-`; prosedur yang terbukti → `run-`; work item baru → dibuat di kontainer aktif. Sesi yang diarsipkan dengan temuan yang belum terdistilasi melanggar protokol.
+Before a `ses-` is archived, worthwhile findings **must be distilled**: decisions → `dec-`/`adr-`; research findings → `fnd-`; proven procedures → `run-`; new work items → created in the active container. Archiving a session with undistilled findings violates the protocol.
 
-## Konvensi Nama
+## Naming Conventions
 
-`ses-<id>.md`, kebab-case, unik dalam (namespace, type). Tanpa akhiran `-v<nn>`. Contoh: `ses-2026-08-05-implementasi-proyeksi.md`.
+`ses-<id>.md`, kebab-case, unique within (namespace, type). No `-v<nn>` suffix. Example: `ses-2026-08-05-projection-implementation.md`.
 
-## Kepemilikan
+## Ownership
 
-| Peran | Tanggung jawab |
+| Role | Responsibility |
 |---|---|
-| Engineer (penulis sesi) | pemilik tunggal `existence-state` sesi |
-| Semua peran | menulis sesi untuk kerja yang dilakukannya |
+| Engineer (session author) | single owner of the session's `existence-state` |
+| All roles | write sessions for the work they do |
 
-## Terkait
+## Related
 
-- [work-items/](../work-items/) — sesi melayani eksekusi work item.
-- [containers/](../containers/) — sesi terjadi dalam konteks `ctr-` aktif.
-- [decisions/](../../decisions/) dan [research/](../../research/) — muara distilasi sesi.
+- [work-items/](../work-items/) — sessions serve work item execution.
+- [containers/](../containers/) — sessions happen in the context of the active `ctr-`.
+- [decisions/](../../decisions/) and [research/](../../research/) — session distillation destinations.

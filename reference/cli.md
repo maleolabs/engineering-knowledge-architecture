@@ -1,47 +1,47 @@
-# CLI EKA — Antarmuka Resmi (`eka`)
+# EKA CLI — Official Interface (`eka`)
 
-> Dokumen konvensi, bukan artefak. Meta-dokumentasi zona `reference/`.
-> Implementasi: Go (`cmd/` + `bootstrap/` + `conformance/`), module `github.com/maleolabs/engineering-knowledge-architecture`.
-> Terkait: [`conformance-notes.md`](conformance-notes.md) (keputusan interpretasi + traceability aturan), [`../skeleton/docs/exchange/validation.md`](../skeleton/docs/exchange/validation.md) (9 aturan konformitas), [`eka-reference-serialization-format-v1.0.md`](eka-reference-serialization-format-v1.0.md) (target serialisasi `export`/`import` masa depan).
+> Convention document, not an artifact. Meta-documentation of the `reference/` zone.
+> Implementation: Go (`cmd/` + `bootstrap/` + `conformance/`), module `github.com/maleolabs/engineering-knowledge-architecture`.
+> Related: [`conformance-notes.md`](conformance-notes.md) (interpretation decisions + rule traceability), [`../skeleton/docs/exchange/validation.md`](../skeleton/docs/exchange/validation.md) (9 Conformance Rules), [`eka-reference-serialization-format-v1.0.md`](eka-reference-serialization-format-v1.0.md) (the serialization format used by `eka export` and `eka import`).
 
-## Filosofi CLI
+## CLI philosophy
 
-`eka` adalah **bentuk executable dari spesifikasi EKA** — antarmuka resmi Engineering Knowledge Architecture bagi manusia dan agent (Naming and Terminology Specification v1.0 §7). Dua peran saat ini:
+`eka` is the **canonical executable form of the Conformance Rules** (Naming and Terminology Specification §7.5) — the official interface of Engineering Knowledge Architecture for humans and agents (Naming and Terminology Specification v1.0 §7). Current roles:
 
-- **`eka init`** — Repository Bootstrapper resmi: menganalisis workspace, menyusun rencana bootstrap, mengonfigurasi proyek secara interaktif, membangkitkan repositori EKA dari Reference Skeleton, lalu memvalidasinya.
-- **`eka export`** — implementasi praktis pertama Exchange Specification: mengekspor pengetahuan engineering menjadi **EKA Package** sesuai Reference Serialization Format (RSF).
-- **`eka import`** — kebalikan dari export: mengonsumsi EKA Package dan mengintegrasikan pengetahuan ke repositori EKA yang ada — implementasi semantik import Exchange Specification §11.
-- **`eka validate`** — Validator konformitas: konformitas repositori tidak boleh bergantung hanya pada review manual — aturan R1–R9 di `skeleton/docs/exchange/validation.md` dirancang mekanis, dan validator ini adalah implementasi kanoniknya (P16: mekanisme enforcement bervariasi, invariant tetap identik).
+- **`eka init`** — the official Repository Bootstrapper: analyzes the workspace, composes a bootstrap plan, configures the project interactively, generates an EKA repository from the Reference Skeleton, then validates it.
+- **`eka export`** — the first practical implementation of the Exchange Specification: exports engineering knowledge as an **Exchange Package** per the Reference Serialization Format (RSF).
+- **`eka import`** — the inverse of export: consumes an Exchange Package and integrates knowledge into an existing EKA repository — implementing the import semantics of Exchange Specification §11.
+- **`eka validate`** — the conformance validator: repository conformance must not rest on manual review alone — rules R1–R9 in `skeleton/docs/exchange/validation.md` are designed to be mechanical, and this validator is their canonical implementation (P16: enforcement mechanisms vary, invariants stay identical).
 
-Konsekuensi dari filosofi ini:
+Consequences of this philosophy:
 
-- Validator adalah **satu-satunya sumber kebenaran mekanis**; jika aturan teks ambigu, keputusan interpretasi didokumentasikan (lihat `conformance-notes.md`) — tidak ada perilaku yang diciptakan tanpa dasar.
-- Repositori EKA sendiri harus lolos validatornya sendiri (lihat [Conformance repositori](#conformance-repositori)) — prasyarat agar validator dapat dipercaya oleh repositori lain.
-- Perilaku CLI deterministik: dua kali menjalankan perintah yang sama pada input yang sama menghasilkan keluaran yang identik byte-per-byte.
-- CLI adalah **adapter** — logika bisnis (bootstrap, validasi) hidup di package aplikasi yang dapat digunakan ulang, independen dari framework CLI (lihat [Arsitektur CLI](#arsitektur-cli)).
+- The validator is the **single source of mechanical truth**; where rule text is ambiguous, interpretation decisions are documented (see `conformance-notes.md`) — no behavior is invented without a basis.
+- The EKA repository itself must pass its own validator (see [Repository conformance](#repository-conformance)) — a prerequisite for the validator to be trusted by other repositories.
+- Deterministic CLI behavior: running the same command twice on the same input produces byte-identical output.
+- The CLI is an **adapter** — business logic (bootstrap, validation) lives in reusable application packages, independent of the CLI framework (see [CLI architecture](#cli-architecture)).
 
-## Instalasi
+## Installation
 
-Prasyarat: **Go 1.24+**.
+Prerequisites: **Go 1.24+**.
 
-### Dari module (setelah publikasi)
+### From the module (after publication)
 
 ```sh
 go install github.com/maleolabs/engineering-knowledge-architecture/cmd/eka@latest
 ```
 
-Binari `eka` terpasang ke `$GOBIN` (default `$GOPATH/bin`).
+The `eka` binary installs to `$GOBIN` (default `$GOPATH/bin`).
 
-### Dari sumber (repo ini)
+### From source (this repo)
 
 ```sh
 cd <root-repo-eka>
 go build -o eka ./cmd/eka
 ```
 
-Hasil build adalah **binari standalone yang portabel** — tidak ada dependensi runtime selain binary itu sendiri; dapat disalin ke mesin lain (dengan arsitektur/OS yang sama) dan dijalankan langsung.
+The build result is a **standalone, portable binary** — no runtime dependencies besides the binary itself; it can be copied to another machine (same architecture/OS) and run directly.
 
-## Penggunaan
+## Usage
 
 ```
 eka init [project-name] [--dry-run]
@@ -52,34 +52,34 @@ eka completion [bash|zsh|fish|powershell]
 eka help [command]
 ```
 
-- `eka` tanpa subperintah mencetak usage dan keluar `2`.
-- `eka -h` / `eka --help` / `eka help` mencetak help dan keluar `0`.
-- `eka help <command>` mencetak help perintah.
+- `eka` without a subcommand prints usage and exits `2`.
+- `eka -h` / `eka --help` / `eka help` prints help and exits `0`.
+- `eka help <command>` prints command help.
 
 ### Exit codes
 
-| Kode | Arti | Contoh |
+| Code | Meaning | Example |
 |---|---|---|
-| `0` | **Sukses** — validasi patuh (warning diizinkan) / inisialisasi selesai / dry-run / help / completion | Repositori lolos R1–R9; `eka init` selesai dan tervalidasi |
-| `1` | **Pelanggaran blocking** — validasi menemukan error, atau repositori hasil `eka init` gagal validasi | Setidaknya satu error (severity `error`) |
-| `2` | **Kesalahan penggunaan/internal** — perintah tidak berjalan | Perintah tidak dikenal, flag tidak dikenal, argumen berlebihan, path tidak valid |
+| `0` | **Success** — compliant validation (warnings allowed) / initialization completed / dry-run / help / completion | Repository passes R1–R9; `eka init` completed and validated |
+| `1` | **Blocking violation** — validation found errors, or the repository produced by `eka init` failed validation | At least one error (severity `error`) |
+| `2` | **Usage/internal error** — the command did not run | Unknown command, unknown flag, too many arguments, invalid path |
 
-Semantik warning: **warning tidak pernah memengaruhi exit code**. Repositori dengan warning tetap keluar `0`.
+Warning semantics: **warnings never affect the exit code**. A repository with warnings still exits `0`.
 
 ## `eka init` — Repository Bootstrapper
 
-`eka init` bukan template generator. Ia adalah **Repository Bootstrapper resmi** untuk repositori pengetahuan Engineering Knowledge Architecture: menganalisis workspace terlebih dahulu, menyusun rencana, bertanya hanya yang belum diketahui, membangkitkan dari Reference Skeleton, dan memvalidasi hasilnya.
+`eka init` is not a template generator. It is the official **Repository Bootstrapper** for Engineering Knowledge Architecture knowledge repositories: it analyzes the workspace first, composes a plan, asks only what is not yet known, generates from the Reference Skeleton, and validates the result.
 
-### Filosofi inisialisasi
+### Initialization philosophy
 
-Empat prinsip:
+Four principles:
 
-1. **Pahami dulu, ubah kemudian** — inisialisasi berjalan dalam lima tahap: *Workspace Discovery → Bootstrap Planning → Interactive Configuration → Repository Generation → Validation*. Workspace dipahami sebelum ada satu pun modifikasi; tidak ada generasi buta.
-2. **Adaptif** — discovery otomatis memengaruhi wizard: pengguna tidak pernah ditanya hal yang jawabannya sudah diketahui.
-3. **Idempoten** — `eka init` aman dijalankan berulang; artefak yang ada dideteksi, dipakai ulang, dilewati, atau dikonfirmasi eksplisit sebelum diganti. Konten pengguna tidak pernah ditimpa diam-diam.
-4. **Teruji otomatis** — inisialisasi dianggap berhasil hanya jika repositori hasil generasi lolos `eka validate`.
+1. **Understand first, change later** — initialization runs in five stages: *Workspace Discovery → Bootstrap Planning → Interactive Configuration → Repository Generation → Validation*. The workspace is understood before any modification; no blind generation.
+2. **Adaptive** — automatic discovery drives the wizard: the user is never asked a question whose answer is already known.
+3. **Idempotent** — `eka init` is safe to run repeatedly; existing artifacts are detected and reused, skipped, or explicitly confirmed before replacement. User content is never silently overwritten.
+4. **Automatically tested** — initialization counts as successful only if the generated repository passes `eka validate`.
 
-### Alur kerja lima tahap
+### Five-stage workflow
 
 ```
 Workspace Discovery
@@ -93,66 +93,66 @@ Repository Generation
 Validation
 ```
 
-1. **Workspace Discovery** — memeriksa target: ada/tidaknya direktori, direktori Git (di target maupun leluhurnya), README, direktori `docs/`, repositori EKA yang sudah ada (penanda: `docs/operating/` + `docs/exchange/validation.md` + `docs/exchange/transfer.md`), dan file konfigurasi (informasional: `.gitignore`, `.editorconfig`, `.eka.*`, `eka.*`).
-2. **Bootstrap Planning** — menyusun rencana deterministik: direktori yang akan dibuat, file yang akan dibangkitkan, resource yang dipakai ulang, status Git, langkah validasi. Rencana membawa konten file yang akan ditulis — dry-run dan eksekusi tidak mungkin menyimpang.
-3. **Interactive Configuration** — wizard adaptif (lihat di bawah).
-4. **Repository Generation** — menyalin Reference Skeleton (embedded dari `skeleton/`, lihat Arsitektur) ke target: `docs/**` verbatim + `README.md` dengan judul diganti nama proyek. File yang sudah ada dengan konten identik dipakai ulang; yang berbeda dikonfirmasi (interaktif) atau dilewati (non-interaktif). `git init` hanya jika direncanakan (lihat deteksi Git).
-5. **Validation** — `conformance.Validate(target)` dijalankan; hasil dicetak. Inisialisasi sukses hanya jika repositori lolos.
+1. **Workspace Discovery** — inspects the target: presence/absence of the directory, Git directory (at the target or its ancestors), README, `docs/` directory, existing EKA repository (markers: `docs/operating/` + `docs/exchange/validation.md` + `docs/exchange/transfer.md`), and configuration files (informational: `.gitignore`, `.editorconfig`, `.eka.*`, `eka.*`).
+2. **Bootstrap Planning** — composes a deterministic plan: directories to create, files to generate, resources to reuse, Git status, validation steps. The plan carries the content of the files to be written — dry-run and execution cannot diverge.
+3. **Interactive Configuration** — adaptive wizard (see below).
+4. **Repository Generation** — copies the Reference Skeleton (embedded from `skeleton/`, see Architecture) to the target: `docs/**` verbatim + `README.md` with the title replaced by the project name. Existing files with identical content are reused; differing ones are confirmed (interactive) or skipped (non-interactive). `git init` only if planned (see Git detection).
+5. **Validation** — `conformance.Validate(target)` runs; results are printed. Initialization succeeds only if the repository passes.
 
-### Mode
+### Modes
 
-| Perintah | Perilaku |
+| Command | Behavior |
 |---|---|
-| `eka init` | Inisialisasi direktori saat ini |
-| `eka init .` | Setara dengan `eka init` |
-| `eka init <project-name>` | Membuat direktori proyek baru dan menginisialisasinya sebagai repositori EKA |
-| `eka init [name] --dry-run` | Mencetak rencana bootstrap tanpa menulis apa pun; keluar `0` |
+| `eka init` | Initializes the current directory |
+| `eka init .` | Equivalent to `eka init` |
+| `eka init <project-name>` | Creates a new project directory and initializes it as an EKA repository |
+| `eka init [name] --dry-run` | Prints the bootstrap plan without writing anything; exits `0` |
 
-### Wizard adaptif
+### Adaptive wizard
 
-Wizard hanya menampilkan pertanyaan yang relevan:
+The wizard only asks relevant questions:
 
-| Pertanyaan | Muncul hanya jika |
+| Question | Asked only if |
 |---|---|
-| Project Name | Nama direktori target kosong/tidak dapat dipakai |
-| Namespace | Selalu (wajib; huruf kecil, digit, tanda hubung; tanpa `/`, `:`, spasi) |
-| Project Description | Selalu (opsional; boleh kosong) |
-| Generate README | README belum ada |
-| Initialize Git | Git belum ada **dan** binary `git` tersedia |
+| Project Name | Target directory name is empty/unusable |
+| Namespace | Always (required; lowercase, digits, hyphens; no `/`, `:`, spaces) |
+| Project Description | Always (optional; may be empty) |
+| Generate README | No README exists yet |
+| Initialize Git | No Git exists **and** the `git` binary is available |
 
-Tidak ada pertanyaan "Methodology" — EKA v1 tidak memiliki taksonomi methodology kanonik. Jika jawaban tidak dapat dibaca (stdin bukan terminal atau EOF), wizard memakai default deterministik dan **tidak pernah** menjalankan `git init`.
+There is no "Methodology" question — EKA v1 has no canonical methodology taxonomy. If answers cannot be read (stdin is not a terminal or EOF), the wizard uses deterministic defaults and **never** runs `git init`.
 
-### Deteksi Git cerdas
+### Smart Git detection
 
-- Sudah ada repositori Git (di target atau leluhur) → pertanyaan Git dilewati, `git init` tidak dieksekusi.
-- Direktori baru / belum ada Git → ditawarkan inisialisasi; jika diterima: `git init`; jika ditolak: lanjut normal.
-- Non-interaktif (pipe, `/dev/null`, file, CI) → Git tidak pernah diinisialisasi.
-- Kegagalan `git init` (mis. binary tidak ada) → peringatan, inisialisasi tetap dilanjutkan.
+- Existing Git repository (at the target or an ancestor) → Git question skipped, `git init` not executed.
+- New directory / no Git → initialization offered; if accepted: `git init`; if declined: proceed normally.
+- Non-interactive (pipe, `/dev/null`, file, CI) → Git never initialized.
+- `git init` failure (e.g., binary missing) → warning, initialization continues.
 
-### Idempotensi
+### Idempotency
 
-`eka init` dua kali pada target yang sama tidak pernah merusak repositori:
+Running `eka init` twice on the same target never damages the repository:
 
-- Repositori EKA yang sudah ada → terdeteksi, semua resource dipakai ulang, hanya validasi dijalankan (keluaran: "already initialized").
-- File yang akan dibangkitkan sudah ada:
-  - konten identik → dipakai ulang (tanpa tulis);
-  - konten berbeda → konfirmasi eksplisit (interaktif; default tolak) atau dilewati + dilaporkan (non-interaktif).
+- Existing EKA repository → detected, all resources reused, only validation runs (output: "already initialized").
+- Files to be generated already exist:
+  - identical content → reused (no write);
+  - different content → explicit confirmation (interactive; default reject) or skipped + reported (non-interactive).
 
 ### Dry-run
 
-`eka init --dry-run` mencetak rencana bootstrap — direktori yang akan dibuat, file yang akan dibangkitkan, resource yang dipakai ulang, status Git, rencana validasi — **tanpa menulis satu pun file**. Deterministik: dua dry-run pada state yang sama menghasilkan keluaran identik.
+`eka init --dry-run` prints the bootstrap plan — directories to create, files to generate, resources to reuse, Git status, validation plan — **without writing a single file**. Deterministic: two dry-runs on the same state produce identical output.
 
-### Ringkasan keluaran
+### Output summary
 
-Setelah selesai, dicetak ringkasan ringkas: Project Name, Namespace, Repository Type (new / existing-dir / existing-eka), Git Status, Knowledge Standard Version (EKA v1.0), Validation Result (PASS/FAIL + jumlah error/warning), dan langkah selanjutnya yang disarankan.
+On completion, a concise summary is printed: Project Name, Namespace, Repository Type (new / existing-dir / existing-eka), Git Status, Knowledge Standard Version (EKA v1.0), Validation Result (PASS/FAIL + error/warning counts), and suggested next steps.
 
-## `eka export` — Ekspor Paket Pengetahuan
+## `eka export` — Knowledge Package Export
 
-`eka export` adalah implementasi praktis pertama dari **EKA Exchange Specification** dan **Reference Serialization Format (RSF)**. Ini **bukan** arsip repositori dan **bukan** utilitas ZIP — ia membangun EKA Package kanonik.
+`eka export` is the first practical implementation of the **EKA Exchange Specification** and the **Reference Serialization Format (RSF)**. It is **not** a repository archive and **not** a ZIP utility — it builds a canonical Exchange Package.
 
-### Filosofi ekspor
+### Export philosophy
 
-Export diperlakukan sebagai **transformasi pengetahuan**, bukan penyalinan file:
+Export is treated as a **knowledge transformation**, not file copying:
 
 ```
 Repository
@@ -161,87 +161,87 @@ Engineering Knowledge Model
     ↓
 Reference Serialization Format
     ↓
-EKA Package
+Exchange Package
 ```
 
-- Package merepresentasikan **Engineering Knowledge** (Identity, State, Content, Relationship, Klasifikasi), bukan layout repositori — tidak ada path repositori di dalam package; semua identitas kanonik.
-- Package adalah proyeksi bijective dari Exchange Package Object Model (Exchange Spec §4.4) ke RSF.
-- Repositori yang identik selalu menghasilkan package yang **identik byte-per-byte**.
+- The package represents **Engineering Knowledge** (Identity, State, Content, Relationship, Classification), not the repository layout — no repository paths inside the package; all identities canonical.
+- The package is a bijective projection of the Exchange Package Object Model (Exchange Spec §4.4) onto the RSF.
+- Identical repositories always produce **byte-identical** packages.
 
-### Alur kerja
+### Workflow
 
-1. **Validasi repositori** — `conformance.Validate(root)` dijalankan otomatis (setara `eka validate`). Jika gagal: **export berhenti, tidak ada package diproduksi** (exit `1`). Hanya repositori konform yang dapat diekspor.
-2. **Discovery** — identitas repositori (namespace dari seluruh artifact), specification version (EKA v1.0), scope, metadata package.
-3. **Loading** — artifact dimuat via `conformance.Scan` (kebijakan pemindaian sama dengan validator: `.md` saja, lewati `testdata`/dot-dirs/symlink); body konten diekstrak byte-exact.
-4. **Scope resolution** — pilih unit sesuai scope (lihat bawah).
-5. **Model construction** — bangun object model Exchange: Header, Manifest, Units, Declarations, Integrity.
-6. **Serialization (RSF)** — proyeksi deterministik: blok JSON + payload konten + attachments.
-7. **Write** — package `.ekapkg` (ZIP) atau layout direktori.
+1. **Repository validation** — `conformance.Validate(root)` runs automatically (equivalent to `eka validate`). On failure: **export stops, no package produced** (exit `1`). Only conformant repositories can be exported.
+2. **Discovery** — repository identity (namespace across all artifacts), specification version (EKA v1.0), scope, package metadata.
+3. **Loading** — artifacts loaded via `conformance.Scan` (same scan policy as the validator: `.md` only, skip `testdata`/dot-dirs/symlinks); content bodies extracted byte-exact.
+4. **Scope resolution** — select units per scope (see below).
+5. **Model construction** — build the Exchange object model: Header, Manifest, Units, Declarations, Integrity.
+6. **Serialization (RSF)** — deterministic projection: JSON blocks + content payloads + attachments.
+7. **Write** — package `.ekapkg` (ZIP) or directory layout.
 
 ### Export scope
 
-| Argumen | Scope | Isi package |
+| Argument | Scope | Package contents |
 |---|---|---|
-| (tanpa target) | **Repository** (default) | seluruh artifact seluruh Line |
-| `<type>:<id>` | **Line** | seluruh instance Line tersebut |
-| `<type>:<id>:<instance-version>` | **Instance** | satu instance |
-| beberapa target | **Collection** | gabungan Line/instance yang diminta |
+| (no target) | **Repository** (default) | all artifacts of all Lines |
+| `<type>:<id>` | **Line** | all instances of that Line |
+| `<type>:<id>:<instance-version>` | **Instance** | one instance |
+| multiple targets | **Collection** | union of the requested Lines/instances |
 
-Referensi keluar package → **External Reference Declaration** di `declarations.json` (Exchange §12.3) — integritas dependensi dipertahankan tanpa closure traversal di v1. Referensi menggantung pada artifact Draft ditoleransi (draft tolerance, R5) dan dicatat; referensi menggantung pada non-Draft memblokir validasi (dan karenanya export).
+References leaving the package → **External Reference Declaration** in `declarations.json` (Exchange §12.3) — dependency integrity is preserved without closure traversal in v1. Dangling references on Draft artifacts are tolerated (draft tolerance, R5) and recorded; dangling references on non-Draft artifacts block validation (and therefore export).
 
-### Isi package (proyeksi RSF referensi)
+### Package contents (reference RSF projection)
 
-| Entry | Isi |
+| Entry | Contents |
 |---|---|
-| `header.json` | Package Header: serialization version `1`, exchange format version `1`, specification version `1.0`, exporter `eka`, package identity label, scope, namespace. Tanpa creation timestamp (determinisme byte). |
-| `manifest.json` | Manifest: daftar unit terurut (canonical identity form), digest per-unit + package, counts, closure declaration (scope + seed). |
-| `units/<ns>/<type>-<id>-v<nn>/unit.json` | Metadata unit: identity lengkap, revision, author/created/updated, state vector eksak, change log urutan kejadian, relationship by Identity terurut, klasifikasi, phase (scp-/plan-). |
-| `units/<ns>/<type>-<id>-v<nn>/content` | Body konten (representasi `eka/structured-text/1`), byte-exact. |
-| `attachments/<path>` | File non-`.md` di bawah `docs/` (diagram, gambar, dsb.), byte-exact. Attachment ID = path relatif. v1: tanpa referensi unit→attachment. |
-| `declarations.json` | Declarations Block: closure declaration, external reference declarations, extension declarations (kosong di v1). |
-| `integrity.json` | Digest SHA-256: package-level (atas seluruh entry kecuali `manifest.json` + `integrity.json`), per-unit (`unit.json ‖ content`), per-attachment. |
+| `header.json` | Package Header: serialization version `1`, exchange format version `1`, specification version `1.0`, exporter `eka`, package identity label, scope, namespace. No creation timestamp (byte determinism). |
+| `manifest.json` | Manifest: ordered unit list (canonical identity form), per-unit + package digests, counts, closure declaration (scope + seed). |
+| `units/<ns>/<type>-<id>-v<nn>/unit.json` | Unit metadata: full identity, revision, author/created/updated, exact state vector, Change Log in occurrence order, ordered Relationships by Identity, classification, phase (scp-/plan-). |
+| `units/<ns>/<type>-<id>-v<nn>/content` | Content body (representation `eka/structured-text/1`), byte-exact. |
+| `attachments/<path>` | Non-`.md` files under `docs/` (diagrams, images, etc.), byte-exact. Attachment ID = relative path. v1: no unit→attachment references. |
+| `declarations.json` | Declarations Block: closure declaration, external reference declarations, extension declarations (empty in v1). |
+| `integrity.json` | SHA-256 digests: package-level (over all entries except `manifest.json` + `integrity.json`), per-unit (`unit.json ‖ content`), per-attachment. |
 
-Encoding: UTF-8 tanpa BOM, LF, JSON struct berurutan tetap, entry ZIP terurut + timestamp nol. Paket nama: `rsf-<scope>-<namespace>-1.ekapkg` (RSF §4.1–4.2).
+Encoding: UTF-8 without BOM, LF, fixed-order JSON structs, ordered ZIP entries with zero timestamps. Package name: `rsf-<scope>-<namespace>-1.ekapkg` (RSF §4.1–4.2).
 
-### Deviasi RSF terdokumentasi (v1)
+### Documented RSF deviations (v1)
 
-1. Tanpa creation timestamp di header — determinisme byte (RSF §4.3 memperbolehkan metadata berbeda).
-2. Header tidak mengumumkan integrity/declarations — keberadaan `integrity.json`/`declarations.json` deterministik.
-3. Konten dibawa byte-exact tanpa normalisasi LF — losslessness; canonicalization dideklarasikan = payload byte-exact (RSF §9.3/§6.3.3).
-4. Attachment ID = path relatif repositori, bukan "referring unit identity + resource name" (RSF §7.2 recommended rule).
-5. Package digest tidak mencakup `manifest.json` — menghindari self-reference (manifest memuat digest package).
+1. No creation timestamp in the header — byte determinism (RSF §4.3 permits differing metadata).
+2. The header does not announce integrity/declarations — the presence of `integrity.json`/`declarations.json` is deterministic.
+3. Content carried byte-exact without LF normalization — losslessness; the declared canonicalization = byte-exact payload (RSF §9.3/§6.3.3).
+4. Attachment ID = repository-relative path, not "referring unit identity + resource name" (RSF §7.2 recommended rule).
+5. The package digest does not cover `manifest.json` — avoids self-reference (the manifest carries the package digest).
 
 ### Output
 
-- Default: `<label>.ekapkg` di direktori saat ini.
-- `-o <file>.ekapkg` — path file kustom.
-- `-o <dir>` / path berakhiran separator — layout direktori (struktur logis sama, tanpa ZIP).
+- Default: `<label>.ekapkg` in the current directory.
+- `-o <file>.ekapkg` — custom file path.
+- `-o <dir>` / path ending in a separator — directory layout (same logical structure, without ZIP).
 
-Kedua mode deterministik. Paket yang sama dari repositori identik → identik.
+Both modes deterministic. The same package from identical repositories → identical.
 
-### Determinisme
+### Determinism
 
-- Semua koleksi terurut oleh canonical identity key; change log urutan kejadian; relationship terurut (type, target); entry ZIP terurut; field JSON urutan tetap.
-- Tanpa timestamp, tanpa nilai host-dependent, tanpa absolute path di dalam package.
-- Digest dihitung atas bytes kanonik.
+- All collections ordered by canonical identity key; Change Log in occurrence order; relationships ordered (type, target); ZIP entries ordered; JSON fields in fixed order.
+- No timestamps, no host-dependent values, no absolute paths inside the package.
+- Digests computed over canonical bytes.
 
 ### Error handling
 
-| Kondisi | Perilaku |
+| Condition | Behavior |
 |---|---|
-| Repositori tidak konform | Berhenti, laporan validasi dicetak, **tidak ada package**, exit `1` |
-| Target tidak ada / sintaks salah / ambigu | Error dengan daftar artifact tersedia, exit `2` |
-| Komponen identity melanggar charset (RSF §5.2.3) | Export ditolak (keamanan: pencegahan path traversal), exit `2` |
-| Kegagalan serialisasi/fs (output tidak dapat ditulis, dll.) | Error, exit `2` |
+| Repository non-conformant | Stops, validation report printed, **no package**, exit `1` |
+| Target missing / invalid syntax / ambiguous | Error listing the available artifacts, exit `2` |
+| Identity component violates charset (RSF §5.2.3) | Export refused (security: path traversal prevention), exit `2` |
+| Serialization/fs failure (output not writable, etc.) | Error, exit `2` |
 
-## `eka import` — Integrasi Pengetahuan
+## `eka import` — Knowledge Integration
 
-`eka import <package-path>` mengonsumsi EKA Package (`.ekapkg` atau layout direktori) dan mengintegrasikan pengetahuan engineering ke repositori EKA di direktori saat ini. Ini **bukan** ekstraksi arsip — ini pipeline integrasi pengetahuan yang mengimplementasikan semantik import Exchange Specification §11.
+`eka import <package-path>` consumes an Exchange Package (`.ekapkg` or directory layout) and integrates engineering knowledge into the EKA repository in the current directory. It is **not** an archive extraction — it is a knowledge integration pipeline implementing the import semantics of Exchange Specification §11.
 
-### Filosofi import
+### Import philosophy
 
 ```
-EKA Package
+Exchange Package
     ↓
 Reference Deserialization
     ↓
@@ -252,66 +252,66 @@ Repository Integration
 Repository Validation
 ```
 
-- Identitas = mekanisme lookup kanonik — tidak pernah path filesystem.
-- Integrasi **atomik**: semua berhasil, atau tidak ada yang berubah.
-- Strategi v1 = **merge konservatif**: hanya artifact baru yang ditulis; duplikat identik = no-op; perbedaan payload apa pun = konflik → batal. Tidak ada overwrite, tidak ada hapus, tidak ada strategi replace (masa depan).
+- Identity = the canonical lookup mechanism — never filesystem paths.
+- Integration is **atomic**: either everything succeeds, or nothing changes.
+- v1 strategy = **conservative merge**: only new artifacts are written; identical duplicates = no-op; any payload difference = conflict → abort. No overwrite, no delete, no replace strategy (future).
 
-### Alur kerja (pipeline Exchange §11)
+### Workflow (Exchange §11 pipeline)
 
-1. **Repository discovery + gate** — target harus repositori EKA (marker `docs/operating/` + `docs/exchange/`); `conformance.Validate` dijalankan sebelum impor. Target tidak valid → berhenti, exit `1`.
-2. **Package validation** — integritas package (digest SHA-256: package-level atas seluruh entry kecuali `manifest.json` + `integrity.json`, per-unit atas `unit.json ‖ content`, per-attachment), JSON well-formed, manifest↔units 1:1, field/entry tak dikenal ditolak (RSF §9.5), kompatibilitas versi (serialization `1`, exchange format `1`, specification `1.0` — ketidakcocokan ditolak dengan diagnostik "ditemukan vs didukung").
-3. **Fase 1–8 (analisis, tanpa tulis)** — contract → identity (charset RSF §5.2.3, unik dalam package) → state (nilai valid, owned-set, konsistensi change-log) → struktural (well-formedness per keluarga tipe) → referensial (lokal → global → eksternal per §7.4; dangling non-draft → batal; draft → warning) → konflik → duplikat → urutan dependensi.
-4. **Fase 9 (commit)** — tulis ter-staging (temp + rename, atomik per file); kegagalan apa pun → rollback (file + direktori yang dibuat dihapus), repositori tidak berubah.
-5. **Fase 10 (revalidasi)** — `conformance.Validate` setelah integrasi; gagal → rollback, exit `1`.
+1. **Repository discovery + gate** — the target must be an EKA repository (markers `docs/operating/` + `docs/exchange/`); `conformance.Validate` runs before import. Invalid target → stop, exit `1`.
+2. **Package validation** — package integrity (SHA-256 digests: package-level over all entries except `manifest.json` + `integrity.json`, per-unit over `unit.json ‖ content`, per-attachment), well-formed JSON, manifest↔units 1:1, unknown fields/entries rejected (RSF §9.5), version compatibility (serialization `1`, exchange format `1`, specification `1.0` — incompatibilities rejected with a "found vs supported" diagnostic).
+3. **Phases 1–8 (analysis, no writes)** — contract → identity (charset RSF §5.2.3, unique within the package) → state (valid values, owned-set, change-log consistency) → structural (well-formedness per type family) → referential (local → global → external per §7.4; dangling non-draft → abort; draft → warning) → conflict → duplicate → dependency order.
+4. **Phase 9 (commit)** — staged writes (temp + rename, atomic per file); any failure → rollback (created files and directories removed), repository unchanged.
+5. **Phase 10 (revalidation)** — `conformance.Validate` after integration; failure → rollback, exit `1`.
 
-### Konflik
+### Conflicts
 
-| Kondisi | Perilaku |
+| Condition | Behavior |
 |---|---|
-| Identity sama + payload identik (content, state, change-log, relationship, klasifikasi, metadata) | Duplikat → no-op (dilewati) |
-| Identity sama + payload berbeda | **Konflik → impor dibatalkan**; ringkasan per-identity mencantumkan perbedaan |
-| Referensi tak terdeklarasi / eksternal tak ter-resolve (non-draft) | **Batal** — integritas referensial tidak dapat dipertahankan |
-| Referensi menggantung pada artifact Draft | Ditoleransi (draft tolerance, R5), dicatat sebagai warning |
-| Attachment target sudah ada, konten beda | Konflik → batal; identik → dilewati |
+| Same Identity + identical payload (content, state, change-log, relationship, classification, metadata) | Duplicate → no-op (skipped) |
+| Same Identity + different payload | **Conflict → import aborted**; per-identity summary lists the differences |
+| Undeclared reference / unresolved external (non-draft) | **Abort** — referential integrity cannot be maintained |
+| Dangling reference on a Draft artifact | Tolerated (draft tolerance, R5), recorded as a warning |
+| Target attachment already exists, different content | Conflict → abort; identical → skipped |
 
-Tidak ada partial integration: seluruh analisis terjadi sebelum satu pun file ditulis.
+No partial integration: all analysis happens before a single file is written.
 
-### Jaminan rollback
+### Rollback guarantees
 
-- Commit ter-staging per file; kegagalan commit → semua file + direktori yang dibuat dihapus (deepest-first), file yang sudah ada sebelumnya tidak tersentuh.
-- Revalidasi pasca-impor gagal → seluruh hasil impor di-rollback, repositori kembali ke state pra-impor.
-- Jika rollback sendiri gagal (mis. filesystem berubah read-only), error mencantumkan peringatan eksplisit bahwa repositori mungkin partially modified.
+- Per-file staged commit; commit failure → all created files and directories removed (deepest-first), pre-existing files untouched.
+- Post-import revalidation failure → the entire import result is rolled back, the repository returns to its pre-import state.
+- If rollback itself fails (e.g., filesystem turned read-only), the error carries an explicit warning that the repository may be partially modified.
 
-### Kompatibilitas
+### Compatibility
 
-- Package harus menyatakan serialization version `1`, exchange format version `1`, specification version `1.0` — didukung.
-- Kombinasi tidak didukung ditolak dengan diagnostik (nilai ditemukan vs didukung).
-- Package tanpa Capability Declaration diterima (opsional per Exchange §4.5); package dengan ekstensi tak dikenal ditolak eksplisit.
+- The package must declare serialization version `1`, exchange format version `1`, specification version `1.0` — supported.
+- Unsupported combinations are rejected with a diagnostic (found vs supported values).
+- Packages without a Capability Declaration are accepted (optional per Exchange §4.5); packages with unknown extensions are explicitly rejected.
 
-### Keterbatasan v1
+### v1 limitations
 
-- Referensi lintas-namespace hanya untuk instance v1 (format repositori `<ns>/<type>:<id>`; instance > 1 → error jelas).
-- Tidak ada rekonsiliasi state forward-only (Exchange §13.2) — v1 konservatif: identik = no-op, berbeda = konflik.
-- Strategi replace/merge lanjutan: masa depan.
+- Cross-namespace references only for v1 instances (repository format `<ns>/<type>:<id>`; instance > 1 → clear error).
+- No forward-only state reconciliation (Exchange §13.2) — v1 is conservative: identical = no-op, different = conflict.
+- Advanced replace/merge strategies: future.
 
 ### Error handling
 
-| Kondisi | Perilaku |
+| Condition | Behavior |
 |---|---|
-| Target bukan repositori EKA / tidak konform | Berhenti, exit `1` |
-| Konflik identity/state/metadata, kegagalan relationship, revalidasi gagal | Berhenti + rollback, exit `1` |
-| Package invalid (digest, JSON, entry hilang, versi tak didukung, field tak dikenal) | Berhenti, repositori tidak berubah, exit `2` |
-| Kegagalan filesystem / usage | Error, exit `2` |
+| Target not an EKA repository / non-conformant | Stops, exit `1` |
+| Identity/state/metadata conflict, relationship failure, revalidation failure | Stops + rollback, exit `1` |
+| Invalid package (digest, JSON, missing entries, unsupported version, unknown fields) | Stops, repository unchanged, exit `2` |
+| Filesystem / usage failure | Error, exit `2` |
 
-## `eka validate` — Validator Konformitas
+## `eka validate` — Conformance Validator
 
 ```
 eka validate [path]
 ```
 
-- `path` — opsional; root repositori yang divalidasi. Default: **direktori saat ini** (`.`).
+- `path` — optional; repository root to validate. Default: **current directory** (`.`).
 
-### Contoh keluaran (repositori EKA itu sendiri)
+### Example output (the EKA repository itself)
 
 ```
 EKA Conformance Validation
@@ -328,115 +328,115 @@ Results (sorted by file, then rule):
 Execution: PASS (0 errors, 0 warnings)
 ```
 
-> Catatan: jumlah `.md files` adalah snapshot — bertambah setiap dokumen konvensi baru ditambahkan; format keluaran tetap. Jumlah artifact, error, dan warning adalah kontrak (7 artifact; error > 0 ⇒ FAIL).
+> Note: the `.md files` count is a snapshot — it grows with every new convention document added; the output format stays fixed. The artifact, error, and warning counts are the contract (7 artifacts; error > 0 ⇒ FAIL).
 
-Struktur keluaran:
+Output structure:
 
-1. **Ringkasan pemindaian** — root yang dipindai, jumlah file `.md`, jumlah artifact, jumlah error, jumlah warning.
-2. **Hasil** — setiap pelanggaran dalam satu baris `[severity] rule file: pesan`; diurutkan deterministik berdasarkan file, lalu rule (R0, R1–R9), lalu severity, lalu pesan. Jika tidak ada pelanggaran, dicetak `(no violations found)`.
-3. **Ringkasan eksekusi** — `PASS` jika tidak ada error blocking, `FAIL` jika ada; diikuti jumlah error dan warning.
+1. **Scan summary** — scanned root, number of `.md` files, number of artifacts, number of errors, number of warnings.
+2. **Results** — each violation on one line `[severity] rule file: message`; deterministically sorted by file, then rule (R0, R1–R9), then severity, then message. If no violations, `(no violations found)` is printed.
+3. **Execution summary** — `PASS` if no blocking errors, `FAIL` otherwise; followed by the error and warning counts.
 
-### Contoh hasil dengan pelanggaran
+### Example output with violations
 
 ```
   [error] R4 docs/decisions/adr-002-state-vector-encoding.md: missing owned state field existence-state on type "adr"
   [warning] R5 docs/decisions/adr-003-projection-model.md: unresolved reference "sto-x" in `depends-on` (allowed while content-state is draft)
 ```
 
-### Proses validasi
+### Validation process
 
-Alur `eka validate [path]`:
+The `eka validate [path]` flow:
 
-1. **Pemindaian rekursif** — seluruh pohon direktori di bawah `path` ditelusuri.
-2. **Klasifikasi** — setiap file `.md` diperiksa frontmatter-nya:
-   - Frontmatter memuat **`type` DAN `id`** → **Artifact**, dievaluasi terhadap R1–R9.
-   - Selain itu (README, `protocol.md`, `validation.md`, `transfer.md`, teks kanonik standard, dst.) → **Dokumen Konvensi**, dihitung tetapi dilewati.
-   - Frontmatter memuat **tepat satu** dari `type`/`id` → malformed, dilaporkan sebagai error struktural (R0).
-3. **Eksekusi 9 aturan konformitas (R1–R9)** — persis seperti didefinisikan di [`skeleton/docs/exchange/validation.md`](../skeleton/docs/exchange/validation.md):
-   - R1 keunikan Identity, R2 konsistensi filename, R3 validitas nilai state, R4 kepatuhan owned-set, R5 integritas referensial, R6 dimensi == folder, R7 konsistensi change-log, R8 single-writer & proyeksi, R9 well-formedness.
-   - Kesalahan struktural pra-aturan (frontmatter tidak valid, artifact rule dilanggar, field identity hilang/rusak, token tipe tidak dikenal) dikelompokkan sebagai **R0**.
-   - Interpretasi mekanis setiap aturan: [`conformance-notes.md`](conformance-notes.md).
-4. **Pelaporan deterministik** — hasil diurutkan (file → rule → severity → pesan), sehingga keluaran stabil antar mesin dan antar run.
+1. **Recursive scan** — the entire directory tree under `path` is traversed.
+2. **Classification** — each `.md` file's frontmatter is inspected:
+   - Frontmatter carries **`type` AND `id`** → **Artifact**, evaluated against R1–R9.
+   - Otherwise (README, `protocol.md`, `validation.md`, `transfer.md`, canonical standard texts, etc.) → **Convention Document**, counted but skipped.
+   - Frontmatter carries **exactly one** of `type`/`id` → malformed, reported as a structural error (R0).
+3. **Execution of the 9 Conformance Rules (R1–R9)** — exactly as defined in [`skeleton/docs/exchange/validation.md`](../skeleton/docs/exchange/validation.md):
+   - R1 Identity uniqueness, R2 filename consistency, R3 state value validity, R4 owned-set compliance, R5 referential integrity, R6 dimension == folder, R7 change-log consistency, R8 single-writer & projection, R9 well-formedness.
+   - Pre-rule structural errors (invalid frontmatter, artifact rule violation, missing/corrupt identity fields, unknown type token) are grouped as **R0**.
+   - Mechanical interpretation of each rule: [`conformance-notes.md`](conformance-notes.md).
+4. **Deterministic reporting** — results sorted (file → rule → severity → message), so output is stable across machines and runs.
 
-### Scope pemindaian
+### Scan scope
 
-- Hanya file berakhiran `.md` yang diperiksa; file lain diabaikan.
-- Direktori bernama `testdata` dan direktori berawalan titik (mis. `.git`) **tidak dituruni** — fixture pengujian dan metadata VCS bukan konten knowledge base.
-- Symlink tidak diikuti.
-- File `.md` yang tidak dapat dibaca → `eka validate` gagal dengan error (exit `2`): pemindaian yang tidak dapat melihat seluruh file tidak dapat menyatakan kepatuhan.
+- Only files ending in `.md` are inspected; other files are ignored.
+- Directories named `testdata` and directories starting with a dot (e.g., `.git`) are **not descended into** — test fixtures and VCS metadata are not knowledge base content.
+- Symlinks are not followed.
+- Unreadable `.md` file → `eka validate` fails with an error (exit `2`): a scan that cannot see all files cannot assert conformance.
 
 ## Shell completion
 
-`eka completion [bash|zsh|fish|powershell]` mencetak script completion untuk shell yang dipilih (disediakan oleh framework Cobra). Gunakan, misalnya:
+`eka completion [bash|zsh|fish|powershell]` prints the completion script for the selected shell (provided by the Cobra framework). Use, for example:
 
 ```sh
 source <(eka completion bash)
 ```
 
-## Conformance repositori
+## Repository conformance
 
-Repositori EKA **lolos suite konformansinya sendiri**: seluruh file `.md` dipindai, 7 artifact (7 Implementation ADR di `reference/decisions/`), **0 error, 0 warning, exit 0** (lihat contoh keluaran di atas).
+The EKA repository **passes its own conformance suite**: all `.md` files scanned, 7 artifacts (7 Implementation ADRs in `reference/decisions/`), **0 errors, 0 warnings, exit 0** (see example output above).
 
-Milestone ini dikodifikasi sebagai pengujian otomatis `TestReferenceImplementationConforms` di `conformance/self_validation_test.go`: test tersebut menemukan root repositori, menjalankan `Validate` atas seluruh repositori, dan menegaskan 0 error blocking. Artinya, regresi konformansi apa pun (mis. ADR baru yang melanggar aturan) mematahkan test suite sebelum sempat masuk commit.
+This milestone is codified as the automated test `TestReferenceImplementationConforms` in `conformance/self_validation_test.go`: the test locates the repository root, runs `Validate` over the whole repository, and asserts 0 blocking errors. Any conformance regression (e.g., a new ADR violating a rule) therefore breaks the test suite before it can reach a commit.
 
-## Arsitektur CLI
+## CLI architecture
 
-CLI diorganisasi sebagai **dua lapisan + satu titik masuk**:
+The CLI is organized as **two layers + one entry point**:
 
-| Lapisan | Lokasi | Peran |
+| Layer | Location | Role |
 |---|---|---|
-| Command layer | `cmd/` (package `cmd`) | **Hanya** definisi perintah Cobra: registrasi, flag, help, validasi argumen, dispatch ke layanan. Tidak ada logika domain. |
-| Application layer | `bootstrap/` (package publik) | Repository Bootstrapper: discovery, planning, wizard, generasi, validasi — dapat digunakan ulang tanpa CLI. |
-| Application layer | `exchange/` (package publik) | Mesin import/export (Exchange Spec + RSF): discovery, loading, model building, serialization, deserialization, identity/relationship resolver, conflict analyzer, integration engine (staged commit + rollback), package writer — dapat digunakan ulang tanpa CLI. |
-| Application layer | `conformance/` (package publik) | Mesin validasi: pemindaian, klasifikasi artifact, aturan R1–R9, model hasil (`Report`); juga menyediakan `Scan` dan `ParseReference` untuk konsumen lain. |
-| Entry point | `cmd/eka/main.go` | Tipis: `os.Exit(cmd.Execute(...))`. Nama executable: `eka`. |
+| Command layer | `cmd/` (package `cmd`) | **Only** Cobra command definitions: registration, flags, help, argument validation, dispatch to services. No domain logic. |
+| Application layer | `bootstrap/` (public package) | Repository Bootstrapper: discovery, planning, wizard, generation, validation — reusable without the CLI. |
+| Application layer | `exchange/` (public package) | Import/export engine (Exchange Spec + RSF): discovery, loading, model building, serialization, deserialization, identity/relationship resolver, conflict analyzer, integration engine (staged commit + rollback), package writer — reusable without the CLI. |
+| Application layer | `conformance/` (public package) | Validation engine: scanning, artifact classification, rules R1–R9, result model (`Report`); also provides `Scan` and `ParseReference` for other consumers. |
+| Entry point | `cmd/eka/main.go` | Thin: `os.Exit(cmd.Execute(...))`. Executable name: `eka`. |
 
 ```
 cmd/                package cmd — Cobra command definitions (command layer)
   root.go           root command + Execute(args, stdin, stdout, stderr) int
-  validate.go       perintah validate
-  init.go           perintah init
-  export.go         perintah export
-  import.go         perintah import
-  execute_test.go   test CLI (exit codes, help, completion, mode)
+  validate.go       validate command
+  init.go           init command
+  export.go         export command
+  import.go         import command
+  execute_test.go   CLI tests (exit codes, help, completion, modes)
 cmd/eka/
-  main.go           tipis: os.Exit(cmd.Execute(...))
-bootstrap/          package publik — engine eka init (application layer)
-exchange/           package publik — engine ekspor/impor (application layer)
-conformance/        package publik — engine validasi (application layer)
-skeletonembed.go    package root — //go:embed skeleton (Reference Skeleton kanonik)
+  main.go           thin: os.Exit(cmd.Execute(...))
+bootstrap/          public package — eka init engine (application layer)
+exchange/           public package — import/export engine (application layer)
+conformance/        public package — validation engine (application layer)
+skeletonembed.go    root package — //go:embed skeleton (canonical Reference Skeleton)
 ```
 
-Prinsip:
+Principles:
 
-- **Cobra adalah adapter, bukan arsitektur.** Framework (saat ini Cobra) adalah detail implementasi antarmuka perintah. Logika bisnis hidup di `bootstrap/` dan `conformance/` — package publik yang diimpor sebagai `github.com/maleolabs/engineering-knowledge-architecture/bootstrap` dan `.../conformance`, **tanpa dependensi apa pun ke `cmd/`**.
-- **Command layer memanggil layanan, bukan sebaliknya.** Tooling masa depan (import/export, graph query, SDK, integrasi Knowledge OS) cukup mengimpor package aplikasi tanpa menempel ke Cobra.
-- **Tidak ada `internal/` atau `pkg/`** — tidak ada konsumen internal kedua; `bootstrap/` dan `conformance/` sudah merupakan public API. Menambah direktori tanpa tujuan langsung adalah speculative abstraction (dilarang).
-- **Reference Skeleton ter-embed** (`skeletonembed.go`): `eka init` membangkitkan repositori dari sumber kanonik `skeleton/`, bukan dari direktori yang di-hardcode. Binari standalone tetap dapat membangkitkan struktur tanpa checkout repositori.
-- **Exit codes deterministik** (0/1/2) dipetakan di `cmd/root.go`; semua error melewati satu jalur keluaran `eka: <pesan>`.
+- **Cobra is an adapter, not the architecture.** The framework (currently Cobra) is an implementation detail of the command interface. Business logic lives in `bootstrap/`, `exchange/` and `conformance/` — public packages imported as `github.com/maleolabs/engineering-knowledge-architecture/bootstrap` and `.../conformance`, **with no dependency on `cmd/`**.
+- **The command layer calls services, not the other way around.** Future tooling (import/export, graph query, SDKs, Knowledge OS integration) can import the application packages without being tied to Cobra.
+- **No `internal/` or `pkg/`** — there is no second internal consumer; `bootstrap/`, `exchange/` and `conformance/` are already public API. Adding a directory without an immediate purpose is speculative abstraction (forbidden).
+- **Reference Skeleton embedded** (`skeletonembed.go`): `eka init` generates repositories from the canonical `skeleton/` source, not from a hardcoded directory. The standalone binary can still generate the structure without a repository checkout.
+- **Deterministic exit codes** (0/1/2) mapped in `cmd/root.go`; all errors go through a single output path `eka: <message>`.
 
-## Panduan kontribusi: menambah perintah
+## Contribution guide: adding a command
 
-Perintah baru ditambahkan tanpa refactor arsitektur:
+A new command is added without architectural refactoring:
 
-1. **Layanan dulu** — implementasi logika bisnis di package aplikasi (`bootstrap/`, `conformance/`, atau package publik baru), lengkap dengan test-nya. CLI tidak boleh berisi logika domain.
-2. **Definisikan command** — file baru `cmd/<name>.go`, package `cmd`: `Use` (verb, Naming §7.1), `Short` (satu baris), `Long` (detail), `Example`, flag (dengan deskripsi), validasi argumen via Cobra (mis. `MaximumNArgs`), `RunE` memanggil layanan lalu merender keluaran.
-3. **Daftarkan di root** — tambahkan ke `rootCmd.AddCommand(...)` di `cmd/root.go`.
-4. **Exit codes** — sukses → `nil` (0); pelanggaran blocking → `*exitError{code: 1}` (atau sentinel setara); kesalahan penggunaan/internal → error biasa (dipetakan ke 2).
-5. **Test** — tambahkan kasus di `cmd/execute_test.go` (exit codes, help, determinisme) + test layanan di package aplikasi.
-6. **Dokumentasikan** — perbarui dokumen ini (tabel perintah, contoh) dan matriks traceability.
-7. **Nama mengikuti Naming and Terminology Specification v1.0 §7** — subperintah adalah verb (`validate`, `init`, `diagnose`, `import`, `export`, `sync`, `format`, `graph`); jangan perkenalkan pola baru.
+1. **Service first** — implement business logic in an application package (`bootstrap/`, `conformance/`, `exchange/`, or a new public package), complete with tests. The CLI must not contain domain logic.
+2. **Define the command** — new file `cmd/<name>.go`, package `cmd`: `Use` (verb, Naming §7.1), `Short` (one line), `Long` (details), `Example`, flags (with descriptions), argument validation via Cobra (e.g., `MaximumNArgs`), `RunE` calls the service then renders output.
+3. **Register on the root** — add to `rootCmd.AddCommand(...)` in `cmd/root.go`.
+4. **Exit codes** — success → `nil` (0); blocking violation → `*exitError{code: 1}` (or an equivalent sentinel); usage/internal error → plain error (mapped to 2).
+5. **Test** — add cases in `cmd/execute_test.go` (exit codes, help, determinism) + service tests in the application package.
+6. **Document** — update this document (command tables, examples) and the traceability matrix.
+7. **Naming follows Naming and Terminology Specification v1.0 §7** — subcommands are verbs (`validate`, `init`, `diagnose`, `import`, `export`, `sync`, `format`, `graph`); do not introduce new patterns.
 
-## Roadmap CLI
+## CLI roadmap
 
-| Perintah | Status | Catatan |
+| Command | Status | Notes |
 |---|---|---|
-| `eka init` | **Diimplementasikan** | Repository Bootstrapper (5 tahap, wizard adaptif, dry-run, idempoten, validasi pasca-generasi). |
-| `eka export` | **Diimplementasikan** | Ekspor EKA Package (RSF v1.0): scope repo/line/instance/collection, validasi otomatis, deterministik, external reference declaration, attachment, digest SHA-256. |
-| `eka import` | **Diimplementasikan** | Impor EKA Package (RSF v1.0 + Exchange §11): validasi package + integritas, resolusi identity/relationship, konflik → batal, commit atomik ter-staging, rollback, revalidasi pasca-impor. |
-| `eka validate` | **Diimplementasikan** | Validator konformitas penuh (R1–R9 + R0 struktural). |
-| `eka completion` | **Diimplementasikan** | Script completion bash/zsh/fish/powershell (disediakan Cobra). |
-| `eka diagnose` | Belum diimplementasikan | Diagnostik repositori — kandidat masa depan. |
-| `eka graph` | Belum diimplementasikan | Query/knowledge graph atas artifact. |
+| `eka init` | **Implemented** | Repository Bootstrapper (5 stages, adaptive wizard, dry-run, idempotent, post-generation validation). |
+| `eka export` | **Implemented** | Exchange Package export (RSF v1.0): repo/line/instance/collection scope, automatic validation, deterministic, external reference declaration, attachments, SHA-256 digests. |
+| `eka import` | **Implemented** | Exchange Package import (RSF v1.0 + Exchange §11): package + integrity validation, identity/relationship resolution, conflict → abort, atomic staged commit, rollback, post-import revalidation. |
+| `eka validate` | **Implemented** | Full conformance validator (R1–R9 + structural R0). |
+| `eka completion` | **Implemented** | bash/zsh/fish/powershell completion scripts (provided by Cobra). |
+| `eka diagnose` | Not implemented | Repository diagnostics — future candidate. |
+| `eka graph` | Not implemented | Query/knowledge graph over artifacts. |
 
-Perintah masa depan ditambahkan mengikuti [Panduan kontribusi](#panduan-kontribusi-menambah-perintah) — tanpa refactor arsitektur.
+Future commands are added following the [Contribution guide](#contribution-guide-adding-a-command) — without architectural refactoring.

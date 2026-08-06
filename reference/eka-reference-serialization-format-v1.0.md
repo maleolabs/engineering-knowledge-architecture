@@ -38,7 +38,7 @@
 - round-trip mapping to Exchange §15 invariants (Section 10);
 - compatibility strategy for the RSF itself (Section 11);
 - reference examples, illustrative only (Section 12);
-- implementation recommendations for future import/export engines (Section 13).
+- implementation recommendations for the export/import engines (Section 13).
 
 ### 2.2 Out of scope
 - transport protocols and delivery mechanisms;

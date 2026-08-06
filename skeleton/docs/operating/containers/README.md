@@ -1,62 +1,62 @@
 # containers/ — Execution Container (`ctr-`)
 
-> Anchor EKA: Operating Layer — state domain **Container State**.
+> Anchor EKA: Operating Layer — State Domain **Container State**.
 
-## Tujuan
+## Purpose
 
-Container adalah unit eksekusi yang menaungi sekumpulan work item terhadap satu plan terkunci. Container memegang relasi agregasi (work item mana yang masuk gelombang ini) dan memproyeksikannya ke dalam tabel.
+A container is an execution unit that shelters a set of work items under one locked plan. The container holds the aggregation relationship (which work items are in this wave) and projects them into a table.
 
 ## Token & State Vector
 
-| Token | Folder | State yang dimiliki |
+| Token | Folder | Owned state |
 |---|---|---|
 | `ctr-` | `operating/containers/` | `container-state`, `existence-state` |
 
-Nilai `container-state`: `active → completed`. Nilai `existence-state`: `active → archived → retired`. Work item tidak menyimpan state container; container tidak menyimpan Execution State work item (itu dimiliki work item).
+`container-state` values: `active → completed`. `existence-state` values: `active → archived → retired`. Work items do not store container state; containers do not store work item Execution State (that is owned by the work item).
 
-## Tepat Satu Kontainer Aktif
+## Exactly One Active Container
 
-Mutual exclusion: hanya **satu** `ctr-` dengan `container-state: active` pada satu waktu. Kontainer baru lahir hanya setelah yang lama `completed`. Lahirnya kontainer **atomik** dengan penguncian plan pendukungnya (`plan-` → `immutable`; lihat [protocol.md](../protocol.md) §4).
+Mutual exclusion: only **one** `ctr-` may have `container-state: active` at a time. A new container is born only after the previous one is `completed`. Container creation is **atomic** with locking of its supporting plan (`plan-` → `immutable`; see [protocol.md](../protocol.md) §4).
 
-## `completed` = Transisi Turunan
+## `completed` = Derived Transition
 
-`container-state: completed` bukan nilai yang ditulis sembarangan — ini **transisi turunan** (derived transition) yang dipicu oleh agregat Execution State seluruh work item di dalamnya: semua work item berstatus `done`. Saat agregat terpenuhi, pemilik container menulis transisi `active → completed` ke `change-log`.
+`container-state: completed` is not an arbitrary value — it is a **derived transition** triggered by the aggregate Execution State of all work items inside: every work item is `done`. When the aggregate is satisfied, the container owner writes the `active → completed` transition to `change-log`.
 
-## Tabel Work Item = Proyeksi
+## Work Item Table = Projection
 
-Bagian `## Work Items` adalah **proyeksi** — snapshot status work item pemiliknya:
+The `## Work Items` section is a **projection** — a snapshot of the owning work items' state:
 
 ```
 > Generated — State Projection. Do NOT edit state here; refresh on read.
 ```
 
-- Proyeksi di-refresh saat dibaca; jangan mengedit state di tabel ini.
-- Konflik antara tabel dan owner state: **owner state yang menang** (lihat validasi, aturan 8).
+- Projections are refreshed on read; do not edit state in this table.
+- Conflict between the table and owner state: **owner state wins** (see validation, Rule 8).
 
 ## Snapshot Semantics
 
-Container merekam snapshot konteks pada pembuatannya: plan terkunci (beserta `instance-version`-nya), daftar work item awal, dan ruang lingkup. Snapshot tidak berubah selama container hidup; perubahan ke depan terjadi pada artefak/instance berikutnya.
+The container records a context snapshot at creation: the locked plan (with its `instance-version`), the initial work item list, and the scope. The snapshot does not change for the container's lifetime; forward changes happen on subsequent artifacts/instances.
 
-## Struktur Konten Wajib
+## Required Content Structure
 
-- `## Objective` — tujuan eksekusi gelombang ini.
-- `## Work Items` — tabel proyeksi work item (token, id, ringkasan, Execution State).
-- `## Change Log` — catatan transisi state container.
+- `## Objective` — the execution objective of this wave.
+- `## Work Items` — projection table of work items (token, id, summary, Execution State).
+- `## Change Log` — record of container state transitions.
 
-## Konvensi Nama
+## Naming Conventions
 
-`ctr-<id>.md`, kebab-case, unik dalam (namespace, type). Tanpa akhiran `-v<nn>`. Contoh: `ctr-gelombang-1.md`.
+`ctr-<id>.md`, kebab-case, unique within (namespace, type). No `-v<nn>` suffix. Example: `ctr-wave-1.md`.
 
-## Kepemilikan
+## Ownership
 
-| Peran | Tanggung jawab |
+| Role | Responsibility |
 |---|---|
-| Tech Lead | pemilik tunggal state container; penulis transisi `completed` |
-| Engineers | pelaksana work item dalam container |
+| Tech Lead | single owner of container state; writes the `completed` transition |
+| Engineers | execute work items within the container |
 
-## Terkait
+## Related
 
-- [planning/](../../planning/) — container mengunci `plan-` (lock-atomic-with-generation).
-- [work-items/](../work-items/) — unit kerja yang diagregasi.
-- [projections/](../projections/) — `tkt-` memproyeksikan work item ke status per gelombang.
-- [sessions/](../sessions/) — eksekusi dalam container dicatat per sesi.
+- [planning/](../../planning/) — container locks `plan-` (lock-atomic-with-generation).
+- [work-items/](../work-items/) — aggregated units of work.
+- [projections/](../projections/) — `tkt-` projects work items to per-wave status.
+- [sessions/](../sessions/) — execution within a container is recorded per session.

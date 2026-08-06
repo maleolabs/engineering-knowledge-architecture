@@ -1,60 +1,60 @@
-# docs/research/ — Dimensi Research
+# docs/research/ — Research Dimension
 
-> Anchor EKA: Knowledge Layer — dimensi **research** (EKA 8), ekstensi token `fnd-` (EKA 14.1).
+> Anchor EKA: Knowledge Layer — **research** dimension (EKA 8), token extension `fnd-` (EKA 14.1).
 
-## Tujuan
+## Purpose
 
-Dimensi research mewadahi temuan investigasi dan riset: eksperimen, benchmark, penelusuran pustaka, dan temuan teknis yang belum (atau tidak) menjadi keputusan. Research adalah dimensi **pengetahuan** — bukan pengganti keputusan.
+The research dimension houses investigation and research findings: experiments, benchmarks, literature searches, and technical findings that are not (yet) decisions. Research is a **knowledge** dimension — not a substitute for decisions.
 
-## Yang Ada di Sini
+## What Lives Here
 
-| Token | Tipe | Format nama |
+| Token | Type | Name format |
 |---|---|---|
 | `fnd-` | Research Finding | `fnd-<id>.md` |
 
-Ekstensi sesuai EKA 14.1: token `fnd-` ditambahkan pada token table standar untuk mewadahi temuan riset, dengan `dimension: research` dan folder rumah `research/`.
+Extension per EKA 14.1: the `fnd-` token is added to the standard token table to house research findings, with `dimension: research` and home folder `research/`.
 
 ## State Vector
 
-| Tipe | Domain state yang dimiliki |
+| Type | Owned state domains |
 |---|---|
 | `fnd-` | `content-state`, `existence-state` |
 
-Nilai `content-state`: `draft → review → approved → amended`. Nilai `existence-state`: `active → archived → retired`. Field lain = N/A.
+`content-state` values: `draft → review → approved → amended`. `existence-state` values: `active → archived → retired`. Fields not listed = N/A.
 
-## Struktur Konten yang Baik
+## Good Content Structure
 
-Struktur wajib (keluarga dokumen pengetahuan, dengan ekstensi riset):
+Required structure (knowledge document family, with research extensions):
 
-- `## Purpose` — pertanyaan riset yang dijawab.
-- `## Content` — uraian temuan.
-- `## Investigation Summary` — ringkasan metode dan bukti.
-- `## Conclusion` — simpulan dan rekomendasi.
+- `## Purpose` — the research question answered.
+- `## Content` — account of the findings.
+- `## Investigation Summary` — summary of methods and evidence.
+- `## Conclusion` — conclusions and recommendations.
 
-## Distilasi Wajib (EKA 11.4)
+## Mandatory Distillation (EKA 11.4)
 
-Temuan riset **tidak boleh berhenti** sebagai `fnd-`. Saat sebuah temuan memengaruhi arah proyek, temuan itu wajib terdistilasi ke dimensi decisions:
+Research findings **must not stop** as `fnd-`. When a finding affects project direction, it must be distilled into the decisions dimension:
 
-1. Simpulan yang diadopsi → `dec-`/`adr-` baru (atau amendemen keputusan yang relevan), dengan `derives-from: [fnd:<id>]`.
-2. `fnd-` asli tetap utuh sebagai jejak bukti; baru boleh diarsipkan setelah distilasi selesai.
+1. Adopted conclusions → new `dec-`/`adr-` (or an amendment of a relevant decision), with `derives-from: [fnd:<id>]`.
+2. The original `fnd-` remains intact as an evidence trail; it may only be archived after distillation completes.
 
-Temuan yang tidak diadopsi cukup diarsipkan dengan catatan alasan penolakan.
+Findings that are not adopted are simply archived with a note of the rejection reason.
 
-## Konvensi Nama
+## Naming Conventions
 
-`fnd-<id>.md`, kebab-case, unik dalam (namespace, type). Tanpa akhiran `-v<nn>`. Contoh: `fnd-pendekatan-lock-plan.md`.
+`fnd-<id>.md`, kebab-case, unique within (namespace, type). No `-v<nn>` suffix. Example: `fnd-plan-lock-approach.md`.
 
-## Kepemilikan
+## Ownership
 
-| Peran | Tanggung jawab |
+| Role | Responsibility |
 |---|---|
-| Engineers | penulis `fnd-` (investigasi teknis) |
-| Tech Lead | peninjau dan penyalur distilasi ke keputusan |
-| Semua peran | boleh membuka riset baru |
+| Engineers | authors of `fnd-` (technical investigations) |
+| Tech Lead | reviewer and distributor of distillation into decisions |
+| All roles | may open new research |
 
-## Terkait
+## Related
 
-- [decisions/](../decisions/) — **muara wajib** distilasi riset (EKA 11.4).
-- [specifications/](../specifications/) — temuan yang diadopsi menjadi `spec-`.
-- [operating/work-items/spikes/](../operating/work-items/spikes/) — spike menghasilkan bahan riset; `fnd-` dan `spk-` saling merujuk.
-- [vocabulary/](../vocabulary/) — istilah baru dari riset didaftarkan di `gls-`.
+- [decisions/](../decisions/) — **mandatory destination** of research distillation (EKA 11.4).
+- [specifications/](../specifications/) — adopted findings become `spec-`.
+- [operating/work-items/spikes/](../operating/work-items/spikes/) — spikes produce research material; `fnd-` and `spk-` reference each other.
+- [vocabulary/](../vocabulary/) — new terms from research are registered in `gls-`.

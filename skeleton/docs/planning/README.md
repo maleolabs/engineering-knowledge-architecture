@@ -1,67 +1,67 @@
-# docs/planning/ — Dimensi Planning
+# docs/planning/ — Planning Dimension
 
-> Anchor EKA: Knowledge Layer — dimensi **planning** (EKA 8) + state domain **Planning State**.
+> Anchor EKA: Knowledge Layer — **planning** dimension (EKA 8) + State Domain **Planning State**.
 
-## Tujuan
+## Purpose
 
-Dimensi planning mewadahi artefak perencanaan: definisi scope, kapabilitas, rencana eksekusi, dan artefak relasi. Inilah satu-satunya dimensi tempat `phase` (discovery | mvp | milestone | release | growth | maturity | sunset) dipakai — sebagai **atribut konteks** pada `scp-`/`plan-`, bukan folder.
+The planning dimension houses planning artifacts: scope definitions, capabilities, execution plans, and relationship artifacts. This is the only dimension where `phase` (discovery | mvp | milestone | release | growth | maturity | sunset) is used — as a **context attribute** on `scp-`/`plan-`, not a folder.
 
-## Yang Ada di Sini
+## What Lives Here
 
-| Token | Tipe | Format nama | Berversi |
+| Token | Type | Name format | Versioned |
 |---|---|---|---|
-| `scp-` | Scope Definition | `scp-<id>-v<instance-version>.md` | ya (fase) |
-| `epc-` | Epic | `epc-<id>.md` | tidak |
-| `plan-` | Plan | `plan-<id>-v<instance-version>.md` | ya (fase, Planning State) |
-| `trc-` | Traceability/Relationship artifact | `trc-<id>.md` | tidak |
+| `scp-` | Scope Definition | `scp-<id>-v<instance-version>.md` | yes (phase) |
+| `epc-` | Epic | `epc-<id>.md` | no |
+| `plan-` | Plan | `plan-<id>-v<instance-version>.md` | yes (phase, Planning State) |
+| `trc-` | Traceability/Relationship artifact | `trc-<id>.md` | no |
 
 ## State Vector
 
-| Tipe | Domain state yang dimiliki |
+| Type | Owned state domains |
 |---|---|
 | `scp-`, `epc-`, `trc-` | `content-state`, `existence-state` |
 | `plan-` | `content-state`, `planning-state`, `existence-state` |
 
-Nilai `content-state`: `draft → review → approved → amended`. Nilai `planning-state`: `draft → approved → immutable`. Nilai `existence-state`: `active → archived → retired`. Field lain = N/A.
+`content-state` values: `draft → review → approved → amended`. `planning-state` values: `draft → approved → immutable`. `existence-state` values: `active → archived → retired`. Fields not listed = N/A.
 
-## Struktur Konten yang Baik
+## Good Content Structure
 
-Struktur wajib (keluarga planning artifact):
+Required structure (planning artifact family):
 
-- `## Objective` — tujuan artefak ini.
-- `## Scope` — cakupan yang termasuk.
-- `## Out of Scope` — cakupan yang sengaja dikecualikan.
+- `## Objective` — the objective of this artifact.
+- `## Scope` — what is included.
+- `## Out of Scope` — what is deliberately excluded.
 
-## Konvensi Nama
+## Naming Conventions
 
-Berversi (selalu, termasuk v1): `scp-<id>-v<instance-version>.md` dan `plan-<id>-v<instance-version>.md`. Tidak berversi: `epc-<id>.md`, `trc-<id>.md`. `instance-version` wajib di frontmatter untuk `scp-`/`plan-`.
+Versioned (always, including v1): `scp-<id>-v<instance-version>.md` and `plan-<id>-v<instance-version>.md`. Non-versioned: `epc-<id>.md`, `trc-<id>.md`. `instance-version` is required in frontmatter for `scp-`/`plan-`.
 
-## Catatan Khusus per Tipe
+## Per-Type Notes
 
 ### `scp-` — Scope Definition
-Membawa `phase` sebagai atribut konteks. Perubahan phase dicatat di `change-log` dengan `domain: phase`. Scope yang disetujui menjadi dasar kontainer eksekusi.
+Carries `phase` as a context attribute. Phase changes are recorded in `change-log` with `domain: phase`. An approved scope becomes the basis for an execution container.
 
 ### `plan-` — Plan
-Membawa `phase` dan **Planning State** (`draft → approved → immutable`). **Lock-atomic-with-generation:** saat `plan-` menjadi `immutable`, perubahan apa pun — termasuk perbaikan — tidak boleh mengedit instance itu; buat `instance-version` baru (`plan-<id>-v<nn+1>.md`). Transisi ke `immutable` terjadi atomik dengan pembuatan kontainer (lihat [operating/containers/](../operating/containers/) dan [operating/protocol.md](../operating/protocol.md)).
+Carries `phase` and **Planning State** (`draft → approved → immutable`). **Lock-atomic-with-generation:** once a `plan-` becomes `immutable`, any change — including fixes — must not edit that instance; create a new `instance-version` (`plan-<id>-v<nn+1>.md`). The transition to `immutable` happens atomically with container creation (see [operating/containers/](../operating/containers/) and [operating/protocol.md](../operating/protocol.md)).
 
 ### `epc-` — Epic
-Kapabilitas yang mewujudkan scope. Tidak membawa `phase`; rujuk `scp-` induknya dengan `derives-from` bila perlu.
+A capability that realizes scope. Does not carry `phase`; reference its parent `scp-` with `derives-from` when needed.
 
 ### `trc-` — Traceability/Relationship artifact
-Artefak yang **hanya membawa relasi** (mis. matriks kebutuhan→spesifikasi→work item, peta dimensi). Konten utamanya adalah daftar referensi yang harus dapat di-resolve; ia tidak menggantikan relasi yang ditulis pada artefak perujuk.
+An artifact that **carries relationships only** (e.g. requirement→specification→work item matrices, dimension maps). Its main content is a list of references that must resolve; it does not replace relationships written on the referring artifacts.
 
-## Kepemilikan
+## Ownership
 
-| Peran | Tanggung jawab |
+| Role | Responsibility |
 |---|---|
-| Product Owner | pemilik `scp-`, `epc-`, `plan-` (lingkup & prioritas) |
-| Tech Lead | peninjau kelayakan dan pemilik `plan-` teknis |
-| Engineers | kontributor estimasi dan detail plan |
+| Product Owner | owner of `scp-`, `epc-`, `plan-` (scope & priority) |
+| Tech Lead | feasibility reviewer and owner of technical `plan-` |
+| Engineers | contributors of estimates and plan details |
 
-## Terkait
+## Related
 
-- [requirements/](../requirements/) — scope menyeleksi `req-`.
-- [intent/](../intent/) — `scp-` menjabarkan strategi ke konteks berfase.
-- [operating/containers/](../operating/containers/) — `plan-` terkunci atomik dengan lahirnya `ctr-`.
-- [operating/projections/](../operating/projections/) — tiket mewakili work item dalam kontainer.
-- [records/](../records/) — `rel-` mencatat hasil eksekusi plan.
+- [requirements/](../requirements/) — scope selects `req-`.
+- [intent/](../intent/) — `scp-` elaborates strategy into phased context.
+- [operating/containers/](../operating/containers/) — `plan-` locks atomically with the birth of `ctr-`.
+- [operating/projections/](../operating/projections/) — tickets represent work items within a container.
+- [records/](../records/) — `rel-` records plan execution results.

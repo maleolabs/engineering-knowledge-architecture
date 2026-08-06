@@ -1,49 +1,49 @@
-# docs/intent/ — Dimensi Intent
+# docs/intent/ — Intent Dimension
 
-> Anchor EKA: Knowledge Layer — dimensi **intent** (EKA 8).
+> Anchor EKA: Knowledge Layer — **intent** dimension (EKA 8).
 
-## Tujuan
+## Purpose
 
-Dimensi intent mewadahi arahan dan alasan keberadaan produk/proyek: visi, manifesto, dan strategi. Dokumen di sini menjawab pertanyaan "mengapa proyek ini ada" dan "ke arah mana ia bergerak", dan menjadi rujukan pembenaran (justification) bagi dimensi lain.
+The intent dimension houses the product/project's direction and reason for existence: vision, manifesto, and strategy. Documents here answer "why does this project exist" and "where is it heading", and serve as the justification reference for other dimensions.
 
-## Yang Ada di Sini
+## What Lives Here
 
-| Token | Tipe | Format nama |
+| Token | Type | Name format |
 |---|---|---|
 | `vis-` | Vision/Manifesto | `vis-<id>.md` |
 | `str-` | Strategy | `str-<id>.md` |
 
 ## State Vector
 
-| Tipe | Domain state yang dimiliki |
+| Type | Owned state domains |
 |---|---|
 | `vis-` | `content-state`, `existence-state` |
 | `str-` | `content-state`, `existence-state` |
 
-Nilai `content-state`: `draft → review → approved → amended`. Nilai `existence-state`: `active → archived → retired`. Field lain yang tidak terdaftar = tidak berlaku (N/A). Setiap transisi dicatat di `change-log` oleh pemilik tunggal.
+`content-state` values: `draft → review → approved → amended`. `existence-state` values: `active → archived → retired`. Fields not listed = not applicable (N/A). Every transition is recorded in `change-log` by the single owner.
 
-## Struktur Konten yang Baik
+## Good Content Structure
 
-Struktur wajib (keluarga dokumen pengetahuan):
+Required structure (knowledge document family):
 
-- `## Purpose` — tujuan dokumen ini.
-- `## Content` — isi visi/manifesto atau strategi.
+- `## Purpose` — the purpose of this document.
+- `## Content` — the vision/manifesto or strategy content.
 
-## Konvensi Nama
+## Naming Conventions
 
-`vis-<id>.md` dan `str-<id>.md`, kebab-case, unik dalam (namespace, type). Tanpa akhiran `-v<nn>` (tipe tidak berversi). Contoh: `vis-inti-produk.md`, `str-masuk-pasar-2026.md`.
+`vis-<id>.md` and `str-<id>.md`, kebab-case, unique within (namespace, type). No `-v<nn>` suffix (non-versioned types). Examples: `vis-product-core.md`, `str-market-entry-2026.md`.
 
-## Kepemilikan
+## Ownership
 
-| Peran | Tanggung jawab |
+| Role | Responsibility |
 |---|---|
-| Product Owner | pemilik tunggal konten intent |
-| Tech Lead | kontributor untuk `str-` teknis |
-| Semua peran | boleh mengusulkan perubahan; perubahan konten yang disetujui menjadi instance baru dengan `amends` |
+| Product Owner | single owner of intent content |
+| Tech Lead | contributor for technical `str-` |
+| All roles | may propose changes; approved content changes become a new instance with `amends` |
 
-## Terkait
+## Related
 
-- [requirements/](../requirements/) — intent diturunkan menjadi kebutuhan (`req-`).
-- [vocabulary/](../vocabulary/) — istilah kunci intent harus terdefinisi di `gls-`.
-- [decisions/](../decisions/) — keputusan strategis (`dec-`) merujuk balik ke intent.
-- [planning/](../planning/) — `scp-` menjabarkan konteks berfase dari strategi.
+- [requirements/](../requirements/) — intent is derived into requirements (`req-`).
+- [vocabulary/](../vocabulary/) — key intent terms must be defined in `gls-`.
+- [decisions/](../decisions/) — strategic decisions (`dec-`) refer back to intent.
+- [planning/](../planning/) — `scp-` elaborates the phased context of the strategy.

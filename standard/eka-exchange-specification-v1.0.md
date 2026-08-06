@@ -8,7 +8,7 @@
 | **Zone** | standard/ |
 | **Scope** | Conceptual exchange contract — not serialization, not implementation |
 
-**Reading this document:** capitalized terms refer to canonical definitions (EKA Core Specification v1.0 Section 3 + glossary) or to Exchange-Spec subordinate terms (Section 4.1). "must" = binding requirement (harus/wajib, as a translation aid). "should" = recommendation within the bounds of the contract. "may" = option within the bounds of the contract.
+**Reading this document:** capitalized terms refer to canonical definitions (EKA Core Specification v1.0 Section 3 + glossary) or to Exchange-Spec subordinate terms (Section 4.1). "must" = binding requirement. "should" = recommendation within the bounds of the contract. "may" = option within the bounds of the contract.
 
 ## 1. Purpose
 
@@ -374,14 +374,14 @@ A conformant validator **must**:
 | R8 | **Single-writer & projection non-writer**: projections carry no owned state of other artifacts; projections never write (P6) | blocking |
 | R9 | **Well-formedness**: Content structure matches the artifact type family (Section 3); a superseded ADR must point to its successor | blocking |
 
-Notes: in the reference implementation, the superseded-ADR successor check is enforced within Aturan 9 of `validation.md`; enforcement position is a serialization detail — verdict semantics are defined by R5/R9 here and unchanged. R0 (structural rule: artifact-rule parsing, frontmatter well-formedness) is defined by the Reference Validator and is not one of the nine rules above (Naming and Terminology Specification v1.0 §9.3).
+Notes: in the reference implementation, the superseded-ADR successor check is enforced within Conformance Rule 9 of `validation.md`; enforcement position is a serialization detail — verdict semantics are defined by R5/R9 here and unchanged. R0 (structural rule: artifact-rule parsing, frontmatter well-formedness) is defined by the Reference Validator and is not one of the nine rules above (Naming and Terminology Specification v1.0 §9.3).
 
 ### 14.3 Verdict semantics
 - **Conformant**: all rules pass, no warnings.
 - **Conformant with warnings**: no blocking violations; warnings recorded.
 - **Non-conformant**: at least one blocking violation → no commit.
 
-Verdicts apply to the exchanged knowledge and to repository state alike: a unit that fails a rule is non-conformant both as exchanged content and as committed repository state. Implementation-specific enforcement mechanisms (filename conventions, folder layout, database constraints, tooling) **must not** change verdicts (P16, canonical 12.3). In the reference implementation, the filename/dimension-folder rules (validation.md Aturan 2 and 6) are enforcement mechanisms of one serialization — the invariants they serve are R2 and R6 above.
+Verdicts apply to the exchanged knowledge and to repository state alike: a unit that fails a rule is non-conformant both as exchanged content and as committed repository state. Implementation-specific enforcement mechanisms (filename conventions, folder layout, database constraints, tooling) **must not** change verdicts (P16, canonical 12.3). In the reference implementation, the filename/dimension-folder rules (validation.md Rules 2 and 6) are enforcement mechanisms of one serialization — the invariants they serve are R2 and R6 above.
 
 ## 15. Round-Trip Guarantees
 

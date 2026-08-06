@@ -28,35 +28,35 @@ change-log:
     by: Engineering Architecture
 ---
 
-# ADR-004 — Phase sebagai Metadata (context attribute), bukan folder
+# ADR-004 — Phase as Metadata (context attribute), not folder
 
 ## Context
 
-Implementasi awal menyandikan phase sebagai **folder** (`docs/mvp/`, dst.): fase produk menjadi bagian lokasi, dan karena Identity lama disandikan via lokasi, fase ikut menjadi bagian representasi Identity. Ini melanggar EKA 11.2 (Phase adalah **context attribute** pada Artifact planning/scope — bukan kategori, bukan State Domain) dan P3 (Identity independen dari lokasi). EKA 7.1 juga menolak "Lifecycle State" sebagai domain tunggal: yang bertahan adalah Existence State (domain) + Phase (context).
+The initial implementation encoded phase as a **folder** (`docs/mvp/`, etc.): the product phase became part of the location, and because the legacy Identity was encoded via location, the phase also became part of the Identity representation. This violates EKA 11.2 (Phase is a **context attribute** on planning/scope Artifacts — not a category, not a State Domain) and P3 (Identity independent of location). EKA 7.1 also rejects "Lifecycle State" as a single domain: what survives is Existence State (domain) + Phase (context).
 
 ## Decision
 
-1. **Field `phase` di frontmatter**, hanya pada artifact `scp-` (Scope Definition) dan `plan-` (Plan) — sesuai EKA 11.2 (phase menempel pada Scope Definition / Plan sebagai context attribute).
-2. **Value set**: `discovery | mvp | milestone | release | growth | maturity | sunset` (nilai EKA 11.2–11.3 dalam lowercase).
-3. **Phase change adalah context update** yang diotorisasi **gate kesiapan** (EKA 11.2), dievaluasi atas agregat State owner (release-ready = semua work item Done ∧ seluruh container Completed ∧ plan Immutable ∧ gate review lulus ∧ gate persetujuan Content lulus).
-4. **Pencatatan**: setiap phase change direkam di `change-log` dengan `domain: phase` (mis. `from: discovery, to: mvp`).
-5. **Tidak ada folder phase** — artifact tidak berpindah lokasi saat phase berubah; Identity tidak tersentuh (P3).
+1. **A `phase` field in the frontmatter**, only on `scp-` (Scope Definition) and `plan-` (Plan) artifacts — per EKA 11.2 (phase attaches to Scope Definition / Plan as a context attribute).
+2. **Value set**: `discovery | mvp | milestone | release | growth | maturity | sunset` (EKA 11.2–11.3 values in lowercase).
+3. **A phase change is a context update** authorized by the **readiness Gate** (EKA 11.2), evaluated over the owner's State aggregate (release-ready = all work items Done ∧ all Containers Completed ∧ plan Immutable ∧ review Gate passed ∧ Content approval Gate passed).
+4. **Recording**: every phase change is recorded in `change-log` with `domain: phase` (e.g., `from: discovery, to: mvp`).
+5. **No phase folders** — artifacts do not change location when the phase changes; Identity is untouched (P3).
 
 ## Consequences
 
-- **Positif**: Identity decoupled dari phase (P3) — Scope Definition tetap identitas yang sama saat produk berpindah fase (EKA 11.2).
-- **Positif**: phase change menjadi operasi metadata yang diaudit (change-log), bukan operasi pemindahan file.
-- **Positif**: glob per fase tidak lagi diperlukan; query fase menjadi query field.
-- **Negatif (disengaja)**: folder `mvp/` hilang; tooling yang membaca fase dari path putus (`breaking-changes.md` #12).
+- **Positive**: Identity decoupled from phase (P3) — a Scope Definition keeps the same identity when the product moves across phases (EKA 11.2).
+- **Positive**: a phase change becomes an audited metadata operation (change-log), not a file-moving operation.
+- **Positive**: per-phase globbing is no longer needed; phase queries become field queries.
+- **Negative (intentional)**: the `mvp/` folder disappears; tooling that reads phase from the path breaks (`breaking-changes.md` #12).
 
 ## Alternatives Considered
 
-- **Folder per phase** (status quo legacy) — ditolak: phase menjadi bagian lokasi → bagian representasi Identity; melanggar EKA 6.4, P3.
-- **Phase sebagai State Domain** — ditolak: EKA 7.1 menolak Lifecycle State; phase tidak memiliki transisi protocol, ia context yang berubah via gate (EKA 11.2).
-- **Phase sebagai klasifikasi (Knowledge Dimension)** — ditolak: klasifikasi adalah properti retrieval (P15), bukan konteks waktu; phase tidak stabil sebagai sumbu klasifikasi.
+- **Folder per phase** (legacy status quo) — rejected: phase becomes part of the location → part of the Identity representation; violates EKA 6.4, P3.
+- **Phase as a State Domain** — rejected: EKA 7.1 rejects Lifecycle State; phase has no protocol transitions; it is a context that changes via a Gate (EKA 11.2).
+- **Phase as classification (Knowledge Dimension)** — rejected: classification is a retrieval property (P15), not a temporal context; phase is not stable enough as a classification axis.
 
 ## References
 
-- EKA 3 (definisi Phase), 7.1 (Lifecycle State ditolak), 7.5 (gate kesiapan → phase change), 11.2 (Phase sebagai konteks), 11.3 (lifecycle produk)
-- Prinsip P3 (Stable Identity), P9 (Structure as Projection of State)
-- Terkait: [ADR-001](adr-001-identity-serialization.md), [ADR-002](adr-002-state-vector-encoding.md), [ADR-005](adr-005-dimension-layout.md)
+- EKA 3 (Phase definition), 7.1 (Lifecycle State rejected), 7.5 (readiness Gate → phase change), 11.2 (Phase as context), 11.3 (product lifecycle)
+- Principles P3 (Stable Identity), P9 (Structure as Projection of State)
+- Related: [ADR-001](adr-001-identity-serialization.md), [ADR-002](adr-002-state-vector-encoding.md), [ADR-005](adr-005-dimension-layout.md)

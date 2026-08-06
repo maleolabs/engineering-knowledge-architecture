@@ -1,66 +1,66 @@
-# Transfer — Konvensi Impor/Ekspor
+# Transfer — Import/Export Conventions
 
-> Anchor EKA: Exchange Layer — transfer (import/export). Dokumen konvensi, bukan artefak.
-> Standar: EKA v1.0, tanggal 2026-08-05.
+> Anchor EKA: Exchange Layer — transfer (import/export). Convention document, not an artifact.
+> Standard: EKA v1.0, dated 2026-08-05.
 
-Dokumen ini mengatur pertukaran artefak EKA antar repositori (mis. repositori induk/komponen/arsip). Semua konvensi berlaku dua arah (impor = ekspor yang dibalik).
+This document governs the exchange of EKA artifacts between repositories (e.g. parent/component/archive repositories). All conventions apply in both directions (import = export reversed).
 
-## 1. Persyaratan Round-Trip
+## 1. Round-Trip Requirements
 
-### 1.1 Lossless (tanpa kehilangan)
+### 1.1 Lossless (no loss)
 
-Transfer harus mempertahankan **semua** informasi identitas dan state:
+Transfer must preserve **all** identity and state information:
 
-- [ ] Identitas penuh: `namespace`, `type`, `id`, `instance-version`, `revision`.
-- [ ] State penuh: seluruh owned state vector **beserta** riwayat `change-log`.
-- [ ] Konten yang well-formed (bagian wajib utuh).
-- [ ] Relasi **berdasarkan identitas** (referensi dipertahankan sebagai referensi, bukan diubah menjadi teks).
-- [ ] Klasifikasi: `dimension`, `dimensions-secondary`.
-- [ ] Status preservasi (`existence-state`) tidak berubah oleh transfer.
+- [ ] Full identity: `namespace`, `type`, `id`, `instance-version`, `revision`.
+- [ ] Full state: the entire owned state vector **plus** the `change-log` history.
+- [ ] Well-formed content (required sections intact).
+- [ ] Relationships **by identity** (references preserved as references, not converted to text).
+- [ ] Classification: `dimension`, `dimensions-secondary`.
+- [ ] Preservation status (`existence-state`) is not changed by transfer.
 
 ### 1.2 Idempotent
 
-- [ ] Impor ulang paket yang sama = **no-op** (tidak ada duplikasi), atau deklarasi *clean replace* yang eksplisit.
-- [ ] Impor ulang tidak pernah membuat artefak duplikat.
+- [ ] Re-importing the same package = **no-op** (no duplication), or an explicit *clean replace* declaration.
+- [ ] Re-importing never creates duplicate artifacts.
 
-### 1.3 Integritas Referensial
+### 1.3 Referential Integrity
 
-- [ ] Tidak ada referensi menggantung (dangling): artefak yang dirujuk wajib ikut dipindahkan, sudah ada di target, atau diizinkan sebagai peringatan karena status target `draft`.
+- [ ] No dangling references: referenced artifacts must travel along, already exist in the target, or be allowed as a warning because the target is `draft`.
 
-### 1.4 Kebijakan Konflik Identitas
+### 1.4 Identity Conflict Policy
 
-Saat identitas `(namespace, type, id, instance-version)` sudah ada di target:
+When the identity `(namespace, type, id, instance-version)` already exists in the target:
 
-| Opsi | Syarat |
+| Option | Condition |
 |---|---|
-| **Tolak** (default) | konflik dilaporkan; transfer dibatalkan |
-| **Re-namespace eksplisit** | seluruh identitas artefak dipindahkan ke namespace baru secara deklaratif (dan semua referensinya diperbarui konsisten) |
+| **Reject** (default) | conflict reported; transfer cancelled |
+| **Explicit re-namespace** | the entire artifact identity is declaratively moved to a new namespace (and all its references updated consistently) |
 
-- [ ] **Tidak pernah** dilakukan *silent merge* — menggabungkan dua artefak berbeda identitas secara diam-diam dilarang.
+- [ ] **Never** a *silent merge* — silently merging two artifacts of different identities is forbidden.
 
-### 1.5 Validasi Sebelum Commit
+### 1.5 Validation Before Commit
 
-- [ ] Paket yang akan ditransfer lolos seluruh checklist [validation.md](validation.md).
-- [ ] Setelah impor, target divalidasi ulang sebelum commit.
+- [ ] The package to be transferred passes the entire [validation.md](validation.md) checklist.
+- [ ] After import, the target is revalidated before commit.
 
-### 1.6 Versi Kontrak
+### 1.6 Contract Version
 
-- [ ] Setiap paket transfer mendeklarasikan **dua versi** di Contract Header (Exchange Specification §9.2.1): versi kontrak serialisasi (mis. `eka-exchange-format: 1.0`) dan versi spesifikasi EKA yang dipatuhi (mis. `eka-spec: 1.0`).
-- [ ] Impor menolak paket dengan versi kontrak yang tidak didukung.
+- [ ] Every transfer package declares **two versions** in the Contract Header (Exchange Specification §9.2.1): the serialization contract version (e.g. `eka-exchange-format: 1.0`) and the EKA specification version it conforms to (e.g. `eka-spec: 1.0`).
+- [ ] Import rejects packages with unsupported contract versions.
 
-## 2. Yang Dipreservasi
+## 2. What Is Preserved
 
-| Aspek | Keterangan |
+| Aspect | Description |
 |---|---|
-| Identitas penuh | `(namespace, type, id, instance-version)` tidak berubah selama transfer |
-| State + change-log | seluruh riwayat transisi domain yang dimiliki |
-| Konten well-formed | bagian wajib per keluarga tipe tetap utuh |
-| Relasi by identity | referensi tetap mengikuti identitas (bukan path file) |
-| Klasifikasi | `dimension`/`dimensions-secondary` dipertahankan |
-| Status preservasi | `existence-state` tidak diubah oleh mekanika transfer |
+| Full identity | `(namespace, type, id, instance-version)` unchanged during transfer |
+| State + change-log | the full transition history of owned domains |
+| Well-formed content | required sections per type family remain intact |
+| Relationships by identity | references keep following identity (not file paths) |
+| Classification | `dimension`/`dimensions-secondary` preserved |
+| Preservation status | `existence-state` not changed by transfer mechanics |
 
-## 3. Batasan EX pada Transfer
+## 3. EX Limits on Transfer
 
-- EX **tidak menilai kebenaran konten** — hanya konformitas dan integritas.
-- EX **tidak mengubah state** — transisi state tetap hanya boleh oleh pemilik state; transfer hanya menyalin nilainya.
-- Proyeksi (tiket/tabel) tidak ditransfer sebagai sumber kebenaran; setelah impor, proyeksi di-refresh ulang dari owner state di target.
+- EX **does not judge content correctness** — only conformance and integrity.
+- EX **does not change state** — state transitions remain the sole right of the state owner; transfer only copies values.
+- Projections (tickets/tables) are not transferred as sources of truth; after import, projections are refreshed from the owner state in the target.

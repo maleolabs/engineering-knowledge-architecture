@@ -1,23 +1,23 @@
-# Zona Standard — EKA v1.0
+# Standard Zone — EKA v1.0
 
-Zona ini berisi **standard itu sendiri**: salinan kanonik dari Engineering Knowledge Architecture (EKA) v1.0 beserta glosarium istilah kanoniknya dan kontrak pertukarannya (Exchange Specification v1).
+This zone contains **the standard itself**: the canonical copy of the Engineering Knowledge Architecture (EKA) v1.0, together with its glossary of canonical terms and its exchange contract (Exchange Specification v1).
 
-## Sifat zona ini
+## Nature of this zone
 
-- Zona ini adalah **pra-lapisan** (pre-layer): standard mendefinisikan lapisan (Knowledge Layer, Operating Layer, Exchange Layer), tetapi standard sendiri **bukan artifact dari proyek mana pun**.
-- Isi zona ini **bukan bagian dari serialisasi proyek** — ia adalah teks kanonik yang disalin untuk referensi, onboarding, dan konformasi.
-- Berbeda dengan artifact di `skeleton/docs/`, dokumen di zona ini tidak membawa frontmatter Identity/State: dokumen di sini adalah salinan standard, bukan Artifact yang dikelola Operating Layer.
+- This zone is a **pre-layer**: the standard defines the layers (Knowledge Layer, Operating Layer, Exchange Layer), but the standard itself is **not an artifact of any project**.
+- The content of this zone is **not part of any project serialization** — it is canonical text copied for reference, onboarding, and conformance.
+- Unlike the artifacts in `skeleton/docs/`, the documents in this zone carry no Identity/State frontmatter: they are copies of the standard, not Artifacts managed by the Operating Layer.
 
-## Isi
+## Contents
 
-| File | Isi |
+| File | Contents |
 |---|---|
-| [`eka-specification-v1.0.md`](eka-specification-v1.0.md) | Teks kanonik lengkap EKA v1.0 (16 section): prinsip (P1–P16), Core Concepts, Layer Model, kontrak lapisan, Identity Model, State Taxonomy, Knowledge Taxonomy, Execution Taxonomy, Artifact Taxonomy, lifecycle konseptual, storage independence, import/export, ekstensi, open questions, evolusi. |
-| [`eka-exchange-specification-v1.0.md`](eka-exchange-specification-v1.0.md) | Exchange Contract v1 (Ratified, milestone 16.1.2): unit exchange terkecil (Artifact Instance), representasi Identity/Relationship/State, tiga dimensi versioning, **Exchange Package Object Model** (§4.4), **Capability Declaration** (§4.5), semantik import/export/sinkronisasi, konformitas (R1–R9), jaminan round-trip, kompatibilitas, keamanan, evolusi. Konseptual — bebas format serialisasi. |
-| [`eka-naming-and-terminology-specification-v1.0.md`](eka-naming-and-terminology-specification-v1.0.md) | Meta-specification (Ratified): penamaan resmi ekosistem EKA — product identity, pola naming Specification Families, reference components, tooling, repository naming, tabel istilah kanonik, daftar terminologi deprecated, migrasi. |
-| [`glossary.md`](glossary.md) | Glosarium alfabetis seluruh istilah kanonik berhuruf kapital, dengan definisi eksak dari teks kanonik. |
+| [`eka-specification-v1.0.md`](eka-specification-v1.0.md) | Complete canonical EKA v1.0 text (16 sections): principles (P1–P16), Core Concepts, Layer Model, layer contracts, Identity Model, State Taxonomy, Knowledge Taxonomy, Execution Taxonomy, Artifact Taxonomy, conceptual lifecycle, storage independence, import/export, extensions, open questions, evolution. |
+| [`eka-exchange-specification-v1.0.md`](eka-exchange-specification-v1.0.md) | Exchange Contract v1 (Ratified, milestone 16.1.2): the smallest exchange unit (Artifact Instance), Identity/Relationship/State representation, three versioning dimensions, **Exchange Package Object Model** (§4.4), **Capability Declaration** (§4.5), import/export/synchronization semantics, conformance (R1–R9), round-trip guarantees, compatibility, security, evolution. Conceptual — free of serialization formats. |
+| [`eka-naming-and-terminology-specification-v1.0.md`](eka-naming-and-terminology-specification-v1.0.md) | Meta-specification (Ratified): official EKA ecosystem naming — product identity, Specification Families naming pattern, reference components, tooling, repository naming, canonical term table, deprecated terminology list, migration. |
+| [`glossary.md`](glossary.md) | Alphabetical glossary of all capitalized canonical terms, with exact definitions from the canonical text. |
 
-## Rujukan lain
+## Other references
 
-- Dokumentasi meta implementasi: [`../reference/README.md`](../reference/README.md)
-- Struktur serialisasi yang dapat disalin: [`../skeleton/README.md`](../skeleton/README.md)
+- Implementation meta-documentation: [`../reference/README.md`](../reference/README.md)
+- Copyable serialization structure: [`../skeleton/README.md`](../skeleton/README.md)

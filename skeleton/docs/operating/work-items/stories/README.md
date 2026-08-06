@@ -1,38 +1,38 @@
 # stories/ — Story (`sto-`)
 
-> Anchor EKA: Operating Layer — state domain Execution State; subtipe work item `sto-`.
+> Anchor EKA: Operating Layer — State Domain Execution State; work item subtype `sto-`.
 
-## Tujuan
+## Purpose
 
-Story adalah unit kerja yang memberikan nilai pengguna yang dapat diamati, dijelaskan dari sudut pandang pemangku kepentingan.
+A story is a unit of work delivering observable user value, described from the stakeholder's point of view.
 
 ## Token & State Vector
 
-| Token | Folder | State yang dimiliki |
+| Token | Folder | Owned state |
 |---|---|---|
 | `sto-` | `work-items/stories/` | `execution-state`, `existence-state` |
 
-Nilai `execution-state`: `planned → todo → in-progress → in-review → done` (forward-only, never skip, never revert). Nilai `existence-state`: `active → archived → retired`.
+`execution-state` values: `planned → todo → in-progress → in-review → done` (forward-only, never skip, never revert). `existence-state` values: `active → archived → retired`.
 
-## Struktur Konten Wajib
+## Required Content Structure
 
-- `## Description` — kebutuhan pengguna dan nilai yang diberikan.
-- `## Acceptance Criteria` — kondisi terukur yang memenuhi definisi selesai.
+- `## Description` — the user need and the value delivered.
+- `## Acceptance Criteria` — measurable conditions satisfying the definition of done.
 
-## Konvensi Nama
+## Naming Conventions
 
-`sto-<id>.md`, kebab-case, unik dalam (namespace, type). Tanpa akhiran `-v<nn>`. Contoh: `sto-login-email.md`.
+`sto-<id>.md`, kebab-case, unique within (namespace, type). No `-v<nn>` suffix. Example: `sto-login-email.md`.
 
-## Kepemilikan
+## Ownership
 
-| Peran | Tanggung jawab |
+| Role | Responsibility |
 |---|---|
-| Product Owner | definisi nilai dan kriteria penerimaan |
-| Engineer (implementer) | pemilik tunggal state; eksekusi |
-| Tech Lead | peninjau teknis pada `in-review` |
+| Product Owner | definition of value and acceptance criteria |
+| Engineer (implementer) | single owner of state; execution |
+| Tech Lead | technical reviewer at `in-review` |
 
-## Terkait
+## Related
 
-- [requirements/](../../../requirements/) — story mewujudkan `req-`.
-- [containers/](../containers/) — story dimiliki kontainer aktif.
-- [projections/](../projections/) — status story diproyeksikan ke `tkt-`.
+- [requirements/](../../../requirements/) — stories realize `req-`.
+- [containers/](../../containers/) — stories are owned by the active container.
+- [projections/](../../projections/) — story status is projected to `tkt-`.

@@ -1,48 +1,48 @@
-# docs/specifications/ — Dimensi Specifications
+# docs/specifications/ — Specifications Dimension
 
-> Anchor EKA: Knowledge Layer — dimensi **specifications** (EKA 8).
+> Anchor EKA: Knowledge Layer — **specifications** dimension (EKA 8).
 
-## Tujuan
+## Purpose
 
-Dimensi specifications mewadahi spesifikasi yang dapat diimplementasikan: rincian perilaku, antarmuka, format, dan aturan teknis yang cukup presisi untuk menjadi dasar implementasi dan pengujian. Spesifikasi menjembatani kebutuhan (`req-`) menuju implementasi.
+The specifications dimension houses implementable specifications: behavior, interface, format, and technical rule details precise enough to serve as the basis for implementation and testing. Specifications bridge requirements (`req-`) toward implementation.
 
-## Yang Ada di Sini
+## What Lives Here
 
-| Token | Tipe | Format nama |
+| Token | Type | Name format |
 |---|---|---|
 | `spec-` | Specification | `spec-<id>.md` |
 
 ## State Vector
 
-| Tipe | Domain state yang dimiliki |
+| Type | Owned state domains |
 |---|---|
 | `spec-` | `content-state`, `existence-state` |
 
-Nilai `content-state`: `draft → review → approved → amended`. Nilai `existence-state`: `active → archived → retired`. Field lain = N/A.
+`content-state` values: `draft → review → approved → amended`. `existence-state` values: `active → archived → retired`. Fields not listed = N/A.
 
-## Struktur Konten yang Baik
+## Good Content Structure
 
-Struktur wajib (keluarga dokumen pengetahuan):
+Required structure (knowledge document family):
 
-- `## Purpose` — bagian sistem apa yang dispesifikasikan.
-- `## Content` — spesifikasi rinci: perilaku, input/output, batasan, format.
+- `## Purpose` — which part of the system is specified.
+- `## Content` — the detailed specification: behavior, input/output, constraints, format.
 
-## Konvensi Nama
+## Naming Conventions
 
-`spec-<id>.md`, kebab-case, unik dalam (namespace, type). Tanpa akhiran `-v<nn>`. Contoh: `spec-ticket-projection.md`.
+`spec-<id>.md`, kebab-case, unique within (namespace, type). No `-v<nn>` suffix. Example: `spec-ticket-projection.md`.
 
-## Kepemilikan
+## Ownership
 
-| Peran | Tanggung jawab |
+| Role | Responsibility |
 |---|---|
-| Tech Lead | pemilik tunggal spesifikasi teknis |
-| Engineers | kontributor dan penerap |
-| Product Owner | peninjau kesesuaian dengan kebutuhan |
+| Tech Lead | single owner of technical specifications |
+| Engineers | contributors and implementers |
+| Product Owner | reviewer of fit with requirements |
 
-## Terkait
+## Related
 
-- [requirements/](../requirements/) — spesifikasi menurunkan `req-`.
-- [architecture/](../architecture/) — spesifikasi tunduk pada batasan `arc-`.
-- [vocabulary/](../vocabulary/) — istilah dalam spesifikasi wajib terdefinisi (Vocabulary ≠ Specifications).
-- [quality/](../quality/) — `rvw-` memvalidasi spesifikasi lewat `validates`.
-- [standards/](../standards/) — spesifikasi mengikuti `std-`.
+- [requirements/](../requirements/) — specifications derive from `req-`.
+- [architecture/](../architecture/) — specifications are subject to `arc-` constraints.
+- [vocabulary/](../vocabulary/) — terms used in specifications must be defined (Vocabulary ≠ Specifications).
+- [quality/](../quality/) — `rvw-` validates specifications via `validates`.
+- [standards/](../standards/) — specifications follow `std-`.

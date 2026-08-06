@@ -1,20 +1,20 @@
-# Ringkasan Implementation ADR
+# Implementation ADR Summary
 
-Indeks 7 Implementation ADR dari Reference Implementation EKA v1.0. Seluruh ADR berstatus **accepted** (`content-state: accepted`) dan dimiliki `namespace: eka-ref-impl`, dimensi `decisions`.
+Index of the 7 Implementation ADRs of the EKA v1.0 Reference Implementation. All ADRs have status **accepted** (`content-state: accepted`) and carry `namespace: eka-ref-impl`, dimension `decisions`.
 
-| ADR | Keputusan (satu baris) | Status | File |
+| ADR | Decision (one line) | Status | File |
 |---|---|---|---|
-| **ADR-001 — Identity Serialization** | Identity disandikan lengkap di frontmatter (`namespace`, `type`, `id`, `instance-version`, `revision`); filename `<type-token>-<id>[-v<nn>]` adalah proyeksi, dengan tabel 26 token bebas-ambiguitas — menyelesaikan kolisi `mvp-nnn` (EKA 6.4, P3, P9). | accepted | [`adr-001-identity-serialization.md`](decisions/adr-001-identity-serialization.md) |
-| **ADR-002 — State Vector Encoding** | Status disandikan sebagai 5 field frontmatter per domain state yang dimiliki (`content-state`, `execution-state`, `planning-state`, `container-state`, `existence-state`); absence = not-applicable; single-writer per field (P6); `change-log` array `{date, domain, from, to, by}`; nilai legacy dipetakan ke nilai kanonik. | accepted | [`adr-002-state-vector-encoding.md`](decisions/adr-002-state-vector-encoding.md) |
-| **ADR-003 — Projection Model** | Tabel container dan ticket adalah State Projection (EKA 7.4): ticket ber-State Vector kosong dengan `derives-from: [ctr:<id>]`, header "Generated — State Projection", refresh default on-read (EKA 15.5); proyeksi tidak pernah writer (P6). | accepted | [`adr-003-projection-model.md`](decisions/adr-003-projection-model.md) |
-| **ADR-004 — Phase as Metadata** | `phase` menjadi field frontmatter pada artifact `scp-`/`plan-` saja (discovery\|mvp\|milestone\|release\|growth\|maturity\|sunset); phase change = context update yang diotorisasi gate kesiapan (EKA 11.2) dan dicatat di `change-log` dengan `domain: phase`; tidak ada folder phase. | accepted | [`adr-004-phase-as-metadata.md`](decisions/adr-004-phase-as-metadata.md) |
-| **ADR-005 — Dimension Layout** | 12 folder knowledge = 12 Knowledge Dimension 1:1 + `operating/` (OS) + `exchange/` (EX); aturan lokasi: artifact knowledge hidup di folder dimensinya, validasi menegakkan `dimension == folder`; artifact operating dikecualikan (EKA 8, P15). | accepted | [`adr-005-dimension-layout.md`](decisions/adr-005-dimension-layout.md) |
-| **ADR-006 — Exchange Conventions** | Seam exchange (EKA 13) diwujudkan sebagai `skeleton/docs/exchange/validation.md` (9 aturan validasi) + `skeleton/docs/exchange/transfer.md` (round-trip, kebijakan konflik Identity = tolak atau re-namespace eksplisit, idempotensi, schema versioning). | accepted | [`adr-006-exchange-conventions.md`](decisions/adr-006-exchange-conventions.md) |
-| **ADR-007 — Extension: Research Finding** | Tipe extension `fnd-` (Research Finding) didaftarkan via mekanisme ekstensi EKA 14.1: dimensi research, State Vector owned `(Content State, Existence State)`, folder `research/`; jalur Distillation spike → pengetahuan durable (EKA 11.4). | accepted | [`adr-007-extension-research-finding.md`](decisions/adr-007-extension-research-finding.md) |
+| **ADR-001 — Identity Serialization** | Identity encoded completely in frontmatter (`namespace`, `type`, `id`, `instance-version`, `revision`); filename `<type-token>-<id>[-v<nn>]` is a projection, with a 26-token ambiguity-free table — resolving the `mvp-nnn` collision (EKA 6.4, P3, P9). | accepted | [`adr-001-identity-serialization.md`](decisions/adr-001-identity-serialization.md) |
+| **ADR-002 — State Vector Encoding** | Status encoded as 5 frontmatter fields per owned state domain (`content-state`, `execution-state`, `planning-state`, `container-state`, `existence-state`); absence = not-applicable; single-writer per field (P6); `change-log` array `{date, domain, from, to, by}`; legacy values mapped to canonical values. | accepted | [`adr-002-state-vector-encoding.md`](decisions/adr-002-state-vector-encoding.md) |
+| **ADR-003 — Projection Model** | Container tables and tickets are State Projections (EKA 7.4): tickets carry an empty State Vector with `derives-from: [ctr:<id>]`, header "Generated — State Projection", default on-read refresh (EKA 15.5); projections never write (P6). | accepted | [`adr-003-projection-model.md`](decisions/adr-003-projection-model.md) |
+| **ADR-004 — Phase as Metadata** | `phase` becomes a frontmatter field on `scp-`/`plan-` artifacts only (discovery\|mvp\|milestone\|release\|growth\|maturity\|sunset); phase change = context update authorized by the readiness gate (EKA 11.2) and recorded in `change-log` with `domain: phase`; no phase folders. | accepted | [`adr-004-phase-as-metadata.md`](decisions/adr-004-phase-as-metadata.md) |
+| **ADR-005 — Dimension Layout** | 12 knowledge folders = 12 Knowledge Dimensions 1:1 + `operating/` (OS) + `exchange/` (EX); location rule: knowledge artifacts live in their dimension folder, validation enforces `dimension == folder`; operating artifacts exempt (EKA 8, P15). | accepted | [`adr-005-dimension-layout.md`](decisions/adr-005-dimension-layout.md) |
+| **ADR-006 — Exchange Conventions** | The exchange seam (EKA 13) is realized as `skeleton/docs/exchange/validation.md` (9 Conformance Rules) + `skeleton/docs/exchange/transfer.md` (round-trip, Identity conflict policy = reject or explicit re-namespace, idempotency, schema versioning). | accepted | [`adr-006-exchange-conventions.md`](decisions/adr-006-exchange-conventions.md) |
+| **ADR-007 — Extension: Research Finding** | Extension type `fnd-` (Research Finding) registered via the EKA 14.1 extension mechanism: research dimension, owned State Vector `(Content State, Existence State)`, `research/` folder; the spike → durable knowledge Distillation path (EKA 11.4). | accepted | [`adr-007-extension-research-finding.md`](decisions/adr-007-extension-research-finding.md) |
 
-## Konvensi frontmatter bersama
+## Shared frontmatter conventions
 
-Seluruh ADR mengikuti kontrak frontmatter serialisasi (lihat [`adr-001`](decisions/adr-001-identity-serialization.md) dan [`reference-architecture.md`](reference-architecture.md)):
+All ADRs follow the serialization frontmatter contract (see [`adr-001`](decisions/adr-001-identity-serialization.md) and [`reference-architecture.md`](reference-architecture.md)):
 
 ```yaml
 ---
@@ -41,7 +41,7 @@ change-log:
 ---
 ```
 
-## Grafik dependensi ADR
+## ADR dependency graph
 
 ```mermaid
 flowchart LR

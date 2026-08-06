@@ -1,51 +1,51 @@
-# docs/records/ — Dimensi Records
+# docs/records/ — Records Dimension
 
-> Anchor EKA: Knowledge Layer — dimensi **records** (EKA 8).
+> Anchor EKA: Knowledge Layer — **records** dimension (EKA 8).
 
-## Tujuan
+## Purpose
 
-Dimensi records mewadahi catatan kronologis yang tidak berubah: release record, catatan peristiwa, dan jejak audit proyek. Berbeda dengan dokumen kerja yang terus berkembang, catatan di sini bersifat faktu al — ia merekam apa yang terjadi.
+The records dimension houses immutable chronological records: release records, event notes, and the project's audit trail. Unlike working documents, which keep evolving, records here are factual — they record what happened.
 
-## Yang Ada di Sini
+## What Lives Here
 
-| Token | Tipe | Format nama |
+| Token | Type | Name format |
 |---|---|---|
 | `rel-` | Release Record | `rel-<id>.md` |
 
 ## State Vector
 
-| Tipe | Domain state yang dimiliki |
+| Type | Owned state domains |
 |---|---|
 | `rel-` | `content-state`, `existence-state` |
 
-Nilai `content-state`: `draft → review → approved → amended`. Nilai `existence-state`: `active → archived → retired`. Field lain = N/A. Setelah release, `rel-` praktis `approved` dan tidak diedit lagi (perubahan fakta = instance baru dengan `amends`).
+`content-state` values: `draft → review → approved → amended`. `existence-state` values: `active → archived → retired`. Fields not listed = N/A. After a release, a `rel-` is practically `approved` and is no longer edited (fact changes = new instance with `amends`).
 
-## Struktur Konten yang Baik
+## Good Content Structure
 
-Struktur wajib (keluarga dokumen pengetahuan):
+Required structure (knowledge document family):
 
-- `## Purpose` — release/peristiwa apa yang dicatat.
-- `## Content` — ringkasan eksekusi dan rilis.
+- `## Purpose` — which release/event is recorded.
+- `## Content` — summary of execution and the release.
 
-## Release Record = Agregat Eksekusi + Release Gates
+## Release Record = Execution Aggregate + Release Gates
 
-`rel-` adalah **agregat** dari hasil eksekusi (work item yang selesai, sesi yang terjadi) dan **release gates** (gate persetujuan dan kesiapan yang lulus sebelum rilis). Keduanya dirujuk dengan relasi (`derives-from`/`validates`), bukan dikutip ulang — agar catatan tetap ringkas dan jejaknya tertelusur.
+A `rel-` is an **aggregate** of execution outcomes (completed work items, sessions that occurred) and **release gates** (the approval and readiness gates passed before release). Both are referenced via relationships (`derives-from`/`validates`), not re-quoted — keeping the record concise and its trail traceable.
 
-## Konvensi Nama
+## Naming Conventions
 
-`rel-<id>.md`, kebab-case, unik dalam (namespace, type). Tanpa akhiran `-v<nn>`. Contoh: `rel-2026-08-mvp.md`.
+`rel-<id>.md`, kebab-case, unique within (namespace, type). No `-v<nn>` suffix. Example: `rel-2026-08-mvp.md`.
 
-## Kepemilikan
+## Ownership
 
-| Peran | Tanggung jawab |
+| Role | Responsibility |
 |---|---|
-| DevOps | pemilik `rel-` (eksekusi release) |
-| Tech Lead | penandatangan release gate teknis |
-| Product Owner | penandatangan release gate produk |
+| DevOps | owner of `rel-` (release execution) |
+| Tech Lead | signer of the technical release gate |
+| Product Owner | signer of the product release gate |
 
-## Terkait
+## Related
 
-- [operations/](../operations/) — prosedur release yang dijalankan (`run-`).
-- [quality/](../quality/) — release gates diverifikasi oleh `rvw-`.
-- [decisions/](../decisions/) — keputusan yang dipicu release tercatat sebagai `dec-`.
-- [operating/work-items/](../operating/work-items/) — hasil eksekusi yang diagregasi `rel-`.
+- [operations/](../operations/) — release procedures executed (`run-`).
+- [quality/](../quality/) — release gates verified by `rvw-`.
+- [decisions/](../decisions/) — release-triggered decisions are recorded as `dec-`.
+- [operating/work-items/](../operating/work-items/) — execution outcomes aggregated by `rel-`.

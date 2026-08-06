@@ -1,52 +1,52 @@
-# docs/quality/ — Dimensi Quality
+# docs/quality/ — Quality Dimension
 
-> Anchor EKA: Knowledge Layer — dimensi **quality** (EKA 8).
+> Anchor EKA: Knowledge Layer — **quality** dimension (EKA 8).
 
-## Tujuan
+## Purpose
 
-Dimensi quality mewadahi hasil peninjauan dan verifikasi mutu: review kode, review arsitektur, dan review produk. Setiap `rvw-` memvalidasi satu atau lebih artefak lain melalui relasi `validates`, sehingga mutu dapat ditelusuri balik ke apa yang diverifikasi.
+The quality dimension houses review and quality-verification results: code reviews, architecture reviews, and product reviews. Each `rvw-` validates one or more other artifacts through the `validates` relationship, so quality is traceable back to what was verified.
 
-## Yang Ada di Sini
+## What Lives Here
 
-| Token | Tipe | Format nama |
+| Token | Type | Name format |
 |---|---|---|
 | `rvw-` | Review | `rvw-<id>.md` |
 
 ## State Vector
 
-| Tipe | Domain state yang dimiliki |
+| Type | Owned state domains |
 |---|---|
 | `rvw-` | `content-state`, `existence-state` |
 
-Nilai `content-state`: `draft → review → approved → amended`. Nilai `existence-state`: `active → archived → retired`. Field lain = N/A.
+`content-state` values: `draft → review → approved → amended`. `existence-state` values: `active → archived → retired`. Fields not listed = N/A.
 
-## Struktur Konten yang Baik
+## Good Content Structure
 
-Struktur wajib (keluarga dokumen pengetahuan, dengan ekstensi review):
+Required structure (knowledge document family, with review extensions):
 
-- `## Purpose` — objek dan lingkup review.
-- `## Content` — uraian umum hasil review.
-- `## Findings` — temuan: masalah, risiko, pelanggaran standar.
-- `## Action Items` — tindak lanjut yang diperlukan.
+- `## Purpose` — the object and scope of the review.
+- `## Content` — general account of the review results.
+- `## Findings` — findings: problems, risks, standard violations.
+- `## Action Items` — required follow-ups.
 
-Relasi `validates: [<type>:<id>]` harus menunjuk artefak yang direview (mis. `spec:login`, `std:frontmatter`).
+The `validates: [<type>:<id>]` relationship must point to the reviewed artifacts (e.g. `spec:login`, `std:frontmatter`).
 
-## Konvensi Nama
+## Naming Conventions
 
-`rvw-<id>.md`, kebab-case, unik dalam (namespace, type). Tanpa akhiran `-v<nn>`. Contoh: `rvw-serialisasi-frontmatter.md`.
+`rvw-<id>.md`, kebab-case, unique within (namespace, type). No `-v<nn>` suffix. Example: `rvw-frontmatter-serialization.md`.
 
-## Kepemilikan
+## Ownership
 
-| Peran | Tanggung jawab |
+| Role | Responsibility |
 |---|---|
-| Engineers | peer review (kode/spesifikasi) |
-| Tech Lead | review arsitektur; pemilik dimensi quality |
-| DevOps | review operasional/deployment |
-| Product Owner | review produk (pemenuhan kebutuhan) |
+| Engineers | peer reviews (code/specifications) |
+| Tech Lead | architecture reviews; owner of the quality dimension |
+| DevOps | operational/deployment reviews |
+| Product Owner | product reviews (requirement fulfillment) |
 
-## Terkait
+## Related
 
-- [standards/](../standards/) — kepatuhan diverifikasi oleh `rvw-`.
-- [specifications/](../specifications/) — `rvw-` memvalidasi `spec-`.
-- [decisions/](../decisions/) — temuan review dapat melahirkan `dec-`.
-- [operating/work-items/](../operating/work-items/) — action items dapat menjadi work item baru.
+- [standards/](../standards/) — conformance is verified by `rvw-`.
+- [specifications/](../specifications/) — `rvw-` validates `spec-`.
+- [decisions/](../decisions/) — review findings can give rise to `dec-`.
+- [operating/work-items/](../operating/work-items/) — action items can become new work items.

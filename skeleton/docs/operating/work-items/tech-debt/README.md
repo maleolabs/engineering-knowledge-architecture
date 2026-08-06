@@ -1,39 +1,39 @@
 # tech-debt/ — Tech Debt (`td-`)
 
-> Anchor EKA: Operating Layer — state domain Execution State; subtipe work item `td-`.
+> Anchor EKA: Operating Layer — State Domain Execution State; work item subtype `td-`.
 
-## Tujuan
+## Purpose
 
-Tech Debt adalah unit kerja untuk utang teknis yang telah diidentifikasi: shortcut, komponen usang, dan ketidakkonsistenan yang membebani pengembangan berikutnya. Setiap `td-` harus mencatat alasan utang itu ada (rasional) agar pengambilannya dapat diprioritaskan secara sadar.
+Tech Debt is a unit of work for identified technical debt: shortcuts, outdated components, and inconsistencies that burden subsequent development. Every `td-` must record why the debt exists (rationale) so its repayment can be consciously prioritized.
 
 ## Token & State Vector
 
-| Token | Folder | State yang dimiliki |
+| Token | Folder | Owned state |
 |---|---|---|
 | `td-` | `work-items/tech-debt/` | `execution-state`, `existence-state` |
 
-Nilai `execution-state`: `planned → todo → in-progress → in-review → done` (forward-only, never skip, never revert). Nilai `existence-state`: `active → archived → retired`.
+`execution-state` values: `planned → todo → in-progress → in-review → done` (forward-only, never skip, never revert). `existence-state` values: `active → archived → retired`.
 
-## Struktur Konten Wajib
+## Required Content Structure
 
-- `## Description` — bentuk utang teknis dan lokasinya.
-- `## Acceptance Criteria` — kondisi yang membuktikan utang terbayar.
-- `## Debt Rationale` — mengapa utang ini diambil (keputusan/waktu), agar pengambilan keputusan di masa depan kontekstual.
+- `## Description` — the form of the technical debt and its location.
+- `## Acceptance Criteria` — conditions proving the debt is repaid.
+- `## Debt Rationale` — why this debt was taken on (decision/timing), so future decisions stay contextual.
 
-## Konvensi Nama
+## Naming Conventions
 
-`td-<id>.md`, kebab-case, unik dalam (namespace, type). Tanpa akhiran `-v<nn>`. Contoh: `td-migrasi-ke-single-writer.md`.
+`td-<id>.md`, kebab-case, unique within (namespace, type). No `-v<nn>` suffix. Example: `td-single-writer-migration.md`.
 
-## Kepemilikan
+## Ownership
 
-| Peran | Tanggung jawab |
+| Role | Responsibility |
 |---|---|
-| Engineer (implementer) | pemilik tunggal state; eksekusi |
-| Tech Lead | pengambil keputusan prioritas utang |
-| Product Owner | peninjau dampak terhadap rencana |
+| Engineer (implementer) | single owner of state; execution |
+| Tech Lead | decision-maker for debt priority |
+| Product Owner | reviewer of impact on the plan |
 
-## Terkait
+## Related
 
-- [decisions/](../../../decisions/) — `Debt Rationale` dapat merujuk `dec-` yang melahirkannya.
-- [standards/](../../../standards/) — pelunasan utang mengembalikan kepatuhan `std-`.
-- [containers/](../containers/) — tech debt dimiliki kontainer aktif.
+- [decisions/](../../../decisions/) — `Debt Rationale` can reference the `dec-` that gave rise to it.
+- [standards/](../../../standards/) — repaying debt restores `std-` conformance.
+- [containers/](../../containers/) — tech debt is owned by the active container.

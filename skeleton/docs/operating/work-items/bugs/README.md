@@ -1,39 +1,39 @@
 # bugs/ — Bug (`bug-`)
 
-> Anchor EKA: Operating Layer — state domain Execution State; subtipe work item `bug-`.
+> Anchor EKA: Operating Layer — State Domain Execution State; work item subtype `bug-`.
 
-## Tujuan
+## Purpose
 
-Bug adalah unit kerja untuk perilaku yang menyimpang dari yang diharapkan: kegagalan fungsi, ketidaksesuaian dengan spesifikasi, atau regresi. Setiap bug harus dapat direproduksi dan ditelusuri ke artefak yang melanggarnya.
+A bug is a unit of work for behavior deviating from expectations: functional failure, non-conformance to a specification, or regression. Every bug must be reproducible and traceable to the artifact it violates.
 
 ## Token & State Vector
 
-| Token | Folder | State yang dimiliki |
+| Token | Folder | Owned state |
 |---|---|---|
 | `bug-` | `work-items/bugs/` | `execution-state`, `existence-state` |
 
-Nilai `execution-state`: `planned → todo → in-progress → in-review → done` (forward-only, never skip, never revert). Nilai `existence-state`: `active → archived → retired`.
+`execution-state` values: `planned → todo → in-progress → in-review → done` (forward-only, never skip, never revert). `existence-state` values: `active → archived → retired`.
 
-## Struktur Konten Wajib
+## Required Content Structure
 
-- `## Description` — gejala, langkah reproduksi, dan perilaku yang diharapkan.
-- `## Impact` — dampak terhadap pengguna/sistem dan tingkat keparahan.
-- `## Root Cause` (opsional) — akar masalah bila sudah teridentifikasi.
+- `## Description` — symptom, reproduction steps, and expected behavior.
+- `## Impact` — impact on users/system and severity.
+- `## Root Cause` (optional) — root cause once identified.
 
-## Konvensi Nama
+## Naming Conventions
 
-`bug-<id>.md`, kebab-case, unik dalam (namespace, type). Tanpa akhiran `-v<nn>`. Contoh: `bug-tiket-stale-setelah-refresh.md`.
+`bug-<id>.md`, kebab-case, unique within (namespace, type). No `-v<nn>` suffix. Example: `bug-ticket-stale-after-refresh.md`.
 
-## Kepemilikan
+## Ownership
 
-| Peran | Tanggung jawab |
+| Role | Responsibility |
 |---|---|
-| Pelapor | mendeskripsikan gejala dan dampak |
-| Engineer (implementer) | pemilik tunggal state; diagnosis dan perbaikan |
-| Tech Lead | peninjau perbaikan pada `in-review` |
+| Reporter | describes symptoms and impact |
+| Engineer (implementer) | single owner of state; diagnosis and fix |
+| Tech Lead | fix reviewer at `in-review` |
 
-## Terkait
+## Related
 
-- [specifications/](../../../specifications/) — perilaku yang benar dirujuk dari `spec-`.
-- [quality/](../../../quality/) — perbaikan diverifikasi oleh `rvw-`.
-- [containers/](../containers/) — bug dimiliki kontainer aktif.
+- [specifications/](../../../specifications/) — correct behavior is referenced from `spec-`.
+- [quality/](../../../quality/) — fixes are verified by `rvw-`.
+- [containers/](../../containers/) — bugs are owned by the active container.

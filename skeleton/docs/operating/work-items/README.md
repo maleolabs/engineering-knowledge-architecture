@@ -1,30 +1,30 @@
 # docs/operating/work-items/ — Work Items
 
-> Anchor EKA: Operating Layer — state domain **Execution State**.
+> Anchor EKA: Operating Layer — State Domain **Execution State**.
 
-## Tujuan
+## Purpose
 
-Work items adalah unit kerja terkecil yang dieksekusi dalam kontainer. Enam subtipe menampung seluruh jenis pekerjaan; semuanya berbagi satu state domain yang dimiliki: Execution State.
+Work items are the smallest unit of work executed within a container. Six subtypes cover all kinds of work; all share one owned State Domain: Execution State.
 
 ## Execution State
 
-| Nilai | Makna |
+| Value | Meaning |
 |---|---|
-| `planned` | terdaftar, belum dijadwalkan |
-| `todo` | siap dikerjakan |
-| `in-progress` | sedang dikerjakan |
-| `in-review` | menunggu review gate |
-| `done` | selesai dan tervalidasi |
+| `planned` | registered, not yet scheduled |
+| `todo` | ready to work |
+| `in-progress` | being worked |
+| `in-review` | awaiting the review gate |
+| `done` | finished and validated |
 
-Aturan: **never skip** (wajib melewati setiap nilai berurutan), **never revert** (tidak boleh kembali ke nilai sebelumnya). Transisi forward-only dan tercatat di `change-log`.
+Rules: **never skip** (each value must be passed in sequence), **never revert** (no returning to a previous value). Transitions are forward-only and recorded in `change-log`.
 
 ## Single-Writer
 
-Setiap work item memiliki **satu penulis state** (pelaksana/implementer-nya). Hanya penulis itu yang mengubah `execution-state` dan `existence-state`. Pelaksana menulis `change-log` pada setiap transisi; peninjau tidak pernah menulis state work item.
+Every work item has **one state writer** (its implementer). Only that writer changes `execution-state` and `existence-state`. The implementer writes `change-log` on every transition; reviewers never write work item state.
 
-## Enam Subtipe
+## Six Subtypes
 
-| Token | Subtipe | Folder |
+| Token | Subtype | Folder |
 |---|---|---|
 | `sto-` | Story | [stories/](stories/) |
 | `ts-` | Technical Story | [technical-stories/](technical-stories/) |
@@ -33,18 +33,18 @@ Setiap work item memiliki **satu penulis state** (pelaksana/implementer-nya). Ha
 | `ch-` | Chore | [chores/](chores/) |
 | `spk-` | Spike | [spikes/](spikes/) |
 
-## Struktur Umum yang Baik
+## Good Common Structure
 
-Semua work item wajib memuat:
+All work items must contain:
 
-- `## Description` — apa yang dikerjakan.
-- Kriteria verifikasi sesuai subtipe (`## Acceptance Criteria`, `## Impact`, dst. — lihat README subtipe).
-- Frontmatter identitas: `namespace`, `type`, `id`; state: `execution-state`, `existence-state`; `change-log` untuk setiap transisi.
-- `dimension` boleh diisi informasional (mis. `requirements`), tetapi **tidak** menjadi penentu folder rumah.
+- `## Description` — what is being done.
+- Verification criteria per subtype (`## Acceptance Criteria`, `## Impact`, etc. — see subtype READMEs).
+- Identity frontmatter: `namespace`, `type`, `id`; state: `execution-state`, `existence-state`; `change-log` for every transition.
+- `dimension` may be set informationally (e.g. `requirements`), but **does not** determine the home folder.
 
-## Terkait
+## Related
 
-- [containers/](../containers/) — work item hidup dalam `ctr-` yang dirujuk.
-- [projections/](../projections/) — `tkt-` memproyeksikan work item ke tabel/status.
-- [sessions/](../sessions/) — eksekusi work item dicatat dalam `ses-`.
-- [../quality/](../../quality/) — hasil diverifikasi `rvw-`.
+- [containers/](../containers/) — work items live in the referenced `ctr-`.
+- [projections/](../projections/) — `tkt-` projects work items into tables/status.
+- [sessions/](../sessions/) — work item execution is recorded in `ses-`.
+- [../quality/](../../quality/) — results are verified by `rvw-`.

@@ -27,39 +27,39 @@ change-log:
     by: Engineering Architecture
 ---
 
-# ADR-003 — Model Proyeksi: tabel container dan ticket adalah State Projection
+# ADR-003 — Projection Model: container and ticket tables are State Projections
 
 ## Context
 
-Tabel sprint dan dokumen ticket (wave docs) pada implementasi awal menyimpan status yang **diduplikasi** dari work item: status di tabel sprint, status di dokumen ticket, dan status di file work item — tiga salinan, dipertahankan sinkron secara manual tanpa penulis tunggal. EKA 7.4 menyelesaikan ini secara formal: representasi turunan adalah **State Projection** (tampilan derived, tidak memiliki State sendiri, tidak pernah menjadi writer — P6, P9), dan Artifact yang seluruh statenya diproyeksikan memiliki **State Vector kosong** (contoh: Ticket = `(∅)`). Kebijakan waktu validasi proyeksi masih merupakan open question (EKA 15.5: event-driven vs on-read).
+The sprint table and ticket documents (wave docs) in the initial implementation stored status **duplicated** from the work item: status in the sprint table, status in the ticket document, and status in the work item file — three copies, kept manually in sync with no single writer. EKA 7.4 resolves this formally: derived representations are **State Projections** (derived views, owning no State of their own, never writers — P6, P9), and Artifacts whose entire state is projected have an **empty State Vector** (example: Ticket = `(∅)`). The projection validation-timing policy is still an open question (EKA 15.5: event-driven vs on-read).
 
 ## Decision
 
-1. **Tabel work item pada container dan artifact ticket adalah State Projection** (EKA 7.4, 9 — Projection Semantics): statusnya diturunkan dari owner (work item yang direferensikan), divalidasi melalui Projection Refresh, dan **tidak pernah diedit sebagai fakta independen**.
-2. **Ticket (`tkt-`) memiliki State Vector kosong**: tidak ada field state di frontmatter; seluruh state ticket adalah proyeksi dari work item yang direferensikan (EKA 10 — Ticket = `∅`).
-3. **Relasi ditulis by Identity**: `derives-from: [ctr:<id>]` di frontmatter ticket; container menunjuk work item; rantai proyeksi selalu berujung pada owner (EKA 6.2.7).
-4. **Artifact generated membawa header eksplisit**:
+1. **The work item table on containers and the ticket artifact are State Projections** (EKA 7.4, 9 — Projection Semantics): their status is derived from the owner (the referenced work item), validated through Projection Refresh, and **never edited as an independent fact**.
+2. **Ticket (`tkt-`) has an empty State Vector**: no state fields in the frontmatter; all ticket state is a projection of the referenced work item (EKA 10 — Ticket = `∅`).
+3. **Relationships are written by Identity**: `derives-from: [ctr:<id>]` in the ticket frontmatter; the container points to work items; the projection chain always terminates at an owner (EKA 6.2.7).
+4. **Generated artifacts carry an explicit header**:
 
    > Generated — State Projection. Do NOT edit state here; refresh on read.
 
-5. **Kebijakan refresh default: on-read** — proyeksi divalidasi terhadap owner saat dibaca (EKA 15.5); invariant "proyeksi tidak pernah menjadi writer" bersifat absolut (EKA 5.5).
+5. **Default refresh policy: on-read** — projections are validated against the owner when read (EKA 15.5); the invariant "projections never write" is absolute (EKA 5.5).
 
 ## Consequences
 
-- **Positif**: single-writer terjaga — tidak ada writer kedua pada status (P6); duplikasi status formal terhapus.
-- **Positif**: tabel container/ticket dapat di-regenerate kapan saja dari owner tanpa kehilangan informasi.
-- **Negatif**: pembaca proyeksi dapat melihat status basi sampai refresh on-read dilakukan — konsekuensi kebijakan yang dipilih, dikompensasi header peringatan.
-- **Negatif**: tooling lama yang menulis status ke tabel/ticket putus secara disengaja (`breaking-changes.md` #4–5).
+- **Positive**: single-writer preserved — no second writer on status (P6); formal status duplication removed.
+- **Positive**: container/ticket tables can be regenerated at any time from the owner without information loss.
+- **Negative**: projection readers may observe stale status until an on-read refresh is performed — a consequence of the chosen policy, compensated by the warning header.
+- **Negative**: legacy tooling that wrote status into tables/tickets breaks intentionally (`breaking-changes.md` #4–5).
 
 ## Alternatives Considered
 
-- **Tabel/ticket sebagai sumber status otoritatif** — ditolak: dua writer per field state; melanggar P6; mengulang duplikasi legacy.
-- **Skrip sinkronisasi otomatis state owner → proyeksi** — ditolak: enforcement adalah kapabilitas implementasi (EKA 12.3, P16), tetapi kebenaran tetap di owner; proyeksi tetap proyeksi, bukan fakta kedua.
-- **Ticket memiliki owned state sendiri** — ditolak: EKA 10 menetapkan Ticket = `(∅)`; status ticket adalah proyeksi atas work item yang direferensikan (resolusi ratifikasi Issue #1).
+- **Tables/tickets as the authoritative status source** — rejected: two writers per state field; violates P6; repeats the legacy duplication.
+- **Automatic owner-state → projection sync script** — rejected: enforcement is an implementation capability (EKA 12.3, P16), but truth remains in the owner; a projection stays a projection, not a second fact.
+- **Ticket with its own owned state** — rejected: EKA 10 establishes Ticket = `(∅)`; ticket status is a projection over the referenced work item (ratification resolution of Issue #1).
 
 ## References
 
-- EKA 7.4 (State Vector; State Projection), 7.5 (interaksi), 9 (Execution Taxonomy — Projection Semantics), 10 (Artifact Taxonomy — Ticket)
-- Prinsip P6 (Single Writer), P9 (Structure as Projection of State)
-- EKA 15.5 (open question: kebijakan Projection Refresh)
-- Terkait: [ADR-002](adr-002-state-vector-encoding.md)
+- EKA 7.4 (State Vector; State Projection), 7.5 (interactions), 9 (Execution Taxonomy — Projection Semantics), 10 (Artifact Taxonomy — Ticket)
+- Principles P6 (Single Writer), P9 (Structure as Projection of State)
+- EKA 15.5 (open question: Projection Refresh policy)
+- Related: [ADR-002](adr-002-state-vector-encoding.md)

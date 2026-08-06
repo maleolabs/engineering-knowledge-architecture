@@ -1,74 +1,74 @@
-# Glosarium Terminologi Implementasi
+# Implementation Terminology Glossary
 
-Glosarium istilah **level implementasi** — istilah yang lahir dari konvensi serialisasi repositori ini (Git + Markdown). Istilah yang didefinisikan standard (Artifact, State Vector, Identity, dst.) **tidak didefinisikan ulang di sini**; istilah tersebut hidup di [`standard/glossary.md`](../standard/glossary.md) dan hanya ditautkan.
+Glossary of **implementation-level** terms — terms born from this repository's serialization conventions (Git + Markdown). Terms defined by the standard (Artifact, State Vector, Identity, etc.) are **not redefined here**; they live in [`standard/glossary.md`](../standard/glossary.md) and are only linked.
 
 ## A
 
 ### artifact rule
-Aturan untuk membedakan Artifact dari dokumen konvensi: **suatu file adalah Artifact iff frontmatter-nya memuat `type` DAN `id`**. Lihat `reference-architecture.md` §3. Konsep Artifact: [standard/glossary.md](../standard/glossary.md).
+Rule for distinguishing an Artifact from a convention document: **a file is an Artifact iff its frontmatter carries `type` AND `id`**. See `reference-architecture.md` §3. Artifact concept: [standard/glossary.md](../standard/glossary.md).
 
 ## D
 
 ### derived condition
-Kondisi yang bukan nilai domain state, melainkan kondisi pemicu transisi (contoh: "Completed" pada container/session, diturunkan dari agregat state work item). Berlaku di EKA 7.2; dalam serialisasi, kondisi derived tidak pernah ditulis sebagai nilai state di frontmatter — ia dihitung.
+A condition that is not a state domain value but a transition-triggering condition (example: "Completed" on containers/sessions, derived from the aggregated state of work items). Applies in EKA 7.2; in serialization, derived conditions are never written as state values in frontmatter — they are computed.
 
 ### derived-from
-Field relasi frontmatter (`derives-from`) yang menyatakan State Projection diturunkan dari artifact owner (contoh: `tkt-` → `ctr-` → work item). Referensi by Identity, bukan lokasi. Konsep Relationship: [standard/glossary.md](../standard/glossary.md).
+The frontmatter relationship field (`derives-from`) stating that a State Projection is derived from the owner artifact (example: `tkt-` → `ctr-` → work item). References by Identity, not location. Relationship concept: [standard/glossary.md](../standard/glossary.md).
 
 ### dimension == folder rule
-Aturan lokasi: artifact knowledge harus hidup di folder Knowledge Dimension-nya (`dimension == folder`), ditegakkan validasi; artifact operating dikecualikan. Lihat ADR-005 dan EKA 8.
+Location rule: knowledge artifacts must live in their Knowledge Dimension folder (`dimension == folder`), enforced by validation; operating artifacts are exempt. See ADR-005 and EKA 8.
 
 ## E
 
 ### exactly-one-active
-Konvensi konkurensi Operating Layer: paling banyak satu Execution Container (`ctr-`) berstatus `container-state: active` pada satu waktu; pembuatan berikutnya menunggu. Konsep: EKA 5.2, 9.
+Operating Layer concurrency convention: at most one Execution Container (`ctr-`) with `container-state: active` at any time; the next creation waits. Concepts: EKA 5.2, 9.
 
 ## F
 
 ### frontmatter
-Blok metadata YAML di kepala file Markdown — lokasi serialisasi Identity, State Vector, Relationship, dan change-log. Frontmatter adalah satu-satunya tempat state ditulis (single-writer); body file adalah Content.
+YAML metadata block at the head of a Markdown file — the serialization location of Identity, State Vector, Relationship, and change-log. Frontmatter is the only place state is written (single-writer); the file body is Content.
 
 ## I
 
 ### instance-version vs revision
-Dua makna versi dalam frontmatter: `instance-version` adalah bagian Identity (instance baru = Identity instance baru, contoh `plan-x-v2`); `revision` melacak evolusi Content instance yang sama dan **bukan** bagian Identity. Konsep: EKA 6.3, [standard/glossary.md](../standard/glossary.md).
+Two version meanings in frontmatter: `instance-version` is part of Identity (a new instance = a new instance Identity, e.g., `plan-x-v2`); `revision` tracks Content evolution of the same instance and is **not** part of Identity. Concepts: EKA 6.3, [standard/glossary.md](../standard/glossary.md).
 
 ## L
 
 ### lock-atomic-with-generation
-Invariant Operating Layer: peristiwa pembuatan Execution Container mengunci plan (Planning State → Immutable) dan membuat container secara atomik — tidak ada celah antara lock dan generation. Konsep: EKA 5.2, 9.
+Operating Layer invariant: the Execution Container creation event locks the plan (Planning State → Immutable) and creates the container atomically — no gap between lock and generation. Concepts: EKA 5.2, 9.
 
 ## N
 
 ### namespace
-Field frontmatter yang memisahkan ruang Identity (produk/organisasi/sistem). Pada repositori ini artifact contoh menggunakan namespace proyek; dokumentasi meta menggunakan `eka-ref-impl`. Konsep: [standard/glossary.md](../standard/glossary.md).
+Frontmatter field separating Identity spaces (product/organization/system). In this repository, example artifacts use the project namespace; meta-documentation uses `eka-ref-impl`. Concept: [standard/glossary.md](../standard/glossary.md).
 
 ## O
 
 ### on-read refresh
-Kebijakan Projection Refresh default serialisasi ini: State Projection divalidasi terhadap owner **saat dibaca** (bukan event-driven). Invariant "proyeksi tidak pernah menjadi writer" tetap absolut. Konsep: EKA 5.5, 15.5, [standard/glossary.md](../standard/glossary.md).
+Default Projection Refresh policy of this serialization: a State Projection is validated against its owner **when read** (not event-driven). The "projections never write" invariant remains absolute. Concepts: EKA 5.5, 15.5, [standard/glossary.md](../standard/glossary.md).
 
 ## P
 
 ### projected state
-State yang tidak dimiliki artifact (bukan bagian State Vector), melainkan diturunkan dari owner melalui Projection Semantics dan divalidasi via Projection Refresh. Serialisasi menandainya dengan header "Generated — State Projection" pada artifact generated. Konsep: [standard/glossary.md](../standard/glossary.md).
+State the artifact does not own (not part of the State Vector) but derives from the owner through Projection Semantics and is validated via Projection Refresh. The serialization marks it with the "Generated — State Projection" header on generated artifacts. Concept: [standard/glossary.md](../standard/glossary.md).
 
 ## S
 
 ### State Vector owned
-Bagian State Vector yang **dimiliki** artifact (sesuai tipenya) dan diserialisasi sebagai field state di frontmatter; domain yang tidak dimiliki = absence (not-applicable). Proyeksi bukan bagian State Vector owned. Konsep: EKA 7.4, [standard/glossary.md](../standard/glossary.md).
+The part of the State Vector the artifact **owns** (per its type), serialized as state fields in frontmatter; domains not owned = absence (not-applicable). Projections are not part of the owned State Vector. Concept: EKA 7.4, [standard/glossary.md](../standard/glossary.md).
 
 ## T
 
 ### type token
-Awalan filename `<type-token>-<id>[-v<nn>]` yang menandai tipe artifact (26 token bebas-ambiguitas, lihat `reference-architecture.md` §2.1). Token adalah proyeksi Identity untuk navigasi manusia + validasi; Identity sejati ada di frontmatter.
+Filename prefix `<type-token>-<id>[-v<nn>]` marking the artifact type (26 ambiguity-free tokens, see `reference-architecture.md` §2.1). The token is an Identity projection for human navigation + validation; the true Identity is in frontmatter.
 
 ## W
 
 ### well-formed content
-Content yang mematuhi struktur per tipe artifact (didefinisikan skeleton per folder) sehingga dapat diparse dan dieksekusi secara deterministik. Konsep: EKA 3, [standard/glossary.md](../standard/glossary.md).
+Content complying with the per-artifact-type structure (defined per-folder in the skeleton) so it can be parsed and executed deterministically. Concept: EKA 3, [standard/glossary.md](../standard/glossary.md).
 
 ## Z
 
 ### zone
-Pembagian tingkat atas repositori: `standard/` (teks kanonik, pra-lapisan), `skeleton/` (struktur proyek yang dapat disalin — serialisasi), `reference/` (meta-dokumentasi implementasi ini). Zona adalah konsep organisasi repositori, bukan konsep standard.
+Top-level division of the repository: `standard/` (canonical texts, pre-layer), `skeleton/` (copyable project structure — serialization), `reference/` (meta-documentation of this implementation). Zones are a repository organization concept, not a standard concept.

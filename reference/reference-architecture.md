@@ -1,30 +1,30 @@
-# Arsitektur Referensi — Serialisasi EKA v1.0 dalam Git + Markdown
+# Reference Architecture — EKA v1.0 Serialization in Git + Markdown
 
-Dokumen ini menjelaskan **bagaimana repositori ini menserialisasi EKA v1.0**: pemetaan zona → lapisan, konvensi serialisasi yang diimplementasikan, aturan artifact, dan keputusan implementasi kunci.
+This document explains **how this repository serializes EKA v1.0**: zone → layer mapping, implemented serialization conventions, artifact rules, and key implementation decisions.
 
-Repositori ini adalah **satu serialisasi (Git+Markdown) dari standard — bukan arsitekturnya** (EKA 1.3).
+This repository is **one serialization (Git+Markdown) of the standard — not its architecture** (EKA 1.3).
 
-## 1. Pemetaan zona → lapisan
+## 1. Zone → layer mapping
 
-| Zona | Isi | Lapisan EKA | Catatan |
+| Zone | Contents | EKA Layer | Notes |
 |---|---|---|---|
-| `standard/` | Salinan teks kanonik EKA v1.0 + glosarium kanonik | **Pra-lapisan** (pre-layer) | Standard mendefinisikan lapisan; ia bukan artifact proyek mana pun. |
-| `skeleton/docs/` — 12 folder dimensi knowledge | intent, requirements, architecture, decisions, specifications, standards, operations, quality, planning, records, research, vocabulary | **Knowledge Layer (KB)** | Content, klasifikasi, Relationship, Records, Identity. |
-| `skeleton/docs/operating/` | containers (`ctr-`), work-items (`sto-`/`ts-`/`bug-`/`td-`/`ch-`/`spk-`), projections (`tkt-`), sessions (`ses-`), protocol | **Operating Layer (OS)** | State Domain (Execution, Planning, Container, Existence), Protocol, Gate, Command. |
-| `skeleton/docs/exchange/` | `validation.md`, `transfer.md` | **Exchange Layer (EX)** | Kontrak round-trip, validasi kepatuhan, schema versioning. |
-| `reference/` | Meta-dokumentasi implementasi ini | — | Dokumentasi konvensi, bukan bagian serialisasi proyek. |
+| `standard/` | Canonical EKA v1.0 texts + canonical glossary | **Pre-layer** | The standard defines the layers; it is not an artifact of any project. |
+| `skeleton/docs/` — 12 knowledge dimension folders | intent, requirements, architecture, decisions, specifications, standards, operations, quality, planning, records, research, vocabulary | **Knowledge Layer (KB)** | Content, classification, Relationship, Records, Identity. |
+| `skeleton/docs/operating/` | containers (`ctr-`), work-items (`sto-`/`ts-`/`bug-`/`td-`/`ch-`/`spk-`), projections (`tkt-`), sessions (`ses-`), protocol | **Operating Layer (OS)** | State Domains (Execution, Planning, Container, Existence), Protocol, Gate, Command. |
+| `skeleton/docs/exchange/` | `validation.md`, `transfer.md` | **Exchange Layer (EX)** | Round-trip contract, conformance validation, schema versioning. |
+| `reference/` | Meta-documentation of this implementation | — | Convention documentation, not part of the project serialization. |
 
-Ketiga lapisan terikat oleh Identity `(Namespace, Type, ID, InstanceVersion)` dan 7 invariant global (EKA 5.4).
+The three layers are bound by Identity `(Namespace, Type, ID, InstanceVersion)` and the 7 global invariants (EKA 5.4).
 
-## 2. Konvensi serialisasi
+## 2. Serialization conventions
 
-### 2.1 Encoding Identity
+### 2.1 Identity encoding
 
-- **Lokasi kebenaran**: frontmatter artifact — `namespace`, `type`, `id`, `instance-version`, `revision` (EKA 6.4, P3, P9).
-- **Filename adalah proyeksi**: pola `<type-token>-<id>[-v<nn>].md` — token tipe eksplisit, ID bebas kolisi per `(Namespace, Type)`. Akhiran `-v<nn>` **wajib** untuk tipe berversi (`scp-`, `plan-`) — selalu, termasuk v1 — dan **dilarang** untuk tipe lain. Filename hanya proyeksi Identity untuk navigasi manusia + validasi konsistensi; Identity sejati hidup di frontmatter.
-- **Tabel 26 token tipe** (bebas ambiguitas: tidak ada token yang menjadi prefiks token lain; pasangan anti-prefix: `sto-`/`str-`, `spk-`/`spec-`):
+- **Location of truth**: artifact frontmatter — `namespace`, `type`, `id`, `instance-version`, `revision` (EKA 6.4, P3, P9).
+- **Filename is a projection**: pattern `<type-token>-<id>[-v<nn>].md` — explicit type token, ID collision-free per `(Namespace, Type)`. The `-v<nn>` suffix is **mandatory** for versioned types (`scp-`, `plan-`) — always, including v1 — and **forbidden** for other types. The filename is only an Identity projection for human navigation + consistency validation; the true Identity lives in frontmatter.
+- **26-type-token table** (ambiguity-free: no token is a prefix of another; anti-prefix pairs: `sto-`/`str-`, `spk-`/`spec-`):
 
-| Token | Tipe Artifact | Dimensi | Token | Tipe Artifact | Dimensi |
+| Token | Artifact Type | Dimension | Token | Artifact Type | Dimension |
 |---|---|---|---|---|---|
 | `vis-` | Vision / Manifesto | Product Intent | `ses-` | Session | — (OS) |
 | `str-` | Strategy | Product Intent | `rvw-` | Review | Governance & Quality |
@@ -33,72 +33,72 @@ Ketiga lapisan terikat oleh Identity `(Namespace, Type, ID, InstanceVersion)` da
 | `epc-` | Epic | Planning Knowledge | `arc-` | Architecture Description | Architecture |
 | `plan-` | Plan (roadmap) | Planning Knowledge | `spec-` | Specification | Specifications |
 | `ctr-` | Execution Container | — (OS) | `std-` | Standard / Guideline | Standards & Guidelines |
-| `tkt-` | Ticket | — (OS, proyeksi) | `run-` | Runbook / Operational Guide | Operational Knowledge |
+| `tkt-` | Ticket | — (OS, projection) | `run-` | Runbook / Operational Guide | Operational Knowledge |
 | `sto-` | Work Item: Story | Requirements / Records / Research | `rel-` | Release Record | Records |
 | `ts-` | Work Item: Technical Story | Requirements / Records / Research | `gls-` | Glossary / Term | Vocabulary |
 | `bug-` | Work Item: Bug | Requirements / Records / Research | `trc-` | Traceability / Relationship | Planning Knowledge |
-| `td-` | Work Item: Tech Debt | Requirements / Records / Research | `fnd-` | Research Finding (ekstensi, ADR-007) | Research |
+| `td-` | Work Item: Tech Debt | Requirements / Records / Research | `fnd-` | Research Finding (extension, ADR-007) | Research |
 | `ch-` | Work Item: Chore | Requirements / Records / Research | | | |
 | `spk-` | Work Item: Spike | Requirements / Records / Research | | | |
 
-### 2.2 Encoding State Vector
+### 2.2 State Vector encoding
 
-- **Lima field frontmatter**, satu per domain state yang **dimiliki** (EKA 7.4): `content-state`, `execution-state`, `planning-state`, `container-state`, `existence-state`.
-- **Absence = not-applicable**: field hanya hadir untuk domain yang dimiliki tipe artifact tersebut (contoh: ADR = `content-state` + `existence-state`; work item = `execution-state` + `existence-state`; ticket = tidak ada field state sama sekali).
-- **Value sets** (EKA 7.2, nilai lowercase):
-  - `content-state` (varian per tipe, EKA 7.2): living `draft | review | approved | amended`; ADR `proposed | accepted | superseded`; decision record `draft | accepted | superseded`
+- **Five frontmatter fields**, one per **owned** state domain (EKA 7.4): `content-state`, `execution-state`, `planning-state`, `container-state`, `existence-state`.
+- **Absence = not-applicable**: fields are present only for domains the artifact type owns (example: ADR = `content-state` + `existence-state`; work item = `execution-state` + `existence-state`; ticket = no state fields at all).
+- **Value sets** (EKA 7.2, lowercase values):
+  - `content-state` (variant per type, EKA 7.2): living `draft | review | approved | amended`; ADR `proposed | accepted | superseded`; decision record `draft | accepted | superseded`
   - `execution-state`: `planned | todo | in-progress | in-review | done`
   - `planning-state`: `draft | approved | immutable`
-  - `container-state`: `active | completed` (completed = transisi derived)
+  - `container-state`: `active | completed` (completed = derived transition)
   - `existence-state`: `active | archived | retired`
-- **Single-writer per field** (P6): setiap field state memiliki tepat satu owner; tampilan lain adalah proyeksi.
-- **`change-log`**: array `{date, domain, from, to, by}` — catatan wajib seluruh transisi state (EKA 5.2).
+- **Single-writer per field** (P6): every state field has exactly one owner; other views are projections.
+- **`change-log`**: array `{date, domain, from, to, by}` — mandatory record of all state transitions (EKA 5.2).
 
-### 2.3 Phase sebagai konteks
+### 2.3 Phase as context
 
-- Field `phase` pada artifact `scp-`/`plan-` saja, nilai `discovery|mvp|milestone|release|growth|maturity|sunset` (EKA 11.2, ADR-004).
-- Phase change = context update yang diotorisasi gate kesiapan; dicatat di `change-log` dengan `domain: phase`. Tidak ada folder phase.
+- Field `phase` on `scp-`/`plan-` artifacts only, values `discovery|mvp|milestone|release|growth|maturity|sunset` (EKA 11.2, ADR-004).
+- Phase change = context update authorized by the readiness gate; recorded in `change-log` with `domain: phase`. No phase folders.
 
 ### 2.4 Relationship
 
-- Relasi disandikan by Identity di frontmatter: `supersedes`, `amends`, `derives-from`, `depends-on`, `validates` (EKA 6.2.7, 13.2.3). Referensi tidak pernah by lokasi (P3).
+- Relations encoded by Identity in frontmatter: `supersedes`, `amends`, `derives-from`, `depends-on`, `validates` (EKA 6.2.7, 13.2.3). References are never by location (P3).
 
-### 2.5 Klasifikasi
+### 2.5 Classification
 
-- Field `dimension` di frontmatter; artifact knowledge hidup di folder dimensinya — aturan `dimension == folder` ditegakkan validasi (EKA 8, P15, ADR-005). Artifact operating (`operating/`) dikecualikan.
+- Field `dimension` in frontmatter; knowledge artifacts live in their dimension folder — the `dimension == folder` rule is enforced by validation (EKA 8, P15, ADR-005). Operating artifacts (`operating/`) are exempt.
 
-### 2.6 Proyeksi
+### 2.6 Projection
 
-- Tabel container dan ticket (`tkt-`) adalah State Projection (EKA 7.4): ticket ber-State Vector kosong + `derives-from`, artifact generated ber-header "Generated — State Projection. Do NOT edit state here; refresh on read."; kebijakan refresh default on-read (EKA 15.5, ADR-003).
+- Container and ticket tables (`tkt-`) are State Projections (EKA 7.4): tickets carry an empty State Vector + `derives-from`, generated artifacts carry the header "Generated — State Projection. Do NOT edit state here; refresh on read."; default refresh policy on-read (EKA 15.5, ADR-003).
 
 ### 2.7 Well-formed content
 
-- Content mengikuti struktur per tipe artifact (skeleton per folder) sehingga machine-parseable dan deterministik (EKA 3, 5.3).
+- Content follows the per-artifact-type structure (skeleton per folder) so it is machine-parseable and deterministic (EKA 3, 5.3).
 
-## 3. Aturan artifact vs dokumen konvensi
+## 3. Artifact rule vs convention documents
 
-> **Suatu file adalah Artifact iff frontmatter-nya memuat `type` DAN `id`.**
+> **A file is an Artifact iff its frontmatter carries `type` AND `id`.**
 
-- **Artifact**: membawa Identity lengkap + State Vector sesuai tipenya; dikelola Operating Layer; dapat di-exchange.
-- **Dokumen konvensi** (contoh: `README.md`, `operating/protocol.md`, `exchange/validation.md`, `exchange/transfer.md`): dokumen yang **menjelaskan** konvensi — tidak memiliki `type`/`id`, tidak membawa Identity, bukan bagian state machine, tidak di-exchange sebagai Artifact.
+- **Artifact**: carries full Identity + State Vector per its type; managed by the Operating Layer; exchangeable.
+- **Convention document** (examples: `README.md`, `operating/protocol.md`, `exchange/validation.md`, `exchange/transfer.md`): a document that **explains** conventions — no `type`/`id`, carries no Identity, not part of the state machine, not exchanged as an Artifact.
 
-Dokumen konvensi dapat dikenali dari ketiadaan pasangan `type`+`id` di frontmatter.
+Convention documents are recognizable by the absence of the `type`+`id` pair in frontmatter.
 
-## 4. Ringkasan keputusan implementasi kunci
+## 4. Summary of key implementation decisions
 
-| Keputusan | Anchor EKA | ADR |
+| Decision | EKA Anchor | ADR |
 |---|---|---|
-| Identity di frontmatter; filename = proyeksi; token eksplisit | 6.4, P3, P9 | [ADR-001](decisions/adr-001-identity-serialization.md) |
-| State = 5 field frontmatter per domain owned; change-log | 7.2, 5.2, P6 | [ADR-002](decisions/adr-002-state-vector-encoding.md) |
-| Ticket/tabel container = proyeksi; refresh on-read | 7.4, 15.5, P6 | [ADR-003](decisions/adr-003-projection-model.md) |
-| Phase = metadata frontmatter, bukan folder | 11.2, P3 | [ADR-004](decisions/adr-004-phase-as-metadata.md) |
-| 12 folder = 12 dimensi 1:1 + operating/ + exchange/ | 8, P15 | [ADR-005](decisions/adr-005-dimension-layout.md) |
-| Seam exchange = validation.md + transfer.md | 13, P13 | [ADR-006](decisions/adr-006-exchange-conventions.md) |
-| Tipe extension `fnd-` (Research Finding) | 14.1, 14.2, 11.4 | [ADR-007](decisions/adr-007-extension-research-finding.md) |
+| Identity in frontmatter; filename = projection; explicit tokens | 6.4, P3, P9 | [ADR-001](decisions/adr-001-identity-serialization.md) |
+| State = 5 frontmatter fields per owned domain; change-log | 7.2, 5.2, P6 | [ADR-002](decisions/adr-002-state-vector-encoding.md) |
+| Ticket/container tables = projections; on-read refresh | 7.4, 15.5, P6 | [ADR-003](decisions/adr-003-projection-model.md) |
+| Phase = frontmatter metadata, not folders | 11.2, P3 | [ADR-004](decisions/adr-004-phase-as-metadata.md) |
+| 12 folders = 12 dimensions 1:1 + operating/ + exchange/ | 8, P15 | [ADR-005](decisions/adr-005-dimension-layout.md) |
+| Exchange seam = validation.md + transfer.md | 13, P13 | [ADR-006](decisions/adr-006-exchange-conventions.md) |
+| Extension type `fnd-` (Research Finding) | 14.1, 14.2, 11.4 | [ADR-007](decisions/adr-007-extension-research-finding.md) |
 
-## Referensi
+## References
 
-- Standard kanonik: [`../standard/eka-specification-v1.0.md`](../standard/eka-specification-v1.0.md)
-- Struktur yang dapat disalin: [`../skeleton/README.md`](../skeleton/README.md)
-- Peta migrasi: [`migration-guide.md`](migration-guide.md)
-- Perubahan breaking: [`breaking-changes.md`](breaking-changes.md)
+- Canonical standard: [`../standard/eka-specification-v1.0.md`](../standard/eka-specification-v1.0.md)
+- Copyable structure: [`../skeleton/README.md`](../skeleton/README.md)
+- Migration map: [`migration-guide.md`](migration-guide.md)
+- Breaking changes: [`breaking-changes.md`](breaking-changes.md)
