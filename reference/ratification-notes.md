@@ -1,6 +1,6 @@
 # Ratification Notes — EKA v1.0
 
-> This document is the **ratification record of EKA v1.0**: the outcome of the stabilization pass that preceded the standard's publication. The content below is reproduced **verbatim** from the official ratification record. Ratification decision: **RATIFIED WITH AMENDMENTS** — all 13 resolutions have been applied to the canonical text `standard/eka-specification-v1.0.md`.
+> This document is the **ratification record of EKA v1.0**: the outcome of the stabilization pass that preceded the standard's publication. The content below is reproduced **verbatim** from the official ratification record. Ratification decision: **RATIFIED WITH AMENDMENTS** — all 13 resolutions have been applied to the canonical text, which today lives as `standard/eka-specification-v1.1.md` (revision v1.1 is additive — Engineering Domains and Knowledge Stratification, §8.1 — the v1.0 content is unchanged).
 
 ---
 

@@ -1,4 +1,4 @@
-# Breaking Changes — Legacy Structure → EKA v1.0
+# Breaking Changes — Legacy Structure → EKA v1.1
 
 Summary of the 14 breaking changes against the legacy structure. Each change lists: old → new, architectural rationale (EKA anchor), impact, and mitigation.
 

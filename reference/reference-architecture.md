@@ -1,6 +1,6 @@
-# Reference Architecture — EKA v1.0 Serialization in Git + Markdown
+# Reference Architecture — EKA v1.1 Serialization in Git + Markdown
 
-This document explains **how this repository serializes EKA v1.0**: zone → layer mapping, implemented serialization conventions, artifact rules, and key implementation decisions.
+This document explains **how this repository serializes EKA v1.1**: zone → layer mapping, implemented serialization conventions, artifact rules, and key implementation decisions.
 
 This repository is **one serialization (Git+Markdown) of the standard — not its architecture** (EKA 1.3).
 
@@ -8,7 +8,7 @@ This repository is **one serialization (Git+Markdown) of the standard — not it
 
 | Zone | Contents | EKA Layer | Notes |
 |---|---|---|---|
-| `standard/` | Canonical EKA v1.0 texts + canonical glossary | **Pre-layer** | The standard defines the layers; it is not an artifact of any project. |
+| `standard/` | Canonical EKA v1.1 texts + canonical glossary | **Pre-layer** | The standard defines the layers; it is not an artifact of any project. |
 | `skeleton/docs/` — 12 knowledge dimension folders | intent, requirements, architecture, decisions, specifications, standards, operations, quality, planning, records, research, vocabulary | **Knowledge Layer (KB)** | Content, classification, Relationship, Records, Identity. |
 | `skeleton/docs/operating/` | containers (`ctr-`), work-items (`sto-`/`ts-`/`bug-`/`td-`/`ch-`/`spk-`), projections (`tkt-`), sessions (`ses-`), protocol | **Operating Layer (OS)** | State Domains (Execution, Planning, Container, Existence), Protocol, Gate, Command. |
 | `skeleton/docs/exchange/` | `validation.md`, `transfer.md` | **Exchange Layer (EX)** | Round-trip contract, conformance validation, schema versioning. |
@@ -75,6 +75,13 @@ The three layers are bound by Identity `(Namespace, Type, ID, InstanceVersion)` 
 
 - Content follows the per-artifact-type structure (skeleton per folder) so it is machine-parseable and deterministic (EKA 3, 5.3).
 
+### 2.8 Engineering Domain
+
+- Every artifact belongs to exactly one **Engineering Domain** (Core v1.1 §8.1), **derived** from its token family (e.g. `adr-` → Architecture, `run-` → Operations) and Knowledge Dimension — never Identity, never part of the State Vector (P15).
+- The optional `domain` frontmatter field may declare it explicitly, but must then equal the derived home domain (R11, blocking).
+- Domains form the strict authority chain Discovery → Architecture → Planning → Execution → Operations (stratum 1 highest → 5); `supersedes`/`amends` never target a strictly higher stratum (R12, blocking), and non-Discovery artifacts should reach a higher stratum via `derives-from`/`depends-on` chains (R10, warning).
+- PRD, ADR, Epic, Sprint, Ticket, Release, Runbook, etc. are **Representation Aliases** onto canonical tokens — never frontmatter values, never artifact types (methodology independence).
+
 ## 3. Artifact rule vs convention documents
 
 > **A file is an Artifact iff its frontmatter carries `type` AND `id`.**
@@ -98,7 +105,7 @@ Convention documents are recognizable by the absence of the `type`+`id` pair in 
 
 ## References
 
-- Canonical standard: [`../standard/eka-specification-v1.0.md`](../standard/eka-specification-v1.0.md)
+- Canonical standard: [`../standard/eka-specification-v1.1.md`](../standard/eka-specification-v1.1.md)
 - Copyable structure: [`../skeleton/README.md`](../skeleton/README.md)
 - Migration map: [`migration-guide.md`](migration-guide.md)
 - Breaking changes: [`breaking-changes.md`](breaking-changes.md)

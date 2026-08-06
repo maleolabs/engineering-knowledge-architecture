@@ -1,13 +1,15 @@
 # Conformance Implementation Notes — EKA Validator (`conformance/`)
 
 > Convention document, not an artifact. Meta-documentation of the `reference/` zone.
-> Related: [`cli.md`](cli.md) (CLI documentation), [`../skeleton/docs/exchange/validation.md`](../skeleton/docs/exchange/validation.md) (9 Conformance Rules), [`../standard/eka-specification-v1.0.md`](../standard/eka-specification-v1.0.md) (canonical standard).
+> Related: [`cli.md`](cli.md) (CLI documentation), [`../skeleton/docs/exchange/validation.md`](../skeleton/docs/exchange/validation.md) (Conformance Rules R0–R12), [`../standard/eka-specification-v1.1.md`](../standard/eka-specification-v1.1.md) (canonical standard).
 
 > **Traceability consolidation.** The rule traceability tables (specification ↔ implementation) of this document have been consolidated into the [`conformance-traceability-matrix.md`](conformance-traceability-matrix.md) — the single source of truth for conformance coverage (REQ→Spec→Rule→Impl→Test). This document now holds only **interpretation decisions (29 items)** and **known gaps**; update that matrix, not the tables here, when coverage changes.
 
+> **Domain-aware rules (EKA v1.1).** The validator now executes the full rule set **R0–R12**. The interpretation decisions below cover R0–R9; the domain-aware rules R10–R12 (stratification traceability — warning; domain coherence — blocking; cross-stratum supersession prohibition — blocking; Core v1.1 §8.1) are implemented in `conformance/rules_domain.go` with their semantics documented in `skeleton/docs/exchange/validation.md` — no separate interpretation decisions were needed.
+
 ## Purpose
 
-This document explains **how the `eka` CLI executes the EKA specification mechanically**: artifact vs convention document classification, rules R0–R9, and — most importantly — every **interpretation decision** taken when rule text is not precise enough for machine execution. The goal is rule-by-rule traceability: from standard text → `validation.md` rule text → validator behavior → Go implementation location.
+This document explains **how the `eka` CLI executes the EKA specification mechanically**: artifact vs convention document classification, rules R0–R12, and — most importantly — every **interpretation decision** taken when rule text is not precise enough for machine execution. The goal is rule-by-rule traceability: from standard text → `validation.md` rule text → validator behavior → Go implementation location.
 
 **Interpretation policy:** if the specification is ambiguous, the decision is **documented before implementation**; no behavior is invented without a basis. Each decision below cites its specification basis (rule text, ADR, dimension README, or the repository's own reality). The same decision is also recorded as an `Interpretation (documented)` comment in the relevant source code.
 
@@ -70,4 +72,4 @@ The following gaps are **deliberately not validated**; recorded so the decision 
 
 - **54 tests pass** (`go test ./...`): rule units, parsing, filenames, references, state, CLI (exit codes, output determinism), and self-validation.
 - `go vet ./...` clean.
-- **Self-validation PASS**: the EKA repository passes its own validator — 7 artifacts, 0 errors, 0 warnings, exit 0 — codified as `TestReferenceImplementationConforms` (`conformance/self_validation_test.go`).
+- **Self-validation PASS**: the EKA repository passes its own validator — 7 artifacts, 0 errors, 7 warnings (R10 stratification traceability), exit 0 — codified as `TestReferenceImplementationConforms` (`conformance/self_validation_test.go`).

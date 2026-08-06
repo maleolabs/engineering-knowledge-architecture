@@ -1,6 +1,6 @@
 # Implementation ADR Summary
 
-Index of the 7 Implementation ADRs of the EKA v1.0 Reference Implementation. All ADRs have status **accepted** (`content-state: accepted`) and carry `namespace: eka-ref-impl`, dimension `decisions`.
+Index of the 8 Implementation ADRs of the EKA v1.1 Reference Implementation. All ADRs have status **accepted** (`content-state: accepted`) and carry `namespace: eka-ref-impl`, dimension `decisions`.
 
 | ADR | Decision (one line) | Status | File |
 |---|---|---|---|
@@ -9,8 +9,9 @@ Index of the 7 Implementation ADRs of the EKA v1.0 Reference Implementation. All
 | **ADR-003 — Projection Model** | Container tables and tickets are State Projections (EKA 7.4): tickets carry an empty State Vector with `derives-from: [ctr:<id>]`, header "Generated — State Projection", default on-read refresh (EKA 15.5); projections never write (P6). | accepted | [`adr-003-projection-model.md`](decisions/adr-003-projection-model.md) |
 | **ADR-004 — Phase as Metadata** | `phase` becomes a frontmatter field on `scp-`/`plan-` artifacts only (discovery\|mvp\|milestone\|release\|growth\|maturity\|sunset); phase change = context update authorized by the readiness gate (EKA 11.2) and recorded in `change-log` with `domain: phase`; no phase folders. | accepted | [`adr-004-phase-as-metadata.md`](decisions/adr-004-phase-as-metadata.md) |
 | **ADR-005 — Dimension Layout** | 12 knowledge folders = 12 Knowledge Dimensions 1:1 + `operating/` (OS) + `exchange/` (EX); location rule: knowledge artifacts live in their dimension folder, validation enforces `dimension == folder`; operating artifacts exempt (EKA 8, P15). | accepted | [`adr-005-dimension-layout.md`](decisions/adr-005-dimension-layout.md) |
-| **ADR-006 — Exchange Conventions** | The exchange seam (EKA 13) is realized as `skeleton/docs/exchange/validation.md` (9 Conformance Rules) + `skeleton/docs/exchange/transfer.md` (round-trip, Identity conflict policy = reject or explicit re-namespace, idempotency, schema versioning). | accepted | [`adr-006-exchange-conventions.md`](decisions/adr-006-exchange-conventions.md) |
+| **ADR-006 — Exchange Conventions** | The exchange seam (EKA 13) is realized as `skeleton/docs/exchange/validation.md` (Conformance Rules R0–R12) + `skeleton/docs/exchange/transfer.md` (round-trip, Identity conflict policy = reject or explicit re-namespace, idempotency, schema versioning). | accepted | [`adr-006-exchange-conventions.md`](decisions/adr-006-exchange-conventions.md) |
 | **ADR-007 — Extension: Research Finding** | Extension type `fnd-` (Research Finding) registered via the EKA 14.1 extension mechanism: research dimension, owned State Vector `(Content State, Existence State)`, `research/` folder; the spike → durable knowledge Distillation path (EKA 11.4). | accepted | [`adr-007-extension-research-finding.md`](decisions/adr-007-extension-research-finding.md) |
+| **ADR-008 — Engineering Domain Model** | Five canonical Engineering Domains (Discovery → Architecture → Planning → Execution → Operations, stratum 1 highest → 5) as the primary classification axis above Knowledge Dimensions (Core v1.1 §8.1); Knowledge Stratum = derived authority level with the Stratum Authority Invariant; methodology terms = Representation Aliases; R10 warning / R11 + R12 blocking; Exchange/RSF carry the derived domain, Serialization Version 1.1 with legacy 1 importable. | accepted | [`adr-008-engineering-domain-model.md`](decisions/adr-008-engineering-domain-model.md) |
 
 ## Shared frontmatter conventions
 
@@ -54,4 +55,6 @@ flowchart LR
   A1 --> A7[ADR-007 extension fnd-]
   A5 --> A7
   A6 --> A7
+  A5 --> A8[ADR-008 engineering-domain-model]
+  A6 --> A8
 ```

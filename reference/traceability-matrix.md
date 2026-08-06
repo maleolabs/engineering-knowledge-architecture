@@ -1,6 +1,6 @@
-# Traceability Matrix — Repository Elements → EKA v1.0 Anchor
+# Traceability Matrix — Repository Elements → EKA v1.1 Anchor
 
-Complete matrix: every repository element (root README, all `standard/` files, all `reference/` files, the 7 ADRs, and — referencing sibling zones — every `skeleton/docs/` element) is mapped to its EKA anchor (section/principle/taxonomy) with rationale.
+Complete matrix: every repository element (root README, all `standard/` files, all `reference/` files, the 8 ADRs, and — referencing sibling zones — every `skeleton/docs/` element) is mapped to its EKA anchor (section/principle/taxonomy) with rationale.
 
 Type legend: **artifact** = file with `type` + `id` frontmatter (artifact rule); **convention** = convention document (no `type`/`id`).
 
@@ -9,11 +9,11 @@ Type legend: **artifact** = file with `type` + `id` frontmatter (artifact rule);
 | Element | Zone | Type | EKA Anchor | Rationale |
 |---|---|---|---|---|
 | `standard/README.md` | Standard Zone | convention | 1.2, 4 | Explains the pre-layer zone; the standard defines the layers, not project artifacts. |
-| `standard/eka-specification-v1.0.md` | Standard Zone | convention (canonical text) | entire document (1–16) | Verbatim copy of the canonical standard; conformance reference. |
-| `standard/eka-exchange-specification-v1.0.md` | Standard Zone | convention (canonical text) | 13, 5.4 (invariant 7), P13, 16.1 (milestone 2) | Exchange Contract v1 (Ratified): operationalizes Section 13 + invariant 5.4.7 into a round-trip, idempotency, referential integrity, schema versioning, conformance suite contract (R1–R9); the refinement pass adds the Exchange Package Object Model (§4.4), Capability Declaration (§4.5), single declaration location, complete rule coverage; subordinate terms defined in §4.1 without amending the canonical text. |
+| `standard/eka-specification-v1.1.md` | Standard Zone | convention (canonical text) | entire document (1–16) | Verbatim copy of the canonical standard (v1.1, incl. §8.1 Engineering Domains and Knowledge Stratification); conformance reference. |
+| `standard/eka-exchange-specification-v1.1.md` | Standard Zone | convention (canonical text) | 13, 5.4 (invariant 7), P13, 16.1 (milestone 2) | Exchange Contract v1 (Ratified): operationalizes Section 13 + invariant 5.4.7 into a round-trip, idempotency, referential integrity, schema versioning, conformance suite contract (R1–R9); the refinement pass adds the Exchange Package Object Model (§4.4), Capability Declaration (§4.5), single declaration location, complete rule coverage; subordinate terms defined in §4.1 without amending the canonical text. Revision v1.1 is additive: Engineering Domain in unit classification, rule set aligned to R0–R12. |
 | `reference/ratification-notes-exchange-v1.0.md` | Reference Zone | convention | 16.1 (milestone 2), P13 | Exchange Specification v1.0 ratification report: refinement summary, terminology, new conceptual model, architectural readiness confirmation. |
-| `reference/eka-reference-serialization-format-v1.0.md` | Reference Zone | convention | Exchange Spec 4.4, 10, 15, 17.1; Naming 6.1, 7 | RSF v1.0 — canonical serialization projection of the Exchange Package Object Model (reference, not normative): Package Model, Unit Entry, Content Representation Model, Attachment Model, Manifest, serialization principles, round-trip mapping, compatibility, conceptual examples, import/export implementation recommendations. |
-| `standard/eka-naming-and-terminology-specification-v1.0.md` | Standard Zone | convention (canonical text) | 3, 14.2, P14 | Meta-specification (Ratified): official ecosystem naming — EKA product identity, "EKA \<Family\> Specification" pattern, reference components, tooling (`eka` + verb subcommands), repository naming (`eka-<component>`), canonical + deprecated term table, migration; does not amend the canonical text. |
+| `reference/eka-reference-serialization-format-v1.1.md` | Reference Zone | convention | Exchange Spec 4.4, 10, 15, 17.1; Naming 6.1, 7 | RSF v1.1 — canonical serialization projection of the Exchange Package Object Model (reference, not normative): Package Model, Unit Entry (Classification incl. Engineering Domain), Content Representation Model, Attachment Model, Manifest, serialization principles, round-trip mapping, compatibility, conceptual examples, import/export implementation recommendations. |
+| `standard/eka-naming-and-terminology-specification-v1.1.md` | Standard Zone | convention (canonical text) | 3, 14.2, P14 | Meta-specification (Ratified): official ecosystem naming — EKA product identity, "EKA \<Family\> Specification" pattern, reference components, tooling (`eka` + verb subcommands), repository naming (`eka-<component>`), canonical + deprecated term table (incl. Engineering Domain, Knowledge Stratum, Representation Alias), Conformance Rules R0–R12, migration; does not amend the canonical text. |
 | `standard/glossary.md` | Standard Zone | convention | 3 | Exact definitions of Core Concepts terms; not paraphrased. |
 
 ## Reference Zone elements (C)
@@ -30,6 +30,7 @@ Type legend: **artifact** = file with `type` + `id` frontmatter (artifact rule);
 | `reference/adr-summary.md` | Reference Zone | convention | 14.2.5 | Governance index of implementation decisions (accepted). |
 | `reference/traceability-matrix.md` | Reference Zone | convention | 12.2, 12.4 | Conformance evidence: every element → standard anchor. |
 | `reference/ratification-notes.md` | Reference Zone | convention | 16.1 (milestone 1) | EKA v1.0 ratification notes (stabilization pass, verbatim). |
+| `reference/migration-report-engineering-domains-v1.1.md` | Reference Zone | convention | Core v1.1 §8.1, §14.2.3; Naming v1.1 §2.3, §9.3, §12.1 | Migration classification (breaking/compatible/editorial) + strategy for the v1.0 → v1.1 Engineering Domain ontology evolution under the taxonomy-extension governance path (core closed, taxonomy open); versioning rationale; governance follow-ups; verification. |
 
 ### Implementation ADRs (`reference/decisions/`) — all artifacts (`type: adr`, `dimension: decisions`, status accepted)
 
@@ -40,8 +41,9 @@ Type legend: **artifact** = file with `type` + `id` frontmatter (artifact rule);
 | `adr-003-projection-model.md` | Reference Zone (decisions/) | artifact | 7.4, 7.5, 9, 10, 15.5, P6, P9 | Ticket/container tables = State Projections; empty State Vector; on-read refresh. |
 | `adr-004-phase-as-metadata.md` | Reference Zone (decisions/) | artifact | 3, 7.1, 7.5, 11.2, 11.3, P3 | Phase = frontmatter field on scp-/plan-; phase change = context update via gate. |
 | `adr-005-dimension-layout.md` | Reference Zone (decisions/) | artifact | 8, 4.1, 14.2, P1, P9, P15 | 12 folders = 12 dimensions 1:1 + operating/ + exchange/; `dimension == folder`. |
-| `adr-006-exchange-conventions.md` | Reference Zone (decisions/) | artifact | 13.1, 13.2, 13.3, P13, P16 | Exchange seam: validation.md (9 rules) + transfer.md (round-trip, Identity conflict, idempotency, schema versioning). |
+| `adr-006-exchange-conventions.md` | Reference Zone (decisions/) | artifact | 13.1, 13.2, 13.3, P13, P16 | Exchange seam: validation.md (rules R0–R12) + transfer.md (round-trip, Identity conflict, idempotency, schema versioning). |
 | `adr-007-extension-research-finding.md` | Reference Zone (decisions/) | artifact | 8, 10, 11.4, 14.1, 14.2, P12 | Extension type `fnd-`: complete owned State Vector (Content, Existence); exchangeable. |
+| `adr-008-engineering-domain-model.md` | Reference Zone (decisions/) | artifact | Core v1.1 §8.1, §14.2.3, P15; Exchange v1.1 §4.4, §14.2 R6; RSF v1.1 §3, §5.1, §11.2; Naming v1.1 §2.3, §9.3 | Five canonical Engineering Domains + Knowledge Stratification (Stratum Authority Invariant); methodology terms = Representation Aliases; R10 warning / R11 + R12 blocking; Exchange/RSF carry the derived domain; Serialization Version 1.1 with legacy 1 importable. |
 
 ### Tooling elements — Go implementation (EKA validator)
 
@@ -55,7 +57,7 @@ Type legend: **artifact** = file with `type` + `id` frontmatter (artifact rule);
 | `conformance/` | root (tooling) | convention (engine) | 13, P16 | Canonical Conformance Rules implementation (validation.md): reusable public engine, independent of the CLI; entry `Validate(root) (*Report, error)`, `Scan(root) ([]Artifact, error)`, `ParseReference` (additive for exchange consumers). |
 | `exchange/` | root (tooling) | convention (engine) | Exchange Spec 4.4, 10, 11, 12, 15; RSF | Import/export engine (application layer, public package): discovery, loading (via `conformance.Scan`), scope resolution (repo/line/instance/collection), external reference declaration, deterministic RSF projection, deserialization + integrity verification, identity/relationship resolution, conflict analyzer, integration engine (staged commit + rollback), identity charset guard (RSF §5.2.3). |
 | `reference/cli.md` | Reference Zone | convention | 13, P16, Naming §7 | Official CLI documentation: philosophy, installation, `eka init` (5 stages, adaptive wizard, idempotency, dry-run, post-generation validation), `eka validate`, exit codes, shell completion, CLI architecture (Cobra adapter + application layer), contribution guide for new commands, roadmap. |
-| `reference/conformance-notes.md` | Reference Zone | convention | 13, P16 | Traceability record of rules R0–R9 → EKA anchor → implementation location + 29 interpretation decisions (policy: documented before implementation). |
+| `reference/conformance-notes.md` | Reference Zone | convention | 13, P16 | Traceability record of rules R0–R12 → EKA anchor → implementation location + 29 interpretation decisions (policy: documented before implementation). |
 | `.gitignore` | root (tooling) | convention (hygiene) | — | Implementation hygiene: the built `eka` binary never enters VCS. |
 
 ## Skeleton Zone elements (B) — sibling zone, referenced
@@ -63,6 +65,7 @@ Type legend: **artifact** = file with `type` + `id` frontmatter (artifact rule);
 | Element | Zone | Type | EKA Anchor | Rationale |
 |---|---|---|---|---|
 | `skeleton/docs/README.md` | Skeleton Zone | convention | 1.3 | Project serialization entry point; source of truth for the structure. |
+| `skeleton/docs/lifecycle.md` | Skeleton Zone | convention | 11, 8.1 | Engineering Knowledge Lifecycle: produce → organize → validate → project → exchange → consume; Engineering Domain as orientation, stratum as authority. |
 | `skeleton/docs/intent/` (`vis-`, `str-`) | Skeleton Zone | KB (folder) | 8 (Product Intent), 10 | Home of vision/manifesto + strategy (new types). |
 | `skeleton/docs/requirements/` (`req-`) | Skeleton Zone | KB (folder) | 8 (Requirements), 10 | Requirement + amendments as instances with `amends`. |
 | `skeleton/docs/architecture/` (`arc-`) | Skeleton Zone | KB (folder) | 8 (Architecture), 10 | Architecture Description. |
@@ -81,7 +84,7 @@ Type legend: **artifact** = file with `type` + `id` frontmatter (artifact rule);
 | `skeleton/docs/operating/projections/` (`tkt-`) | Skeleton Zone | OS (folder) | 7.4, 10, P6 | Ticket: empty State Vector, projection. |
 | `skeleton/docs/operating/sessions/` (`ses-`) | Skeleton Zone | OS (folder) | 10, 11.4 | Existence State; Distillation mandatory before Archived. |
 | `skeleton/docs/operating/protocol.md` | Skeleton Zone | convention | 9, 11, 5.2 | Protocol definition, ordering, gates, commands. |
-| `skeleton/docs/exchange/validation.md` | Skeleton Zone | convention | 13, P16 | 9 Conformance Rules. |
+| `skeleton/docs/exchange/validation.md` | Skeleton Zone | convention | 13, P16 | Conformance Rules R0–R12: R1–R9 (exchange §14.2), R0 (structural), R10–R12 (domain-aware, Core v1.1 §8.1). |
 | `skeleton/docs/exchange/transfer.md` | Skeleton Zone | convention | 13.2, P13 | Round-trip, Identity conflict policy, idempotency, schema versioning. |
 
 ## Serialization conventions (implemented rules)
@@ -99,5 +102,9 @@ Type legend: **artifact** = file with `type` + `id` frontmatter (artifact rule);
 | Exactly-one-active (container) | 9 | Execution Container mutual-exclusion concurrency. |
 | Lock-atomic-with-generation | 5.2 | Container creation atomic with plan lock (Planning State → Immutable). |
 | On-read refresh | 15.5 | Default Projection Refresh policy; the projections-never-write invariant stays absolute. |
-| Exchange validation (9 rules) | 13 | Validation before commit; conformance to the standard. |
+| Exchange validation (rules R0–R12) | 13 | Validation before commit; conformance to the standard. |
+| Engineering Domain derivation (token → domain) | 8.1 | Every artifact has exactly one Engineering Domain, derived from token family and Knowledge Dimension; never Identity, never part of the State Vector. |
+| Stratification traceability (R10) | 8.1 | Non-Discovery artifacts reach a strictly higher stratum via resolvable derives-from/depends-on chains; warnings only. |
+| Domain coherence (R11) | 8.1 | Optional `domain` frontmatter must be canonical and match the token's home domain; absent = OK. |
+| Cross-stratum supersession prohibition (R12) | 8.1 | `supersedes`/`amends` never target a strictly higher stratum; unresolved targets left to R5. |
 | Extension `fnd-` (Research Finding) | 14.1 | New type via the extension mechanism; complete owned State Vector (14.2.6). |

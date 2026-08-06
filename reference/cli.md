@@ -2,17 +2,17 @@
 
 > Convention document, not an artifact. Meta-documentation of the `reference/` zone.
 > Implementation: Go (`cmd/` + `bootstrap/` + `conformance/`), module `github.com/maleolabs/engineering-knowledge-architecture`.
-> Related: [`conformance-notes.md`](conformance-notes.md) (interpretation decisions + rule traceability), [`../skeleton/docs/exchange/validation.md`](../skeleton/docs/exchange/validation.md) (9 Conformance Rules), [`eka-reference-serialization-format-v1.0.md`](eka-reference-serialization-format-v1.0.md) (the serialization format used by `eka export` and `eka import`).
+> Related: [`conformance-notes.md`](conformance-notes.md) (interpretation decisions + rule traceability), [`../skeleton/docs/exchange/validation.md`](../skeleton/docs/exchange/validation.md) (Conformance Rules R0–R12), [`eka-reference-serialization-format-v1.1.md`](eka-reference-serialization-format-v1.1.md) (the serialization format used by `eka export` and `eka import`).
 
 ## CLI philosophy
 
-`eka` is the **canonical executable form of the Conformance Rules** (Naming and Terminology Specification §7.5) — the official interface of Engineering Knowledge Architecture for humans and agents (Naming and Terminology Specification v1.0 §7). Current roles:
+`eka` is the **canonical executable form of the Conformance Rules** (Naming and Terminology Specification §7.5) — the official interface of Engineering Knowledge Architecture for humans and agents (Naming and Terminology Specification v1.1 §7). Current roles:
 
 - **`eka init`** — the official Repository Bootstrapper: analyzes the workspace, composes a bootstrap plan, configures the project interactively, generates an EKA repository from the Reference Skeleton, then validates it.
 - **`eka export`** — the first practical implementation of the Exchange Specification: exports engineering knowledge as an **Exchange Package** per the Reference Serialization Format (RSF).
 - **`eka import`** — the inverse of export: consumes an Exchange Package and integrates knowledge into an existing EKA repository — implementing the import semantics of Exchange Specification §11.
-- **`eka validate`** — the conformance validator: repository conformance must not rest on manual review alone — rules R1–R9 in `skeleton/docs/exchange/validation.md` are designed to be mechanical, and this validator is their canonical implementation (P16: enforcement mechanisms vary, invariants stay identical).
-- **`eka view`** — the Knowledge Projection Engine: read-only projections of the Engineering Knowledge Model (sprint / wave / ticket) — the canonical executable form of the State Projection semantics (Core Specification §11), relationship-derived, never markdown-rendered.
+- **`eka validate`** — the conformance validator: repository conformance must not rest on manual review alone — rules R0–R12 in `skeleton/docs/exchange/validation.md` are designed to be mechanical, and this validator is their canonical implementation (P16: enforcement mechanisms vary, invariants stay identical).
+- **`eka view`** — the Knowledge Projection Engine: read-only projections of the Engineering Knowledge Model (sprint / wave / ticket — Execution projections) — the canonical executable form of the State Projection semantics (Core Specification §11), relationship-derived, never markdown-rendered.
 
 Consequences of this philosophy:
 
@@ -165,7 +165,7 @@ eka help [command]
 ```
 
 - `eka` without a subcommand shows the **product landing** — a calm orientation (description, compact command overview, help and version pointers) — and exits `0`. No banner, no decoration.
-- `eka version` prints the CLI build version (default `dev`; set at build time via `-ldflags "-X .../cmd.version=v1.2.3"`) and the EKA standard version implemented.
+- `eka version` prints the CLI build version (default `dev`; set at build time via `-ldflags "-X .../cmd.version=v1.2.3"`) and the EKA standard version implemented — current output: `dev (EKA standard 1.1)`.
 - `eka -h` / `eka --help` / `eka help` prints the command reference and exits `0`.
 - `eka help <command>` prints command help.
 
@@ -173,7 +173,7 @@ eka help [command]
 
 | Code | Meaning | Example |
 |---|---|---|
-| `0` | **Success** — compliant validation (warnings allowed) / initialization completed / dry-run / help / completion | Repository passes R1–R9; `eka init` completed and validated |
+| `0` | **Success** — compliant validation (warnings allowed) / initialization completed / dry-run / help / completion | Repository passes R0–R12; `eka init` completed and validated |
 | `1` | **Blocking violation** — validation found errors, or the repository produced by `eka init` failed validation | At least one error (severity `error`) |
 | `2` | **Usage/internal error** — the command did not run | Unknown command, unknown flag, too many arguments, invalid path |
 
@@ -257,7 +257,7 @@ Running `eka init` twice on the same target never damages the repository:
 
 ### Output summary
 
-On completion, a concise summary is printed: Project Name, Namespace, Repository Type (new / existing-dir / existing-eka), Git Status, Knowledge Standard Version (EKA v1.0), Validation Result (PASS/FAIL + error/warning counts), and suggested next steps.
+On completion, a concise summary is printed: Project Name, Namespace, Repository Type (new / existing-dir / existing-eka), Git Status, Knowledge Standard Version (EKA v1.1), Validation Result (PASS/FAIL + error/warning counts), and suggested next steps.
 
 ## `eka export` — Knowledge Package Export
 
@@ -284,7 +284,7 @@ Exchange Package
 ### Workflow
 
 1. **Repository validation** — `conformance.Validate(root)` runs automatically (equivalent to `eka validate`). On failure: **export stops, no package produced** (exit `1`). Only conformant repositories can be exported.
-2. **Discovery** — repository identity (namespace across all artifacts), specification version (EKA v1.0), scope, package metadata.
+2. **Discovery** — repository identity (namespace across all artifacts), specification version (EKA v1.1), scope, package metadata.
 3. **Loading** — artifacts loaded via `conformance.Scan` (same scan policy as the validator: `.md` only, skip `testdata`/dot-dirs/symlinks); content bodies extracted byte-exact.
 4. **Scope resolution** — select units per scope (see below).
 5. **Model construction** — build the Exchange object model: Header, Manifest, Units, Declarations, Integrity.
@@ -438,7 +438,7 @@ eka view [projection] [target]
 run → validate → load → construct → render → exit
 ```
 
-1. **Validate** — the conformance gate (R0–R9) runs first; a non-conformant repository is refused (exit `1`).
+1. **Validate** — the conformance gate (R0–R12) runs first; a non-conformant repository is refused (exit `1`).
 2. **Load** — one `conformance.Scan` of the repository.
 3. **Construct** — one Knowledge Graph, then one projection build.
 4. **Render** — the projection, deterministically.
@@ -463,6 +463,8 @@ Warnings never block a projection.
 | `eka view sprint` | The **active Execution Container**'s work items, grouped by Execution State columns (`planned`, `todo`, `in-progress`, `in-review`, `done` — the fixed five-column set, empty columns keep their heading) |
 | `eka view wave` | The active container's **tickets** (each with its projected status) + work item progress counts by state + summary |
 | `eka view ticket <id>` | One ticket's detail: **projected status derived from the referenced work item's owner Execution State — never from the ticket's own text** — plus the container it derives from and its `derives-from` references |
+
+**Engineering Domains:** sprint, wave, and ticket are **Execution projections** (Core v1.1 §8.1) — read-only views over Execution-domain artifacts (`ctr-`, `tkt-`, work items). The context header therefore carries a `Domain: Execution` row alongside `Knowledge`. The projections never write (P6); the Engineering Domain itself is derived from the token family and is never part of a projection's state.
 
 **Membership derivation rule** (the single source of membership — relationships only, never file text): a work item belongs to an execution container iff a ticket (`tkt-`) of that container derives from it. A ticket belongs to a container iff one of its `derives-from` references resolves to the container's identity line. Container `## Work Items` tables are **not** parsed; the ticket is never parsed beyond its frontmatter relationships.
 
@@ -489,7 +491,7 @@ An automatic **pre-render conformance check**: `conformance.Validate` runs befor
 
 ### Determinism and UX
 
-- **Context header** — object kind (`Sprint`, `Wave`, `Ticket`) + identity rows (`Container` / `Ticket`, `Repository`) + `Knowledge EKA v1`, closed by the `↓ View` pipeline.
+- **Context header** — object kind (`Sprint`, `Wave`, `Ticket`) + identity rows (`Container` / `Ticket`, `Repository`) + `Knowledge EKA v1` + `Domain Execution` (Execution projection), closed by the `↓ View` pipeline.
 - **State colors** — `planned` dim, `todo` info, `in-progress` progress, `in-review` warning, `done` success; `unresolved` reads as warning. Icons decorate (`✓` done, `→` in progress, `•` everything else); the state word carries the meaning.
 - **Summary block** — every projection closes with a `Summary:` of outcome facts (container, counts, status).
 - **Calm tone** — no banners, no ALL-CAPS, color is never the sole carrier of meaning.
@@ -506,6 +508,7 @@ Sprint
 Container   eka-cli/ctr:sprint-12
 Repository  .
 Knowledge   EKA v1
+Domain      Execution
 ↓ View
 
 planned (2)
@@ -537,6 +540,7 @@ Wave
 Container   eka-cli/ctr:sprint-12
 Repository  .
 Knowledge   EKA v1
+Domain      Execution
 ↓ View
 
 Tickets (5)
@@ -566,6 +570,7 @@ Ticket
 Ticket      eka-cli/tkt:tkt-sto-alpha
 Repository  .
 Knowledge   EKA v1
+Domain      Execution
 ↓ View
 
 Projected Status   planned
@@ -596,26 +601,32 @@ Knowledge   EKA v1
 ↓ Validate
 
 Repository validation
-Root: . — 51 .md files, 7 artifacts, 0 errors, 0 warnings
+Root: . — 51 .md files, 8 artifacts, 0 errors, 8 warnings
 
 Results (sorted by file, then rule):
-  (no violations found)
+  [warning] R10 reference/decisions/adr-001-identity-serialization.md: no resolvable derives-from/depends-on chain reaches a stratum above Architecture (stratum 2); stratification traceability is missing (chains must reach one of: Discovery)
+  [warning] R10 reference/decisions/adr-002-state-vector-encoding.md: no resolvable derives-from/depends-on chain reaches a stratum above Architecture (stratum 2); stratification traceability is missing (chains must reach one of: Discovery)
+  [warning] R10 reference/decisions/adr-003-projection-model.md: no resolvable derives-from/depends-on chain reaches a stratum above Architecture (stratum 2); stratification traceability is missing (chains must reach one of: Discovery)
+  [warning] R10 reference/decisions/adr-004-phase-as-metadata.md: no resolvable derives-from/depends-on chain reaches a stratum above Architecture (stratum 2); stratification traceability is missing (chains must reach one of: Discovery)
+  [warning] R10 reference/decisions/adr-005-dimension-layout.md: no resolvable derives-from/depends-on chain reaches a stratum above Architecture (stratum 2); stratification traceability is missing (chains must reach one of: Discovery)
+  [warning] R10 reference/decisions/adr-006-exchange-conventions.md: no resolvable derives-from/depends-on chain reaches a stratum above Architecture (stratum 2); stratification traceability is missing (chains must reach one of: Discovery)
+  [warning] R10 reference/decisions/adr-007-extension-research-finding.md: no resolvable derives-from/depends-on chain reaches a stratum above Architecture (stratum 2); stratification traceability is missing (chains must reach one of: Discovery)
 
 Verdict: PASS
 Summary:
 └── Artifacts: 7
 └── Errors: 0
-└── Warnings: 0
+└── Warnings: 7
 └── Status: Repository conforms to EKA v1
 ```
 
-> Note: the `.md files` count is a snapshot — it grows with every new convention document added; the output format stays fixed. The artifact, error, and warning counts are the contract (7 artifacts; error > 0 ⇒ FAIL).
+> Note: the `.md files` count is a snapshot — it grows with every new convention document added; the output format stays fixed. The artifact, error, and warning counts are the contract (7 artifacts; error > 0 ⇒ FAIL). The 7 R10 warnings are the repository's own stratification traceability gap: the 7 Implementation ADRs (Architecture, stratum 2) carry no `derives-from`/`depends-on` chain reaching a higher stratum. R10 is a warning — it never blocks the verdict; the exit code stays `0`.
 
 Output structure:
 
 1. **Context header** — the object being validated (`Repository`), its identity rows (`Path`, `Knowledge`), and the `↓ Validate` pipeline.
 2. **Repository validation** — scanned root, number of `.md` files, number of artifacts, number of errors, number of warnings.
-3. **Results** — each violation on one line `[severity] rule file: message`; deterministically sorted by file, then rule (R0, R1–R9), then severity, then message. If no violations, `(no violations found)` is printed.
+3. **Results** — each violation on one line `[severity] rule file: message`; deterministically sorted by file, then rule (R0, R1–R12), then severity, then message. If no violations, `(no violations found)` is printed.
 4. **Verdict + summary** — `Verdict: PASS` if no blocking errors, `FAIL` otherwise; the summary block closes with Artifacts, Errors, Warnings and the conformance Status.
 
 ### Example output with violations
@@ -623,6 +634,9 @@ Output structure:
 ```
   [error] R4 docs/decisions/adr-002-state-vector-encoding.md: missing owned state field existence-state on type "adr"
   [warning] R5 docs/decisions/adr-003-projection-model.md: unresolved reference "sto-x" in `depends-on` (allowed while content-state is draft)
+  [warning] R10 docs/architecture/arc-001-system.md: no resolvable derives-from/depends-on chain reaches a stratum above Architecture (stratum 2); stratification traceability is missing (chains must reach one of: Discovery)
+  [error] R11 docs/requirements/req-001-auth.md: declared domain "Architecture" does not match the home domain "Discovery" of type "req"
+  [error] R12 docs/planning/plan-release-1-v1.md: supersedes targets eka-cli/req:login-email:1 (Discovery, stratum 1), which is strictly higher than Planning (stratum 3); cross-stratum supersession is prohibited
 ```
 
 ### Validation process
@@ -631,11 +645,12 @@ The `eka validate [path]` flow:
 
 1. **Recursive scan** — the entire directory tree under `path` is traversed.
 2. **Classification** — each `.md` file's frontmatter is inspected:
-   - Frontmatter carries **`type` AND `id`** → **Artifact**, evaluated against R1–R9.
+   - Frontmatter carries **`type` AND `id`** → **Artifact**, evaluated against R1–R12.
    - Otherwise (README, `protocol.md`, `validation.md`, `transfer.md`, canonical standard texts, etc.) → **Convention Document**, counted but skipped.
    - Frontmatter carries **exactly one** of `type`/`id` → malformed, reported as a structural error (R0).
-3. **Execution of the 9 Conformance Rules (R1–R9)** — exactly as defined in [`skeleton/docs/exchange/validation.md`](../skeleton/docs/exchange/validation.md):
+3. **Execution of the 13 Conformance Rules (R0–R12)** — exactly as defined in [`skeleton/docs/exchange/validation.md`](../skeleton/docs/exchange/validation.md):
    - R1 Identity uniqueness, R2 filename consistency, R3 state value validity, R4 owned-set compliance, R5 referential integrity, R6 dimension == folder, R7 change-log consistency, R8 single-writer & projection, R9 well-formedness.
+   - R10 stratification traceability (warning), R11 domain coherence (blocking), R12 cross-stratum supersession prohibition (blocking) — the domain-aware rules of Core v1.1 §8.1.
    - Pre-rule structural errors (invalid frontmatter, artifact rule violation, missing/corrupt identity fields, unknown type token) are grouped as **R0**.
    - Mechanical interpretation of each rule: [`conformance-notes.md`](conformance-notes.md).
 4. **Deterministic reporting** — results sorted (file → rule → severity → message), so output is stable across machines and runs.
@@ -657,7 +672,7 @@ source <(eka completion bash)
 
 ## Repository conformance
 
-The EKA repository **passes its own conformance suite**: all `.md` files scanned, 7 artifacts (7 Implementation ADRs in `reference/decisions/`), **0 errors, 0 warnings, exit 0** (see example output above).
+The EKA repository **passes its own conformance suite**: all `.md` files scanned, 8 artifacts (8 Implementation ADRs in `reference/decisions/`), **0 errors, 7 warnings (R10 stratification traceability), exit 0** (see example output above). R10 warnings never block the verdict.
 
 This milestone is codified as the automated test `TestReferenceImplementationConforms` in `conformance/self_validation_test.go`: the test locates the repository root, runs `Validate` over the whole repository, and asserts 0 blocking errors. Any conformance regression (e.g., a new ADR violating a rule) therefore breaks the test suite before it can reach a commit.
 
@@ -670,7 +685,7 @@ The CLI is organized as **two layers + one entry point**:
 | Command layer | `cmd/` (package `cmd` + `cmd/ui`) | **Only** Cobra command definitions and presentation rendering: registration, flags, help, argument validation, dispatch to services, `cmd/ui` output. No domain logic. |
 | Application layer | `bootstrap/` (public package) | Repository Bootstrapper: discovery, planning, wizard, generation, validation — reusable without the CLI. |
 | Application layer | `exchange/` (public package) | Import/export engine (Exchange Spec + RSF): discovery, loading, model building, serialization, deserialization, identity/relationship resolver, conflict analyzer, integration engine (staged commit + rollback), package writer — reusable without the CLI. |
-| Application layer | `conformance/` (public package) | Validation engine: scanning, artifact classification, rules R1–R9, result model (`Report`); also provides `Scan` and `ParseReference` for other consumers. |
+| Application layer | `conformance/` (public package) | Validation engine: scanning, artifact classification, rules R0–R12, result model (`Report`); also provides `Scan` and `ParseReference` for other consumers. |
 | Application layer | `view/` (public package) | Knowledge Projection Engine: Knowledge Graph (identity index, relationship resolution, membership helpers) + independent projection builders + projection registry — reusable without the CLI. |
 | Entry point | `cmd/eka/main.go` | Thin: `os.Exit(cmd.Execute(...))`. Executable name: `eka`. |
 
@@ -719,18 +734,18 @@ A new command is added without architectural refactoring:
 4. **Exit codes** — success → `nil` (0); blocking violation → `*exitError{code: 1}` (or an equivalent sentinel); usage/internal error → plain error (mapped to 2).
 5. **Test** — add cases in `cmd/execute_test.go` (exit codes, help, determinism) + service tests in the application package.
 6. **Document** — update this document (command tables, examples) and the traceability matrix.
-7. **Naming follows Naming and Terminology Specification v1.0 §7** — subcommands are verbs (`validate`, `init`, `diagnose`, `import`, `export`, `sync`, `format`, `graph`); do not introduce new patterns.
+7. **Naming follows Naming and Terminology Specification v1.1 §7** — subcommands are verbs (`validate`, `init`, `diagnose`, `import`, `export`, `sync`, `format`, `graph`); do not introduce new patterns.
 
 ## CLI roadmap
 
 | Command | Status | Notes |
 |---|---|---|
 | `eka init` | **Implemented** | Repository Bootstrapper (5 stages, adaptive wizard, dry-run, idempotent, post-generation validation). |
-| `eka export` | **Implemented** | Exchange Package export (RSF v1.0): repo/line/instance/collection scope, automatic validation, deterministic, external reference declaration, attachments, SHA-256 digests. |
-| `eka import` | **Implemented** | Exchange Package import (RSF v1.0 + Exchange §11): package + integrity validation, identity/relationship resolution, conflict → abort, atomic staged commit, rollback, post-import revalidation. |
+| `eka export` | **Implemented** | Exchange Package export (RSF v1.1): repo/line/instance/collection scope, automatic validation, deterministic, external reference declaration, attachments, SHA-256 digests. |
+| `eka import` | **Implemented** | Exchange Package import (RSF v1.1 + Exchange §11): package + integrity validation, identity/relationship resolution, conflict → abort, atomic staged commit, rollback, post-import revalidation. |
 | `eka view` | **Implemented** | Knowledge projections (sprint / wave / ticket): read-only views derived from the Engineering Knowledge Model — relationships + State, never markdown text. Conformance-gated, deterministic, exit codes 0/1/2. |
-| `eka validate` | **Implemented** | Full conformance validator (R1–R9 + structural R0). |
-| `eka version` | **Implemented** | CLI build version + EKA standard version. |
+| `eka validate` | **Implemented** | Full conformance validator (R0–R12: R1–R9 + structural R0 + domain-aware R10–R12). |
+| `eka version` | **Implemented** | CLI build version + EKA standard version (currently `EKA standard 1.1`). |
 | `eka completion` | **Implemented** | bash/zsh/fish/powershell completion scripts (provided by Cobra). |
 | `eka diagnose` | Not implemented | Repository diagnostics — future candidate. |
 | `eka graph` | Not implemented | Query/knowledge graph over artifacts. |

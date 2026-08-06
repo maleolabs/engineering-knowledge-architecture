@@ -5,9 +5,11 @@
 | **Status** | Ratified — official EKA v1.0 component |
 | **Version** | v1.0 |
 | **Document type** | Convention document (not an artifact) — zone `reference/` |
-| **Related** | [`conformance-notes.md`](conformance-notes.md) (interpretations + gaps), [`../skeleton/docs/exchange/validation.md`](../skeleton/docs/exchange/validation.md) (9 Conformance Rules), [`../standard/eka-specification-v1.0.md`](../standard/eka-specification-v1.0.md) (canonical standard) |
+| **Related** | [`conformance-notes.md`](conformance-notes.md) (interpretations + gaps), [`../skeleton/docs/exchange/validation.md`](../skeleton/docs/exchange/validation.md) (Conformance Rules R0–R12), [`../standard/eka-specification-v1.1.md`](../standard/eka-specification-v1.1.md) (canonical standard) |
 
-> **Governance rule (formal).** This matrix is the **single source of truth** for EKA v1.0 conformance coverage. The matrix **MUST be updated in the same Pull Request** as changes to the specification, the Conformance Rules (`validation.md`), the validator implementation (`conformance/`, `cmd/eka/`), or tests — and conversely, the matrix is never edited without a related change. See [`../CONTRIBUTING.md`](../CONTRIBUTING.md).
+> **Governance rule (formal).** This matrix is the **single source of truth** for EKA conformance coverage. The matrix **MUST be updated in the same Pull Request** as changes to the specification, the Conformance Rules (`validation.md`), the validator implementation (`conformance/`, `cmd/eka/`), or tests — and conversely, the matrix is never edited without a related change. See [`../CONTRIBUTING.md`](../CONTRIBUTING.md).
+
+> **Domain-aware rules (EKA v1.1).** This matrix covers the v1.0 rule surface R0–R9. The domain-aware rules **R10–R12** (Core v1.1 §8.1) are implemented in `conformance/rules_domain.go` with automated coverage (`conformance/rules_domain_test.go`, `conformance/domain_test.go`, `conformance/validate_test.go`); their rule rows are extended here by the conformance governance change that introduced them (per the governance rule above). Semantics and verdicts: `skeleton/docs/exchange/validation.md` + `conformance-notes.md`.
 
 ---
 
@@ -18,7 +20,7 @@ This matrix traces conformance coverage through **5 layers**, from requirements 
 | # | Layer | Identifier | Example | Source of truth |
 |---|---|---|---|---|
 | 1 | **Engineering Requirement** | `REQ-nnn` (REQ-001..REQ-016) | REQ-002 Identity uniqueness | Section 3 of this document |
-| 2 | **Specification** | Anchor `§` (section/principle number) | §6.2.2, P3 | `standard/eka-specification-v1.0.md` |
+| 2 | **Specification** | Anchor `§` (section/principle number) | §6.2.2, P3 | `standard/eka-specification-v1.1.md` |
 | 3 | **Conformance Rule** | `Rn` (R0, R1–R9) | R1 | `skeleton/docs/exchange/validation.md` (R1–R9) + R0 (structural, defined in `conformance/`) |
 | 4 | **Implementation** | `file:func` (package-relative) | `conformance/rules.go:rule1` | Go code `conformance/` + `cmd/eka/` |
 | 5 | **Automated Test** | function name `TestXxx` | `TestRule2ExactCounts` | `*_test.go` in `conformance/` + `cmd/eka/` |
@@ -130,7 +132,7 @@ Explicitly classified as `infrastructure` — protects scan prerequisites, the r
 
 - **Rule coverage: 10/10** — R0 + R1–R9 all `Enforced (tested)`: every rule has a Go implementation called from `conformance/validate.go:Validate` and test coverage (unit, infrastructure, or fixture).
 - **Test coverage: 54 tests** (46 `conformance` + 8 `cmd/eka`), all mapped in Section 4.
-- **Self-conformance PASS** — `go run ./cmd/eka validate .` on this repository: 7 artifacts, 0 errors, 0 warnings, exit 0 (codified as `TestReferenceImplementationConforms`).
+- **Self-conformance PASS** — `go run ./cmd/eka validate .` on this repository: 7 artifacts, 0 errors, 7 warnings (R10 stratification traceability), exit 0 (codified as `TestReferenceImplementationConforms`).
 
 ### Uncovered specification sections
 
@@ -174,6 +176,6 @@ All three gaps are reflected in the Notes column of Section 2 (R2, R5) and the R
 | Total Implementations | **10 rule implementations** (`analyzeFile` + `rule1`–`rule9`) + **20 helper functions** (`parseFilename`, `identityKey`, `buildIndex`, `contentStateVariant`, `domainValues`, `isLegalTransition`, `parseReference`, `resolve`, `dimensionFolderFor`, `dimensionList`, `entriesForDomain`, `indexOfEntry`, `workItemsTable`, `compareWorkItemsTable`, `resolveWorkItemCell`, `hasProjectionHeader`, `splitTableRow`, `requiredSectionsFor`, `headingMatches`, `hasReplacement`) + engine/report/CLI (`validate.go`, `report.go`, `cmd/eka/main.go`) |
 | Total Test Suites | **2 packages**: `conformance` 46 tests + `cmd/eka` 8 tests = **54 tests** |
 | Current coverage | **10/10 rules enforced & tested (100% rule coverage)**; requirement coverage = **10 enforced of 16 total**; spec-section coverage — enforced requirements map to §3, §5, §6, §7, §8, §10, §13, §14; governance-only requirements map to §5, §7, §9, §11, §12 |
-| Self-conformance | `eka validate .` = 7 artifacts, 0 errors, 0 warnings, exit 0 |
+| Self-conformance | `eka validate .` = 7 artifacts, 0 errors, 7 warnings (R10), exit 0 |
 | Identified gaps | REQ-011..REQ-016 not enforced (6 governance-only requirements) + 3 documented gaps (filename-id, exactly-one-active, bidirectional references) |
 | Recommended follow-ups | (1) Future rule candidates for REQ-011..REQ-016 — **not proposed now**; (2) automation of matrix consumption (deterministic parser over the table structure) — **not now**, the matrix is a living markdown document |

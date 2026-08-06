@@ -1,6 +1,6 @@
-# Reference Zone — Meta-Documentation of the EKA v1.0 Implementation
+# Reference Zone — Meta-Documentation of the EKA v1.1 Implementation
 
-This zone contains the **meta-documentation** of the EKA v1.0 Reference Implementation: how this repository serializes the standard, why implementation decisions were made, what changed from the legacy structure, and the decision trail (ADR).
+This zone contains the **meta-documentation** of the EKA v1.1 Reference Implementation: how this repository serializes the standard, why implementation decisions were made, what changed from the legacy structure, and the decision trail (ADR).
 
 ## Documentation status
 
@@ -11,14 +11,14 @@ This zone contains the **meta-documentation** of the EKA v1.0 Reference Implemen
 | [`philosophy.md`](philosophy.md) | Active | Narrative of why EKA exists and why this repository is structured this way. |
 | [`terminology-glossary.md`](terminology-glossary.md) | Active | Glossary of implementation-level terms (canonical terms live in `standard/glossary.md`). |
 | [`breaking-changes.md`](breaking-changes.md) | Active | Summary of the 14 breaking changes against the legacy structure. |
-| [`adr-summary.md`](adr-summary.md) | Active | Index of the 7 Implementation ADRs (zone `decisions/`). |
+| [`adr-summary.md`](adr-summary.md) | Active | Index of the 8 Implementation ADRs (zone `decisions/`). |
 | [`traceability-matrix.md`](traceability-matrix.md) | Active | Traceability matrix: every repository element → EKA anchor. |
 | [`ratification-notes.md`](ratification-notes.md) | Active | EKA v1.0 ratification notes (verbatim from the stabilization pass). |
 | [`cli.md`](cli.md) | Active | Official `eka` CLI documentation: philosophy, `eka init` (5-stage bootstrapper), `eka export` (Exchange Package, RSF), `eka validate`, exit codes, shell completion, CLI architecture (Cobra adapter), contribution guide for new commands, roadmap. |
 | [`conformance-notes.md`](conformance-notes.md) | Active | Conformance implementation notes: 29 interpretation decisions + known gaps (traceability tables consolidated into the Conformance Traceability Matrix). |
 | [`conformance-traceability-matrix.md`](conformance-traceability-matrix.md) | Active | Single source of truth for conformance coverage: REQ→Spec→Rule→Impl→Test→Coverage→Notes (R0–R9, 54 tests, 16 requirements). |
-| [`eka-reference-serialization-format-v1.0.md`](eka-reference-serialization-format-v1.0.md) | Reference (not normative) | **RSF v1.0** — one canonical serialization projection of the Exchange Package Object Model (Exchange Spec §4.4): Package Model, Unit Entry, Content Representation (EKA Structured Text), Attachment Model, Manifest, deterministic serialization principles, round-trip mapping, compatibility, conceptual examples, implementation recommendations for `eka export`/`eka import`. |
-| [`decisions/`](decisions/) | Active | 7 Implementation ADRs (serialization architecture decisions). |
+| [`eka-reference-serialization-format-v1.1.md`](eka-reference-serialization-format-v1.1.md) | Reference (not normative) | **RSF v1.1** — one canonical serialization projection of the Exchange Package Object Model (Exchange Spec §4.4): Package Model, Unit Entry (Classification incl. Engineering Domain), Content Representation (EKA Structured Text), Attachment Model, Manifest, deterministic serialization principles, round-trip mapping, compatibility, conceptual examples, implementation recommendations for `eka export`/`eka import`. |
+| [`decisions/`](decisions/) | Active | 8 Implementation ADRs (serialization architecture decisions). |
 
 > Contribution governance + the definition of "incomplete implementation" live in [`../CONTRIBUTING.md`](../CONTRIBUTING.md) (repo root).
 
@@ -26,6 +26,6 @@ This zone contains the **meta-documentation** of the EKA v1.0 Reference Implemen
 
 | Zone | Role | Entry point |
 |---|---|---|
-| **A — `../standard/`** | EKA v1.0 canonical standard (pre-layer) | [`../standard/README.md`](../standard/README.md) |
+| **A — `../standard/`** | EKA v1.1 canonical standard (pre-layer) | [`../standard/README.md`](../standard/README.md) |
 | **B — `../skeleton/`** | Copyable project structure (Git+Markdown serialization) | [`../skeleton/README.md`](../skeleton/README.md) |
 | **C — `../reference/`** | Meta-documentation of this implementation | this document |

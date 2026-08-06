@@ -1,6 +1,6 @@
-# Migration Guide — Legacy Structure → EKA v1.0
+# Migration Guide — Legacy Structure → EKA v1.1
 
-Migration guide from the legacy documentation structure to the EKA v1.0 serialization. All changes are **breaking by design**: legacy consumers must stop working so they cannot read Identity/State from location (EKA 6.4, P9).
+Migration guide from the legacy documentation structure to the EKA v1.1 serialization. All changes are **breaking by design**: legacy consumers must stop working so they cannot read Identity/State from location (EKA 6.4, P9).
 
 ## Part A — Complete mapping table (legacy → new)
 
