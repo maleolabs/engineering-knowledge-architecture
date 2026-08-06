@@ -76,6 +76,7 @@ The `eka` CLI is the official interface of the architecture (Cobra-based command
 | `eka validate` | Conformance validator: runs Conformance Rules R0–R9 mechanically, with deterministic output and exit codes (0/1/2). |
 | `eka export` | Exports engineering knowledge into a canonical Exchange Package following the RSF — deterministic, validated before export, scopes: repository / line / instance / collection. |
 | `eka import` | Integrates an Exchange Package into an existing repository — atomic, conservative merge, conflict detection, rollback, post-import validation. |
+| `eka view` | Knowledge projections: `sprint`, `wave`, `ticket` — read-only, relationship-derived views over the Engineering Knowledge Model (never markdown text); conformance-gated, deterministic. |
 | `eka completion` | Shell completion (bash/zsh/fish/powershell). |
 | `eka version` | CLI build version and the EKA standard version implemented. |
 | `eka` | Product landing: a calm orientation with a compact command overview (help and version pointers). |
@@ -121,14 +122,15 @@ standard/          Canonical specification texts (Core, Exchange, Naming, Glossa
 skeleton/          Copyable project serialization (docs structure, conventions)
 reference/         Reference Implementation meta-documentation: architecture,
                    ADRs, CLI docs, ratification notes, traceability matrices
-cmd/               CLI command layer (Cobra): root, init, validate, export, import
+cmd/               CLI command layer (Cobra): root, init, validate, export, import, view
 bootstrap/         Application layer: eka init engine (public package)
 exchange/          Application layer: export/import engine (public package)
 conformance/       Application layer: validation engine (public package)
+view/              Application layer: knowledge projection engine (public package)
 skeletonembed.go   Embedded Reference Skeleton (go:embed)
 ```
 
-The application packages (`bootstrap/`, `exchange/`, `conformance/`) are public and reusable independently of the CLI — by SDKs, MCP integrations, or other tools.
+The application packages (`bootstrap/`, `exchange/`, `conformance/`, `view/`) are public and reusable independently of the CLI — by SDKs, MCP integrations, or other tools.
 
 ## Example Workflow
 
@@ -146,7 +148,7 @@ The application packages (`bootstrap/`, `exchange/`, `conformance/`) are public 
 | EKA Naming and Terminology Specification v1.0 | Ratified |
 | Reference Serialization Format v1.0 | Reference |
 | Reference Implementation + Validator | Active |
-| `eka init`, `eka validate`, `eka export`, `eka import` | Implemented |
+| `eka init`, `eka validate`, `eka export`, `eka import`, `eka view` | Implemented |
 | `eka diagnose`, `eka graph`, sync strategies (replace, forward-only reconciliation) | Future |
 
 ## Contributing

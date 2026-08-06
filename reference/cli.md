@@ -12,6 +12,7 @@
 - **`eka export`** — the first practical implementation of the Exchange Specification: exports engineering knowledge as an **Exchange Package** per the Reference Serialization Format (RSF).
 - **`eka import`** — the inverse of export: consumes an Exchange Package and integrates knowledge into an existing EKA repository — implementing the import semantics of Exchange Specification §11.
 - **`eka validate`** — the conformance validator: repository conformance must not rest on manual review alone — rules R1–R9 in `skeleton/docs/exchange/validation.md` are designed to be mechanical, and this validator is their canonical implementation (P16: enforcement mechanisms vary, invariants stay identical).
+- **`eka view`** — the Knowledge Projection Engine: read-only projections of the Engineering Knowledge Model (sprint / wave / ticket) — the canonical executable form of the State Projection semantics (Core Specification §11), relationship-derived, never markdown-rendered.
 
 Consequences of this philosophy:
 
@@ -40,7 +41,7 @@ All commands share one three-part hierarchy:
 2. **Workflow body** — the operation's stages (progressive tree) or, for single-operation commands, the report.
 3. **Summary** — the outcome as facts.
 
-`init`, `export` and `import` render a progressive tree; `validate` renders the report as the body. Every command ends with a summary block.
+`init`, `export` and `import` render a progressive tree; `validate` renders the report as the body; `view` renders the projection as the body. Every command ends with a summary block.
 
 ### Context header
 
@@ -56,7 +57,7 @@ Knowledge   EKA v1
 
 - First line: object kind (`Repository`, `Knowledge Package`) — the dynamic identity anchor.
 - Identity rows: aligned label/value pairs; each command shows the rows that identify its object (`Name`, `Namespace`, `Path`, `Package`, `Scope`, `Output`, `Format`, `Knowledge`).
-- Pipeline separator: `↓ <pipeline>` — `↓ Bootstrap`, `↓ Export`, `↓ Import`, `↓ Validate`.
+- Pipeline separator: `↓ <pipeline>` — `↓ Bootstrap`, `↓ Export`, `↓ Import`, `↓ View`, `↓ Validate`.
 
 ### Object-centric execution
 
@@ -126,7 +127,7 @@ The CLI is usable without color, over SSH, in CI, and in basic terminals: the pl
 
 ### Consistency
 
-One interaction model across `init` (5-stage tree), `export` (6-stage tree), `import` (7-stage tree) and `validate` (header + report + summary). Future commands must follow the same model (see [Contribution guide](#contribution-guide-adding-a-command)).
+One interaction model across `init` (5-stage tree), `export` (6-stage tree), `import` (7-stage tree), `validate` (header + report + summary) and `view` (header + projection + summary). Future commands must follow the same model (see [Contribution guide](#contribution-guide-adding-a-command)).
 
 ## Installation
 
@@ -157,6 +158,7 @@ eka version
 eka init [project-name] [--dry-run]
 eka export [target...] [-o|--output path]
 eka import <package-path>
+eka view [projection] [target]
 eka validate [path]
 eka completion [bash|zsh|fish|powershell]
 eka help [command]
@@ -414,6 +416,169 @@ No partial integration: all analysis happens before a single file is written.
 | Invalid package (digest, JSON, missing entries, unsupported version, unknown fields) | Stops, repository unchanged, exit `2` |
 | Filesystem / usage failure | Error, exit `2` |
 
+## `eka view` — Knowledge Projections
+
+```
+eka view [projection] [target]
+```
+
+`eka view` projects the **Engineering Knowledge Model** of the repository rooted at the current directory: read-only views over the repository's artifacts and their relationships. The `target` argument is required by the ticket projection only (a bare ticket id, `tkt-<id>` or `tkt:<id>`); `sprint` and `wave` ignore it. With no arguments, the available projections are listed and the command exits `0`.
+
+### Projection philosophy — Knowledge Projection
+
+- The viewing layer is **generated from the Engineering Knowledge Model** — artifact identity, State fields, and relationships — **not from markdown rendering**. The CLI never depends on markdown formatting; no file text is parsed for view content (ticket bodies are never read, container `## Work Items` tables are never parsed).
+- Markdown remains the **editing interface**; EKA is the **canonical model**; the projection is the **view**. A projection has no State of its own and never becomes a writer (P6, Core Specification §11) — `eka view` is the canonical executable form of the State Projection semantics.
+- The projection engine is **pure data in, pure data out**: it contains no terminal knowledge, no command framework, and no output.
+
+### Snapshot interaction model
+
+`eka view` is a single synchronous snapshot — no TUI, no navigation, no editing, no background process. One run produces one projection, then exits:
+
+```
+run → validate → load → construct → render → exit
+```
+
+1. **Validate** — the conformance gate (R0–R9) runs first; a non-conformant repository is refused (exit `1`).
+2. **Load** — one `conformance.Scan` of the repository.
+3. **Construct** — one Knowledge Graph, then one projection build.
+4. **Render** — the projection, deterministically.
+5. **Exit** — mapped per the exit-code contract below.
+
+The engine is synchronous and stateless: a future loading state can wrap the whole call without restructuring.
+
+### Exit codes
+
+| Code | Meaning |
+|---|---|
+| `0` | Projection produced — including empty projections (no active container, no tickets) |
+| `1` | Repository validation failed — no projection is produced (the full report is printed) |
+| `2` | Usage or internal error — unknown projection, missing or unknown ticket target, unreadable root |
+
+Warnings never block a projection.
+
+### Projections
+
+| Command | View |
+|---|---|
+| `eka view sprint` | The **active Execution Container**'s work items, grouped by Execution State columns (`planned`, `todo`, `in-progress`, `in-review`, `done` — the fixed five-column set, empty columns keep their heading) |
+| `eka view wave` | The active container's **tickets** (each with its projected status) + work item progress counts by state + summary |
+| `eka view ticket <id>` | One ticket's detail: **projected status derived from the referenced work item's owner Execution State — never from the ticket's own text** — plus the container it derives from and its `derives-from` references |
+
+**Membership derivation rule** (the single source of membership — relationships only, never file text): a work item belongs to an execution container iff a ticket (`tkt-`) of that container derives from it. A ticket belongs to a container iff one of its `derives-from` references resolves to the container's identity line. Container `## Work Items` tables are **not** parsed; the ticket is never parsed beyond its frontmatter relationships.
+
+- No active container → a valid empty projection (`No active container.`), exit `0`.
+- Several active containers (invalid state) → the lexicographically smallest canonical identity is shown with a warning line.
+- Ticket target forms: `eka view ticket <id>`, `eka view ticket tkt-<id>`, `eka view ticket tkt:<id>` (the prefix is stripped; `tkt-` and `tkt:` are equivalent).
+
+### Projection architecture
+
+Two layers, one dependency direction:
+
+| Layer | Location | Role |
+|---|---|---|
+| Projection engine | `view/` (public package) | Knowledge Graph (identity index, relationship resolution, membership helpers) + independent projection builders (`buildSprint`, `buildWave`, `buildTicket`) + the projection registry. Pure data in, pure data out. |
+| Terminal rendering | `cmd/view.go` | Argument validation, the conformance gate, dispatch to `cmd/ui` rendering, exit-code mapping. No projection logic. |
+
+- The **renderer does not know the repository layout**; the **builders do not know terminals**.
+- The registry is the closed set of named projections; a future projection is added by registering an independent builder — **no pipeline redesign**.
+- Determinism contract: all ordering is canonical — artifacts by canonical line identity form, execution-state columns in the fixed value order, tickets by canonical identity, references in file order.
+
+### Validation
+
+An automatic **pre-render conformance check**: `conformance.Validate` runs before any projection is built. A repository with blocking violations produces **no projection** — the full report is printed and the command exits `1`. Warnings never block a projection.
+
+### Determinism and UX
+
+- **Context header** — object kind (`Sprint`, `Wave`, `Ticket`) + identity rows (`Container` / `Ticket`, `Repository`) + `Knowledge EKA v1`, closed by the `↓ View` pipeline.
+- **State colors** — `planned` dim, `todo` info, `in-progress` progress, `in-review` warning, `done` success; `unresolved` reads as warning. Icons decorate (`✓` done, `→` in progress, `•` everything else); the state word carries the meaning.
+- **Summary block** — every projection closes with a `Summary:` of outcome facts (container, counts, status).
+- **Calm tone** — no banners, no ALL-CAPS, color is never the sole carrier of meaning.
+- **Non-TTY deterministic** — piped/CI output is byte-identical plain text with UTF-8 icons, no ANSI escapes; color auto-disables on non-TTY, `NO_COLOR` or `TERM=dumb`.
+
+### Examples
+
+Illustrative non-TTY output sketches (identities and counts vary per repository; the layout is fixed):
+
+`eka view sprint`:
+
+```
+Sprint
+Container   eka-cli/ctr:sprint-12
+Repository  .
+Knowledge   EKA v1
+↓ View
+
+planned (2)
+  • eka-cli/sto-alpha
+  • eka-cli/sto-beta
+todo (1)
+  • eka-cli/sto-gamma
+in-progress (1)
+  → eka-cli/sto-delta
+in-review (1)
+  • eka-cli/sto-epsilon
+done (3)
+  ✓ eka-cli/sto-zeta
+  ✓ eka-cli/sto-eta
+  ✓ eka-cli/sto-theta
+Summary:
+└── Container: eka-cli/ctr:sprint-12
+└── Work items: 8
+└── In progress: 1
+└── Done: 3
+└── Tickets: 5
+└── Status: active
+```
+
+`eka view wave`:
+
+```
+Wave
+Container   eka-cli/ctr:sprint-12
+Repository  .
+Knowledge   EKA v1
+↓ View
+
+Tickets (5)
+  → tkt-sto-delta (in-progress)
+  • tkt-sto-alpha (planned)
+  ✓ tkt-sto-zeta (done)
+
+Progress
+  planned      2
+  todo         1
+  in-progress  1
+  in-review    1
+  done         3
+Summary:
+└── Container: eka-cli/ctr:sprint-12
+└── Tickets: 5
+└── Work items: 8
+└── In progress: 1
+└── Done: 3
+└── Status: active
+```
+
+`eka view ticket sto-alpha`:
+
+```
+Ticket
+Ticket      eka-cli/tkt:tkt-sto-alpha
+Repository  .
+Knowledge   EKA v1
+↓ View
+
+Projected Status   planned
+Work Item          eka-cli/sto-alpha (planned)
+Container          eka-cli/ctr:sprint-12
+Derives From       eka-cli/sto-alpha, eka-cli/ctr:sprint-12
+Summary:
+└── Ticket: tkt-sto-alpha
+└── Work item: eka-cli/sto-alpha (planned)
+└── Container: eka-cli/ctr:sprint-12
+└── Status: planned
+```
+
 ## `eka validate` — Conformance Validator
 
 ```
@@ -506,6 +671,7 @@ The CLI is organized as **two layers + one entry point**:
 | Application layer | `bootstrap/` (public package) | Repository Bootstrapper: discovery, planning, wizard, generation, validation — reusable without the CLI. |
 | Application layer | `exchange/` (public package) | Import/export engine (Exchange Spec + RSF): discovery, loading, model building, serialization, deserialization, identity/relationship resolver, conflict analyzer, integration engine (staged commit + rollback), package writer — reusable without the CLI. |
 | Application layer | `conformance/` (public package) | Validation engine: scanning, artifact classification, rules R1–R9, result model (`Report`); also provides `Scan` and `ParseReference` for other consumers. |
+| Application layer | `view/` (public package) | Knowledge Projection Engine: Knowledge Graph (identity index, relationship resolution, membership helpers) + independent projection builders + projection registry — reusable without the CLI. |
 | Entry point | `cmd/eka/main.go` | Thin: `os.Exit(cmd.Execute(...))`. Executable name: `eka`. |
 
 ```
@@ -515,6 +681,7 @@ cmd/                package cmd — Cobra command definitions (command layer)
   init.go           init command
   export.go         export command
   import.go         import command
+  view.go           view command (renders projections via cmd/ui)
   execute_test.go   CLI tests (exit codes, help, completion, modes)
 cmd/ui/             package ui — presentation primitives (no business logic)
   ui.go             Style: color/TTY/verbose context per execution
@@ -530,6 +697,7 @@ cmd/eka/
 bootstrap/          public package — eka init engine (application layer)
 exchange/           public package — import/export engine (application layer)
 conformance/        public package — validation engine (application layer)
+view/               public package — knowledge projection engine (application layer)
 skeletonembed.go    root package — //go:embed skeleton (canonical Reference Skeleton)
 ```
 
@@ -560,6 +728,7 @@ A new command is added without architectural refactoring:
 | `eka init` | **Implemented** | Repository Bootstrapper (5 stages, adaptive wizard, dry-run, idempotent, post-generation validation). |
 | `eka export` | **Implemented** | Exchange Package export (RSF v1.0): repo/line/instance/collection scope, automatic validation, deterministic, external reference declaration, attachments, SHA-256 digests. |
 | `eka import` | **Implemented** | Exchange Package import (RSF v1.0 + Exchange §11): package + integrity validation, identity/relationship resolution, conflict → abort, atomic staged commit, rollback, post-import revalidation. |
+| `eka view` | **Implemented** | Knowledge projections (sprint / wave / ticket): read-only views derived from the Engineering Knowledge Model — relationships + State, never markdown text. Conformance-gated, deterministic, exit codes 0/1/2. |
 | `eka validate` | **Implemented** | Full conformance validator (R1–R9 + structural R0). |
 | `eka version` | **Implemented** | CLI build version + EKA standard version. |
 | `eka completion` | **Implemented** | bash/zsh/fish/powershell completion scripts (provided by Cobra). |
