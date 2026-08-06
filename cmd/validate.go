@@ -39,7 +39,7 @@ the exit code; blocking violations exit 1. Usage or internal errors
 			s := styleFor(cmd)
 			ui.NewHeader(s, "Repository").
 				Add("Path", report.Root).
-				Add("Knowledge", "EKA v1").
+				Add("Knowledge", "EKA v"+standardVersion).
 				Pipeline("Validate").
 				Render()
 			printReport(s, report)
@@ -66,7 +66,7 @@ the exit code; blocking violations exit 1. Usage or internal errors
 //	└── Artifacts: 6
 //	└── Errors: 0
 //	└── Warnings: 0
-//	└── Status: Repository conforms to EKA v1
+//	└── Status: Repository conforms to EKA v1.1
 //
 // The report IS the command output: nothing is dropped, the results
 // list keeps its content and ordering contract.
@@ -86,10 +86,10 @@ func printReport(s *ui.Style, r *conformance.Report) {
 	}
 
 	verdict := "PASS"
-	status := "Repository conforms to EKA v1"
+	status := "Repository conforms to EKA v"+standardVersion
 	if !r.Pass() {
 		verdict = "FAIL"
-		status = "Repository does not conform to EKA v1"
+		status = "Repository does not conform to EKA v"+standardVersion
 	}
 	colored := s.Success(verdict)
 	if !r.Pass() {

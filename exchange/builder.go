@@ -346,6 +346,11 @@ func toUnit(la *loadedArtifact) *Unit {
 	if len(la.DimensionsSecondary) > 0 {
 		classification.DimensionsSecondary = la.DimensionsSecondary
 	}
+	// Engineering Domain: derived from the type token via the shared
+	// conformance mapping (single source of truth, like ParseReference).
+	if d, ok := conformance.DomainForToken(la.Type); ok {
+		classification.Domain = string(d)
+	}
 	u := &Unit{
 		Identity:              id,
 		CanonicalIdentityForm: id.CanonicalForm(),

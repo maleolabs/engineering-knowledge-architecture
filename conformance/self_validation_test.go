@@ -21,8 +21,8 @@ func TestReferenceImplementationConforms(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Validate(%s): %v", root, err)
 	}
-	if report.Artifacts < 7 {
-		t.Errorf("expected at least the 7 reference ADRs, got %d artifacts", report.Artifacts)
+	if report.Artifacts < 8 {
+		t.Errorf("expected at least the 8 reference ADRs, got %d artifacts", report.Artifacts)
 	}
 	if report.ErrorCount() != 0 {
 		t.Errorf("the EKA repository must pass its own conformance suite: %d errors:\n%s",

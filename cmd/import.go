@@ -120,7 +120,7 @@ func renderImport(s *ui.Style, r *exchange.ImportResult, pkgPath string) {
 	ui.NewHeader(s, "Knowledge Package").
 		Add("Package", pkgPath).
 		Add("Format", "RSF v1").
-		Add("Knowledge", "EKA v1").
+		Add("Knowledge", "EKA v"+standardVersion).
 		Pipeline("Import").
 		Render()
 

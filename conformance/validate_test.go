@@ -30,8 +30,16 @@ func TestValidFixtureRepo(t *testing.T) {
 	if report.ErrorCount() != 0 {
 		t.Errorf("errors = %d, want 0:\n%s", report.ErrorCount(), dumpResults(report))
 	}
-	if report.WarningCount() != 0 {
-		t.Errorf("warnings = %d, want 0:\n%s", report.WarningCount(), dumpResults(report))
+	// R10 stratification traceability (EKA v1.1): the two ADRs, the plan
+	// and the story carry no upward reference chain and are flagged as
+	// warnings (never blockers). The container derives-from the plan and
+	// passes; the ticket is token-exempt. Warnings: 4 = 2 adr + 1 plan
+	// + 1 sto.
+	if n := countResults(report, Rule10, SeverityWarning); n != 4 {
+		t.Errorf("R10 warnings = %d, want 4:\n%s", n, dumpResults(report))
+	}
+	if report.WarningCount() != 4 {
+		t.Errorf("warnings = %d, want 4:\n%s", report.WarningCount(), dumpResults(report))
 	}
 	if !report.Pass() {
 		t.Error("valid fixture must pass")
@@ -182,6 +190,80 @@ func dumpResults(report *Report) string {
 		b.WriteString("  " + r.String() + "\n")
 	}
 	return b.String()
+}
+
+// TestDomainValidFixtureRepo: the Engineering Domain fixture where every
+// rule passes — declared domains match, every non-Discovery artifact has
+// a resolvable upward chain (direct or transitive), no supersession
+// crosses strata. Expect 0 errors and 0 warnings.
+func TestDomainValidFixtureRepo(t *testing.T) {
+	report, err := Validate(fixturePath(t, "domain-valid"))
+	if err != nil {
+		t.Fatalf("Validate: %v", err)
+	}
+	if report.Artifacts != 7 {
+		t.Errorf("artifacts = %d, want 7", report.Artifacts)
+	}
+	if report.ErrorCount() != 0 {
+		t.Errorf("errors = %d, want 0:\n%s", report.ErrorCount(), dumpResults(report))
+	}
+	if report.WarningCount() != 0 {
+		t.Errorf("warnings = %d, want 0:\n%s", report.WarningCount(), dumpResults(report))
+	}
+}
+
+// TestDomainInvalidFixtureRepo: the Engineering Domain fixture where
+// R10/R11/R12 fire. Presence- and absence-based assertions: R11 unknown
+// domain + mismatch errors, R12 upward supersede + amends errors, R10
+// warnings on the isolated ctr-/sto- artifacts, and no R10 findings on
+// the draft spec or the ticket (both exempt).
+func TestDomainInvalidFixtureRepo(t *testing.T) {
+	report, err := Validate(fixturePath(t, "domain-invalid"))
+	if err != nil {
+		t.Fatalf("Validate: %v", err)
+	}
+	if report.Pass() {
+		t.Fatal("fixture must fail (R11/R12 are blocking)")
+	}
+	for _, want := range []expectation{
+		{rule: Rule11, sev: SeverityError, sub: "unknown engineering domain"},
+		{rule: Rule11, sev: SeverityError, sub: "does not match the home domain"},
+		{rule: Rule12, sev: SeverityError, sub: "supersedes"},
+		{rule: Rule12, sev: SeverityError, sub: "amends"},
+	} {
+		if !hasExpectation(report, want) {
+			t.Errorf("missing expected %s %s %q\nresults:\n%s",
+				want.sev, want.rule, want.sub, dumpResults(report))
+		}
+	}
+	// R10 findings are file-based (the message does not name the file):
+	// the isolated ctr-/sto- artifacts warn, the draft spec and the
+	// ticket (both exempt) do not.
+	r10Files := map[string]bool{}
+	for _, r := range resultsFor(report, Rule10) {
+		r10Files[r.File] = true
+	}
+	for _, file := range []string{
+		"docs/operating/work-items/stories/sto-iso-1.md",
+		"docs/operating/containers/ctr-gelombang-1.md",
+	} {
+		if !r10Files[file] {
+			t.Errorf("missing R10 warning on %s\nresults:\n%s", file, dumpResults(report))
+		}
+	}
+	for _, file := range []string{
+		"docs/specifications/spec-001-draft.md",
+		"docs/operating/projections/tkt-sto-iso-1.md",
+	} {
+		if r10Files[file] {
+			t.Errorf("unexpected R10 warning on exempt artifact %s\nresults:\n%s", file, dumpResults(report))
+		}
+	}
+	// Only R11/R12 may produce blocking errors here (the fixture content
+	// is otherwise conformant).
+	if n := report.ErrorCount(); n != 4 {
+		t.Errorf("errors = %d, want exactly 4 (2x R11 + 2x R12):\n%s", n, dumpResults(report))
+	}
 }
 
 // TestReportDeterminism verifies byte-identical output across runs.

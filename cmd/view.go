@@ -36,7 +36,7 @@ current directory: read-only views over the repository's artifacts and
 their relationships, derived from the model — never from file text.
 
 The repository is validated against the conformance rules first
-(R0-R9); a repository with blocking violations is refused and no
+(R0-R12); a repository with blocking violations is refused and no
 projection is produced. Warnings never block a projection.
 
 Projections:
@@ -223,7 +223,8 @@ func renderSprint(s *ui.Style, g *view.Graph, p *view.SprintProjection) {
 	ui.NewHeader(s, "Sprint").
 		Add("Container", container).
 		Add("Repository", g.Root()).
-		Add("Knowledge", "EKA v1").
+		Add("Knowledge", "EKA v"+standardVersion).
+		Add("Domain", "Execution").
 		Pipeline("View").
 		Render()
 	if p.MultipleActive {
@@ -262,7 +263,8 @@ func renderWave(s *ui.Style, g *view.Graph, p *view.WaveProjection) {
 	ui.NewHeader(s, "Wave").
 		Add("Container", container).
 		Add("Repository", g.Root()).
-		Add("Knowledge", "EKA v1").
+		Add("Knowledge", "EKA v"+standardVersion).
+		Add("Domain", "Execution").
 		Pipeline("View").
 		Render()
 	if p.MultipleActive {
@@ -304,7 +306,8 @@ func renderTicket(s *ui.Style, g *view.Graph, p *view.TicketProjection) {
 	ui.NewHeader(s, "Ticket").
 		Add("Ticket", p.Ticket.Identity).
 		Add("Repository", g.Root()).
-		Add("Knowledge", "EKA v1").
+		Add("Knowledge", "EKA v"+standardVersion).
+		Add("Domain", "Execution").
 		Pipeline("View").
 		Render()
 

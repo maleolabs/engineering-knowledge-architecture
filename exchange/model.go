@@ -48,8 +48,12 @@ const (
 	ExchangeFormatVersion = "1"
 	// SerializationVersion is the RSF Serialization Version carried in
 	// the Package Identity Label suffix and echoed in the Header/Manifest
-	// (RSF §4.1, §11.2): "1".
-	SerializationVersion = "1"
+	// (RSF §4.1, §11.2): "1.1". Version "1" packages remain importable:
+	// their Engineering Domain is derived at import (RSF v1.1 §11.2).
+	SerializationVersion = "1.1"
+	// LegacySerializationVersion is the RSF v1.0 Serialization Version
+	// still accepted at import (domain derived, no representation alias).
+	LegacySerializationVersion = "1"
 	// Exporter is the exporter identity recorded in the Package Header
 	// (RSF §4.3; provenance per Exchange §17.2).
 	Exporter = "eka"
@@ -243,6 +247,15 @@ type Unit struct {
 	Digest string `json:"-"`
 }
 
+// Domain derives the Engineering Domain of the unit at load time from the
+// artifact type token (conformance.DomainForToken — the single shared
+// source of truth). It backs the graph/integrity checks of the import
+// pipeline; the second return value is false only for unknown type
+// tokens (rejected elsewhere before this is consulted).
+func (u *Unit) Domain() (conformance.Domain, bool) {
+	return conformance.DomainForToken(u.Identity.Type)
+}
+
 // Identity is the complete identity tuple (Exchange §6.1): (Namespace,
 // Type, ID, InstanceVersion). Field order is the fixed declared order.
 type Identity struct {
@@ -292,10 +305,17 @@ type Relationship struct {
 }
 
 // Classification carries the primary Knowledge Dimension plus at most one
-// secondary (canonical Section 8, P15).
+// secondary (canonical Section 8, P15), and the Engineering Domain of the
+// unit's artifact type (EKA v1.1 Wave 1).
 type Classification struct {
 	Dimension           string   `json:"dimension,omitempty"`
 	DimensionsSecondary []string `json:"dimensions_secondary,omitempty"`
+	// Domain is the Engineering Domain of the unit's artifact type,
+	// derived from the type token via conformance.DomainForToken (the
+	// single shared source of truth, like ParseReference). Written on
+	// export, validated on import when present, and optional: packages
+	// without the field derive the domain from the type token.
+	Domain string `json:"domain,omitempty"`
 }
 
 // ContentRef is the representation-tagged payload reference (RSF §6.1):

@@ -31,8 +31,15 @@ func labelNamespace(namespaces []string) (string, error) {
 // no namespace (empty Repository-scope export) the namespace component is
 // omitted: "rsf-<scope>-<serialization-version>".
 func PackageIdentityLabel(scope ScopeKind, namespace string) string {
+	return PackageIdentityLabelVersion(scope, namespace, SerializationVersion)
+}
+
+// PackageIdentityLabelVersion builds the package label for a given
+// Serialization Version; used for the current version on export and for
+// legacy-version packages at import (self-consistency, RSF §8.2).
+func PackageIdentityLabelVersion(scope ScopeKind, namespace, serializationVersion string) string {
 	if namespace == "" {
-		return "rsf-" + string(scope) + "-" + SerializationVersion
+		return "rsf-" + string(scope) + "-" + serializationVersion
 	}
-	return "rsf-" + string(scope) + "-" + namespace + "-" + SerializationVersion
+	return "rsf-" + string(scope) + "-" + namespace + "-" + serializationVersion
 }

@@ -1617,6 +1617,69 @@ func TestImportDimensionFolderConflict(t *testing.T) {
 	assertRepoUnchanged(t, repo, before)
 }
 
+// TestImportDomainField covers the optional `domain` classification field
+// on import: absent = OK (derived, packages written before the field keep
+// importing), declared-and-matching = OK, unknown domain = package error,
+// mismatch = package error.
+func TestImportDomainField(t *testing.T) {
+	cases := []struct {
+		name    string
+		domain  string
+		wantErr bool
+		wantSub string
+	}{
+		{"absent", "", false, ""},
+		{"declared matching", "Architecture", false, ""},
+		{"unknown domain", "Bogus", true, "unknown engineering domain"},
+		{"mismatch", "Execution", true, "does not match the home domain"},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			u := specUnit("ns-one", "001", 1, "approved", nil)
+			u.Classification.Domain = c.domain
+			dir := assembleTestPackage(t, testPackageSpec{units: []*Unit{u}})
+			repo := newTestRepo(t)
+			_, err := Import(dir, ImportOptions{Root: repo})
+			if c.wantErr {
+				if err == nil {
+					t.Fatal("a domain violation must be refused")
+				}
+				var pe *PackageError
+				if !errors.As(err, &pe) {
+					t.Fatalf("error = %T, want *PackageError", err)
+				}
+				if !strings.Contains(err.Error(), c.wantSub) {
+					t.Errorf("message must contain %q, got %q", c.wantSub, err.Error())
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("import must succeed: %v", err)
+			}
+		})
+	}
+}
+
+// TestImportDomainDerivedAtLoad: the unit-level domain derivation agrees
+// with the classification written by the exporter (round-trip check that
+// the shared conformance mapping is the single source of truth).
+func TestImportDomainDerivedAtLoad(t *testing.T) {
+	loaded, err := loadPackage(exportPackage(t, fixtureValid))
+	if err != nil {
+		t.Fatalf("loadPackage failed: %v", err)
+	}
+	for _, u := range loaded.units {
+		derived, ok := u.Domain()
+		if !ok {
+			t.Fatalf("unit %s has no derived domain", u.CanonicalIdentityForm)
+		}
+		if got := u.Classification.Domain; got != string(derived) {
+			t.Errorf("unit %s: declared domain %q does not equal derived domain %q",
+				u.CanonicalIdentityForm, got, derived)
+		}
+	}
+}
+
 // TestImportEmptyPackage: a package without units imports as a no-op.
 func TestImportEmptyPackage(t *testing.T) {
 	dir := assembleTestPackage(t, testPackageSpec{})

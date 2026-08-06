@@ -8,10 +8,11 @@ import (
 	"strings"
 )
 
-// This file implements Rules R1-R9 from skeleton/docs/exchange/validation.md.
-// Each rule function is self-contained; interpretation decisions beyond the
-// literal rule text are marked "Interpretation (documented)" and collected
-// in the final report of the implementation.
+// This file implements Rules R1-R9 from skeleton/docs/exchange/validation.md
+// (R10-R12 live in rules_domain.go). Each rule function is self-contained;
+// interpretation decisions beyond the literal rule text are marked
+// "Interpretation (documented)" and collected in the final report of the
+// implementation.
 
 // ---------------------------------------------------------------------------
 // Rule 1 — Identity uniqueness

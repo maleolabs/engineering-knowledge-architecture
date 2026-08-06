@@ -14,7 +14,7 @@ import (
 //	report, err := conformance.Validate(root)
 //
 // The engine walks the root recursively, classifies every .md file, and runs
-// Rules R1-R9 over the collected artifacts. It never imports anything from
+// Rules R1-R12 over the collected artifacts. It never imports anything from
 // cmd/ and is fully reusable by future tooling.
 //
 // Scan policy (documented interpretation):
@@ -65,11 +65,12 @@ func Validate(root string) (*Report, error) {
 	}
 	report.Artifacts = len(e.artifacts)
 
-	// Identity index for reference resolution and the R9 supersession check.
+	// Identity index for reference resolution and the R9 supersession
+	// check.
 	e.buildIndex()
 
 	// Rules. R0 results were collected during parsing; R1 runs over the
-	// whole set; R2-R9 run per artifact.
+	// whole set; R2-R12 run per artifact.
 	e.rule1()
 	for _, a := range e.artifacts {
 		e.rule2(a)
@@ -80,6 +81,9 @@ func Validate(root string) (*Report, error) {
 		e.rule7(a)
 		e.rule8(a)
 		e.rule9(a)
+		e.rule10(a)
+		e.rule11(a)
+		e.rule12(a)
 	}
 
 	return report, nil

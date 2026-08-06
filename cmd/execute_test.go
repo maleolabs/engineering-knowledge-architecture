@@ -40,7 +40,7 @@ func TestLanding(t *testing.T) {
 		"Commands",
 		"Help",
 		"Version",
-		"dev (EKA standard 1.0)",
+		"dev (EKA standard 1.1)",
 	} {
 		if !strings.Contains(out, want) {
 			t.Errorf("landing missing %q, got:\n%s", want, out)
@@ -58,7 +58,7 @@ func TestVersionCommand(t *testing.T) {
 	if code != 0 {
 		t.Errorf("version: exit = %d, want 0", code)
 	}
-	if !strings.Contains(out, "eka dev") || !strings.Contains(out, "EKA standard 1.0") {
+	if !strings.Contains(out, "eka dev") || !strings.Contains(out, "EKA standard 1.1") {
 		t.Errorf("version output incomplete: %q", out)
 	}
 	code, out, _ = runIn([]string{"version", "--help"})
@@ -155,7 +155,7 @@ func TestValidateValidRepoExitsZero(t *testing.T) {
 	if !strings.Contains(text, "↓ Validate") {
 		t.Errorf("output must contain the validate pipeline header:\n%s", text)
 	}
-	if !strings.Contains(text, "Knowledge   EKA v1") {
+	if !strings.Contains(text, "Knowledge   EKA v1.1") {
 		t.Errorf("output must identify the knowledge standard:\n%s", text)
 	}
 }

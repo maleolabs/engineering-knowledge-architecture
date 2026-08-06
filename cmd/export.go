@@ -32,7 +32,7 @@ func newExportCommand() *cobra.Command {
 package in the EKA Reference Serialization Format (RSF) v1.0.
 
 The repository is validated against the conformance rules first
-(R0-R9); a repository with blocking violations is refused and no
+(R0-R12); a repository with blocking violations is refused and no
 package is produced. Warnings never block an export.
 
 Export targets are canonical reference forms:
@@ -114,7 +114,7 @@ func renderExport(s *ui.Style, r *exchange.Result) {
 		Add("Scope", string(r.Package.Header.ExportScope)).
 		Add("Output", r.Output).
 		Add("Format", "RSF v1").
-		Add("Knowledge", "EKA v1").
+		Add("Knowledge", "EKA v"+standardVersion).
 		Pipeline("Export").
 		Render()
 

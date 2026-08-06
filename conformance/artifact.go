@@ -58,6 +58,12 @@ type Artifact struct {
 	HasDimension        bool
 	DimensionsSecondary []string
 
+	// Domain is the raw frontmatter `domain` field value ("" when
+	// absent). It is the declared Engineering Domain checked by Rule 11;
+	// the derived home domain comes from DomainForToken (Rule 11:
+	// absent = OK, derived).
+	Domain string
+
 	// Relations maps relationship field name -> raw reference strings.
 	Relations map[string][]string
 
@@ -285,6 +291,18 @@ func analyzeFile(relPath, absPath string, data []byte) (*Artifact, []Result) {
 			})
 		} else {
 			a.DimensionsSecondary = list
+		}
+	}
+
+	// --- Engineering Domain (Rule 11). ---
+	if v, ok := fm["domain"]; ok {
+		if s, isStr := asString(v); isStr {
+			a.Domain = s
+		} else {
+			results = append(results, Result{
+				File: relPath, Rule: RuleStructural, Severity: SeverityError,
+				Message: "`domain` must be a string",
+			})
 		}
 	}
 

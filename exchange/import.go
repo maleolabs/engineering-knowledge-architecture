@@ -356,6 +356,26 @@ func checkUnitStates(pkg *loadedPackage) error {
 			}
 		}
 
+		// Engineering Domain coherence (Rule 11 mirror): a declared
+		// `domain` in the unit classification must be canonical and must
+		// equal the type token's home domain. Absent = OK: the domain is
+		// derived from the token (packages written before the field
+		// existed keep importing).
+		if u.Classification.Domain != "" {
+			if !conformance.IsDomain(u.Classification.Domain) {
+				return packageErrorf(
+					"import refused: unit %s declares unknown engineering domain %q (canonical domains: %s)",
+					u.CanonicalIdentityForm, u.Classification.Domain,
+					strings.Join(conformance.DomainNames(), ", "))
+			}
+			home, _ := conformance.DomainForToken(u.Identity.Type) // type already checked above
+			if u.Classification.Domain != string(home) {
+				return packageErrorf(
+					"import refused: unit %s declares domain %q which does not match the home domain %q of type %q",
+					u.CanonicalIdentityForm, u.Classification.Domain, home, u.Identity.Type)
+			}
+		}
+
 		// Change-log consistency (Aturan 7): every owned domain (and phase
 		// when present) must have entries whose last entry equals the
 		// current value; entries must be well-formed and use owned domains.

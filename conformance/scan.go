@@ -13,7 +13,7 @@ import (
 // Scan reuses the exact walk policy and classification of Validate
 // (collectMarkdownPaths + analyzeFile) but performs no rule evaluation:
 // it returns every classified Artifact, in scan order. It exists for
-// consumers that need the parsed artifact model without the R1-R9 verdict
+// consumers that need the parsed artifact model without the R1-R12 verdict
 // (e.g. the exchange/ package, whose export pipeline runs Validate as its
 // own gate and then needs the artifacts themselves).
 //

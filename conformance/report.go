@@ -22,13 +22,14 @@ const (
 	SeverityWarning Severity = "warning"
 )
 
-// Rule identifiers. R1..R9 are the nine conformance rules from
-// skeleton/docs/exchange/validation.md.
+// Rule identifiers. R1..R12 are the conformance rules from
+// skeleton/docs/exchange/validation.md (R1-R9) and the Engineering
+// Domain ontology of the EKA v1.1 standard (R10-R12).
 const (
 	// RuleStructural ("R0") is the structural bucket for failures that
 	// precede the numbered rules: unparseable frontmatter, artifacts
 	// violating the artifact rule (type XOR id), and missing or invalid
-	// identity fields. It is not one of the nine rules.
+	// identity fields. It is not one of the numbered rules.
 	RuleStructural = "R0"
 	Rule1          = "R1"
 	Rule2          = "R2"
@@ -39,6 +40,9 @@ const (
 	Rule7          = "R7"
 	Rule8          = "R8"
 	Rule9          = "R9"
+	Rule10         = "R10"
+	Rule11         = "R11"
+	Rule12         = "R12"
 )
 
 // ruleRank maps a rule id to its sort position.
@@ -64,6 +68,12 @@ func ruleRank(rule string) int {
 		return 8
 	case Rule9:
 		return 9
+	case Rule10:
+		return 10
+	case Rule11:
+		return 11
+	case Rule12:
+		return 12
 	default:
 		return 99
 	}
@@ -81,7 +91,7 @@ func severityRank(s Severity) int {
 type Result struct {
 	// File is the path relative to the scanned root.
 	File string
-	// Rule is the rule id ("R0".."R9").
+	// Rule is the rule id ("R0".."R12").
 	Rule string
 	// Severity is error or warning.
 	Severity Severity
@@ -135,7 +145,7 @@ func (r *Report) Pass() bool {
 }
 
 // SortedResults returns the results in deterministic order:
-// file path, then rule (R0, R1..R9), then severity (error, warning),
+// file path, then rule (R0, R1..R12), then severity (error, warning),
 // then message.
 func (r *Report) SortedResults() []Result {
 	out := make([]Result, len(r.Results))

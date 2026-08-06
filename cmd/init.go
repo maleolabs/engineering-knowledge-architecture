@@ -108,7 +108,7 @@ func initHeader(s *ui.Style, o *bootstrap.Outcome) {
 		Add("Name", o.ProjectName).
 		Add("Target", o.Target).
 		Add("Namespace", o.Namespace).
-		Add("Knowledge", "EKA v1").
+		Add("Knowledge", "EKA v"+standardVersion).
 		Pipeline("Bootstrap").
 		Render()
 }
@@ -165,7 +165,7 @@ func renderInit(s *ui.Style, o *bootstrap.Outcome) {
 		Add("Namespace", o.Namespace).
 		Add("Repository Type", o.RepoType).
 		Add("Git Status", o.GitStatus).
-		Add("Standard", "EKA v1.0").
+		Add("Standard", "EKA v"+standardVersion).
 		Add("Validation", validationDetail(o.Report)).
 		Render()
 }
@@ -191,7 +191,7 @@ func renderInitDryRun(s *ui.Style, o *bootstrap.Outcome) {
 		Add("Namespace", o.Namespace).
 		Add("Repository Type", o.RepoType).
 		Add("Git Status", dryRunGitStatus(o.Plan)).
-		Add("Standard", "EKA v1.0").
+		Add("Standard", "EKA v"+standardVersion).
 		Add("Validation", "not run (dry-run)").
 		Render()
 }

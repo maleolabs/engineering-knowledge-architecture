@@ -385,11 +385,17 @@ func (p *loadedPackage) verifySelfConsistency() error {
 			"package is not self-consistent: manifest label %q does not match the header label %q",
 			m.PackageIdentityLabel, h.PackageIdentityLabel)}
 	}
-	wantLabel := PackageIdentityLabel(h.ExportScope, h.Namespace)
-	if h.PackageIdentityLabel != wantLabel {
-		return &PackageError{msg: fmt.Sprintf(
-			"package label %q cannot be derived from the declared scope %q and namespace %q (expected %q)",
-			h.PackageIdentityLabel, h.ExportScope, h.Namespace, wantLabel)}
+	// The label embeds the Serialization Version; a legacy v1 package
+	// derives its label with the version it declares, not the current one.
+	// For an unsupported version the label check is skipped — phase 1
+	// contract validation rejects it with the version diagnostic.
+	if h.SerializationVersion == SerializationVersion || h.SerializationVersion == LegacySerializationVersion {
+		wantLabel := PackageIdentityLabelVersion(h.ExportScope, h.Namespace, h.SerializationVersion)
+		if h.PackageIdentityLabel != wantLabel {
+			return &PackageError{msg: fmt.Sprintf(
+				"package label %q cannot be derived from the declared scope %q and namespace %q (expected %q)",
+				h.PackageIdentityLabel, h.ExportScope, h.Namespace, wantLabel)}
+		}
 	}
 	if m.Counts.Units != len(p.units) || m.Counts.Attachments != len(p.attachments) {
 		return &PackageError{msg: fmt.Sprintf(
@@ -441,10 +447,10 @@ func plural(n int) string {
 // supported set, listing what was found versus what is supported.
 func checkContract(p *loadedPackage) error {
 	h := p.header
-	if h.SerializationVersion != SerializationVersion {
+	if h.SerializationVersion != SerializationVersion && h.SerializationVersion != LegacySerializationVersion {
 		return packageErrorf(
-			"import refused: unsupported serialization version %q (found) — this importer supports %q (supported); the package cannot be interpreted safely",
-			h.SerializationVersion, SerializationVersion)
+			"import refused: unsupported serialization version %q (found) — this importer supports %q and %q (supported); the package cannot be interpreted safely",
+			h.SerializationVersion, SerializationVersion, LegacySerializationVersion)
 	}
 	if h.ExchangeFormatVersion != ExchangeFormatVersion {
 		return packageErrorf(

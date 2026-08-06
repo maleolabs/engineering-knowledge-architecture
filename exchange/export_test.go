@@ -183,7 +183,7 @@ func TestExportValidRepository(t *testing.T) {
 	if plan.Phase != "mvp" {
 		t.Errorf("phase = %q, want mvp", plan.Phase)
 	}
-	if !reflect.DeepEqual(plan.Classification, Classification{Dimension: "planning"}) {
+	if !reflect.DeepEqual(plan.Classification, Classification{Dimension: "planning", Domain: "Planning"}) {
 		t.Errorf("classification = %+v", plan.Classification)
 	}
 	if len(plan.ChangeLog) != 7 {
@@ -213,14 +213,15 @@ func TestExportValidRepository(t *testing.T) {
 	}
 
 	// Ticket unit: empty state vector block (present, empty), classification
-	// empty, derives-from carried.
+	// empty (dimension-wise) but carries the derived Execution domain,
+	// derives-from carried.
 	var tkt Unit
 	mustUnmarshal(t, entries, unitPath("eka-valid-fixture", "tkt", "sto-login-email", 1)+"/unit.json", &tkt)
 	if tkt.StateVector != (StateVector{}) {
 		t.Errorf("ticket state vector = %+v, want empty", tkt.StateVector)
 	}
-	if !reflect.DeepEqual(tkt.Classification, Classification{}) {
-		t.Errorf("ticket classification = %+v, want empty", tkt.Classification)
+	if !reflect.DeepEqual(tkt.Classification, Classification{Domain: "Execution"}) {
+		t.Errorf("ticket classification = %+v, want derived Execution domain", tkt.Classification)
 	}
 	wantDerives := Relationship{Type: "derives-from", Target: "eka-valid-fixture/ctr:gelombang-1:1"}
 	if len(tkt.Relationships) != 1 || tkt.Relationships[0] != wantDerives {
@@ -833,7 +834,7 @@ func TestHeaderContractFacts(t *testing.T) {
 	entries, _ := readZIP(t, out)
 	var header Header
 	mustUnmarshal(t, entries, "header.json", &header)
-	if header.SerializationVersion != "1" || header.ExchangeFormatVersion != "1" ||
+	if header.SerializationVersion != SerializationVersion || header.ExchangeFormatVersion != "1" ||
 		header.SpecificationVersion != "1.0" || header.Exporter != "eka" {
 		t.Errorf("header facts = %+v", header)
 	}
