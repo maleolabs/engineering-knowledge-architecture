@@ -77,6 +77,8 @@ The `eka` CLI is the official interface of the architecture (Cobra-based command
 | `eka export` | Exports engineering knowledge into a canonical Exchange Package following the RSF — deterministic, validated before export, scopes: repository / line / instance / collection. |
 | `eka import` | Integrates an Exchange Package into an existing repository — atomic, conservative merge, conflict detection, rollback, post-import validation. |
 | `eka completion` | Shell completion (bash/zsh/fish/powershell). |
+| `eka version` | CLI build version and the EKA standard version implemented. |
+| `eka` | Product landing: a calm orientation with a compact command overview (help and version pointers). |
 
 All commands are deterministic: identical input produces identical output.
 

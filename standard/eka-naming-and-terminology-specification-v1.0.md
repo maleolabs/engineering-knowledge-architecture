@@ -199,7 +199,7 @@ One root tool, one name: **`eka`**. Capabilities are subcommands. There must be 
 | Aspect | Rule |
 |---|---|
 | Root binary | `eka` |
-| Subcommands | **verbs**: `validate`, `init`, `export`, `import` (implemented); `diagnose`, `sync`, `format`, `graph` (future candidates). `completion` (bash/zsh/fish/powershell) is provided by the Cobra framework — not a core EKA command |
+| Subcommands | **verbs**: `validate`, `init`, `export`, `import`, `version` (implemented); `diagnose`, `sync`, `format`, `graph` (future candidates). `completion` (bash/zsh/fish/powershell) is provided by the Cobra framework — not a core EKA command |
 | Philosophy | commands are verbs; tools are nouns (the tool is "the Reference Validator"; it runs `eka validate`) |
 | Determinism | output byte-identical across runs; exit codes 0/1/2 as documented in `reference/cli.md` |
 | Read-only | validation never modifies the repository (EKA Exchange Specification §14.1.3) |

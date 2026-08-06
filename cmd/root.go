@@ -30,6 +30,7 @@ import (
 	"io"
 	"strings"
 
+	"github.com/maleolabs/engineering-knowledge-architecture/cmd/ui"
 	"github.com/spf13/cobra"
 )
 
@@ -122,16 +123,14 @@ Exit codes:
   1  blocking violations present
   2  usage or internal error (unknown command, invalid path,
      unreadable root)`,
-		// `eka` without a subcommand is a usage error: print the usage to
-		// stderr and exit 2 (preserved pre-Cobra behavior). Cobra's
-		// default for a non-runnable root would print help and exit 0,
-		// so the root is runnable on purpose.
+		// `eka` without a subcommand shows the product landing: a calm
+		// orientation (what the CLI is, its commands, help and version
+		// pointers) instead of the raw usage dump. Landing is
+		// informational output — it exits 0. Unknown subcommands remain
+		// usage errors (exit 2).
 		RunE: func(cmd *cobra.Command, args []string) error {
-			// UsageString + ErrOrStderr: cobra's Usage() writes through
-			// OutOrStderr(), which actually resolves to the stdout
-			// writer; usage must go to stderr.
-			fmt.Fprint(cmd.ErrOrStderr(), cmd.UsageString())
-			return &exitError{code: exitUsage}
+			printLanding(styleFor(cmd))
+			return nil
 		},
 		// The CLI owns all error output: SilenceErrors + SilenceUsage on
 		// the root suppress cobra's "Error: …" prefix and its automatic
@@ -144,6 +143,30 @@ Exit codes:
 	}
 	root.PersistentFlags().BoolP(flagVerbose, "v", false,
 		"verbose output: additional detail lines (per-unit lists, plan actions)")
-	root.AddCommand(newValidateCommand(), newInitCommand(), newExportCommand(), newImportCommand())
+	root.AddCommand(newValidateCommand(), newInitCommand(), newExportCommand(), newImportCommand(), newVersionCommand())
 	return root
+}
+
+// printLanding renders the root landing page: a calm product orientation
+// without banners or decoration — heading, one-line description, compact
+// command overview, and pointers to help and version. Deterministic on
+// non-TTY output; the heading is accent-colored on a color TTY.
+func printLanding(s *ui.Style) {
+	fmt.Fprintln(s.W, s.Accent("Engineering Knowledge Architecture (EKA)"))
+	fmt.Fprintln(s.W)
+	fmt.Fprintln(s.W, "  The official command-line interface for the EKA engineering")
+	fmt.Fprintln(s.W, "  knowledge standard: bootstrap, validate, and exchange")
+	fmt.Fprintln(s.W, "  engineering knowledge repositories.")
+	fmt.Fprintln(s.W)
+	fmt.Fprintln(s.W, "Commands")
+	for _, c := range newRootCommand().Commands() {
+		fmt.Fprintf(s.W, "  %-12s %s\n", c.Name(), c.Short)
+	}
+	fmt.Fprintln(s.W)
+	fmt.Fprintln(s.W, "Help")
+	fmt.Fprintln(s.W, "  Run 'eka help <command>' for command details,")
+	fmt.Fprintln(s.W, "  or 'eka <command> --help' for usage.")
+	fmt.Fprintln(s.W)
+	fmt.Fprintln(s.W, "Version")
+	fmt.Fprintf(s.W, "  %s (EKA standard %s)\n", version, standardVersion)
 }

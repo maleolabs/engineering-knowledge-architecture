@@ -27,15 +27,51 @@ func runIn(args []string) (int, string, string) {
 	return code, out.String(), errb.String()
 }
 
+func TestLanding(t *testing.T) {
+	code, out, errText := runIn(nil)
+	if code != 0 {
+		t.Errorf("no args: exit = %d, want 0 (landing)", code)
+	}
+	if errText != "" {
+		t.Errorf("no args: stderr must be empty, got %q", errText)
+	}
+	for _, want := range []string{
+		"Engineering Knowledge Architecture (EKA)",
+		"Commands",
+		"Help",
+		"Version",
+		"dev (EKA standard 1.0)",
+	} {
+		if !strings.Contains(out, want) {
+			t.Errorf("landing missing %q, got:\n%s", want, out)
+		}
+	}
+	// The landing is deterministic: two runs produce identical bytes.
+	_, out2, _ := runIn(nil)
+	if out != out2 {
+		t.Errorf("landing is not deterministic")
+	}
+}
+
+func TestVersionCommand(t *testing.T) {
+	code, out, _ := runIn([]string{"version"})
+	if code != 0 {
+		t.Errorf("version: exit = %d, want 0", code)
+	}
+	if !strings.Contains(out, "eka dev") || !strings.Contains(out, "EKA standard 1.0") {
+		t.Errorf("version output incomplete: %q", out)
+	}
+	code, out, _ = runIn([]string{"version", "--help"})
+	if code != 0 {
+		t.Errorf("version --help: exit = %d, want 0", code)
+	}
+	if !strings.Contains(out, "Print the CLI build version and the EKA standard version") {
+		t.Errorf("version --help missing description: %q", out)
+	}
+}
+
 func TestExitCodeUsage(t *testing.T) {
-	code, _, errText := runIn(nil)
-	if code != 2 {
-		t.Errorf("no args: exit = %d, want 2", code)
-	}
-	if !strings.Contains(errText, "Usage:") {
-		t.Errorf("no args: stderr must contain the usage, got %q", errText)
-	}
-	code, _, errText = runIn([]string{"doctor"})
+	code, _, errText := runIn([]string{"doctor"})
 	if code != 2 {
 		t.Errorf("unknown command: exit = %d, want 2", code)
 	}
@@ -47,7 +83,7 @@ func TestExitCodeUsage(t *testing.T) {
 	}
 	// Cobra sorts command lists alphabetically (EnableCommandSorting);
 	// the message must list exactly the registered commands.
-	if !strings.Contains(errText, "available commands: export, import, init, validate") {
+	if !strings.Contains(errText, "available commands: export, import, init, validate, version") {
 		t.Errorf("unknown command message must list the available commands, got %q", errText)
 	}
 	code, _, _ = runIn([]string{"validate", "a", "b"})

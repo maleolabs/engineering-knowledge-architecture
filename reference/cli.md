@@ -152,6 +152,8 @@ The build result is a **standalone, portable binary** — no runtime dependencie
 ## Usage
 
 ```
+eka [--verbose|-v]
+eka version
 eka init [project-name] [--dry-run]
 eka export [target...] [-o|--output path]
 eka import <package-path>
@@ -160,8 +162,9 @@ eka completion [bash|zsh|fish|powershell]
 eka help [command]
 ```
 
-- `eka` without a subcommand prints usage and exits `2`.
-- `eka -h` / `eka --help` / `eka help` prints help and exits `0`.
+- `eka` without a subcommand shows the **product landing** — a calm orientation (description, compact command overview, help and version pointers) — and exits `0`. No banner, no decoration.
+- `eka version` prints the CLI build version (default `dev`; set at build time via `-ldflags "-X .../cmd.version=v1.2.3"`) and the EKA standard version implemented.
+- `eka -h` / `eka --help` / `eka help` prints the command reference and exits `0`.
 - `eka help <command>` prints command help.
 
 ### Exit codes
@@ -558,6 +561,7 @@ A new command is added without architectural refactoring:
 | `eka export` | **Implemented** | Exchange Package export (RSF v1.0): repo/line/instance/collection scope, automatic validation, deterministic, external reference declaration, attachments, SHA-256 digests. |
 | `eka import` | **Implemented** | Exchange Package import (RSF v1.0 + Exchange §11): package + integrity validation, identity/relationship resolution, conflict → abort, atomic staged commit, rollback, post-import revalidation. |
 | `eka validate` | **Implemented** | Full conformance validator (R1–R9 + structural R0). |
+| `eka version` | **Implemented** | CLI build version + EKA standard version. |
 | `eka completion` | **Implemented** | bash/zsh/fish/powershell completion scripts (provided by Cobra). |
 | `eka diagnose` | Not implemented | Repository diagnostics — future candidate. |
 | `eka graph` | Not implemented | Query/knowledge graph over artifacts. |
