@@ -68,8 +68,31 @@ The following gaps are **deliberately not validated**; recorded so the decision 
 | Exactly-one-active container | The "exactly one active Execution Container" invariant (protocol.md §3) is not checked | Not part of R1–R9; the implementation task forbids adding rules — future rule candidate |
 | R5 — bidirectional references | The "references are only written on the referring artifact (not bidirectional)" convention is not enforced | Not a clear mechanical check; requires per-relationship direction semantics |
 
+## R10 Governance Roadmap
+
+**Current state (v1.1).** R10 — stratification traceability — is a **warning** (Core v1.1 §8.3; `conformance/rules_domain.go`): every artifact below stratum 1 must have a resolvable `derives-from`/`depends-on` chain (direct or transitive) reaching a strictly higher stratum. Exempt: `tkt-`/`ses-` tokens and draft knowledge artifacts (work items own no content-state and are never exempt via the draft clause). Non-blocking by design: warnings never affect the verdict or exit code. Self-validation of this repository shows **8 R10 warnings** — 8 Implementation ADRs at Architecture stratum with no chain to Discovery (the count grew from 7 with ADR-008; see the [migration report §7](migration-report-engineering-domains-v1.1.md) and the [Verification statement](#verification-statement) below).
+
+**Escalation path.** R10 severity evolves in three governed phases. Every phase change is taxonomy/validation governance (Core §14.2) and is announced in the release notes of the minor that ships it — never a silent change:
+
+| Phase | Version | Severity | Notes |
+|---|---|---|---|
+| Guidance mode | v1.1 (now) | Warning | Non-blocking; repositories adapt at their own pace, adding chains where the knowledge warrants it; a warning may be accepted and documented instead of resolved. The escalation criteria below define when the next phase becomes eligible. |
+| Blocking | v1.2 (next minor) | Blocking, same exemptions | Repositories have had one minor cycle to adapt. Migration note: stratum-isolated artifacts must add an upward chain — e.g., an Architecture artifact `derives-from` a Discovery artifact, or a traceability artifact `trc-` documents the linkage — or accept the exemption conditions. |
+| Invariant | Future | Unconditional (exemptions re-evaluated) | Traceability elevated to a taxonomy invariant — strengthen-only, like the Stratum Authority Invariant (Core §8.1, §16.3); enforcement becomes unconditional. |
+
+**Escalation criteria (all must hold before v1.2 makes R10 blocking):**
+
+1. **Warning uptake** — a majority of conformant repositories show 0 R10 warnings.
+2. **Tooling support** — `eka view` or the documentation provides a way to inspect chains (traceability projection).
+3. **Guidance published** — this roadmap plus a workflow guide explain how to satisfy R10.
+4. **Transition window** — one minor-version cycle (v1.1 → v1.2) has elapsed.
+
+**No hidden breaking changes.** The roadmap is published now, in the spec-adjacent governance documentation; each escalation step is a governed change announced in the release notes of the minor that ships it.
+
+**Rationale.** Warning-first avoids silent breaking for existing repositories; blocking gives the rule teeth; invariant status makes traceability a permanent architecture property.
+
 ## Verification statement
 
-- **54 tests pass** (`go test ./...`): rule units, parsing, filenames, references, state, CLI (exit codes, output determinism), and self-validation.
+- **362 tests pass** (`go test ./...`): rule units, parsing, filenames, references, state, domain ontology (R102013R12), CLI (exit codes, output determinism), and self-validation.
 - `go vet ./...` clean.
-- **Self-validation PASS**: the EKA repository passes its own validator — 7 artifacts, 0 errors, 7 warnings (R10 stratification traceability), exit 0 — codified as `TestReferenceImplementationConforms` (`conformance/self_validation_test.go`).
+- **Self-validation PASS**: the EKA repository passes its own validator — 8 artifacts, 0 errors, 8 warnings (R10 stratification traceability), exit 0 — codified as `TestReferenceImplementationConforms` (`conformance/self_validation_test.go`).

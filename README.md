@@ -59,7 +59,7 @@ The standard is deliberately serialization-independent: Git+Markdown is one impl
 
 ### Engineering Domains
 
-Every artifact belongs to exactly one of five **Engineering Domains** (Core v1.1 §8.1) — the stratum-aligned category of engineering knowledge it holds: **Discovery** (intent, requirements, research) → **Architecture** (architecture, decisions, specifications, standards, vocabulary) → **Planning** (planning) → **Execution** (quality + operating) → **Operations** (operations, records). The domains form a strict authority chain (stratum 1 highest → 5): lower-stratum knowledge must not contradict higher-stratum knowledge in force, and never supersedes or amends upward (Stratum Authority Invariant). PRD, ADR, Epic, Sprint, Ticket, Release, and similar terms are **Representation Aliases** onto canonical tokens — methodologies (Scrum, Kanban, …) are convention layers, independent of the Core standard. How knowledge flows through these domains: [Engineering Knowledge Lifecycle](skeleton/docs/lifecycle.md).
+Every artifact belongs to exactly one of five **Engineering Domains** (Core v1.1 §8.1–8.2) — the stratum-aligned category of engineering knowledge it holds: **Discovery** (intent, requirements, research) → **Architecture** (architecture, decisions, specifications, standards, vocabulary) → **Planning** (planning) → **Execution** (quality + operating) → **Operations** (operations, records). The domains form a strict authority chain (stratum 1 highest → 5): lower-stratum knowledge must not contradict higher-stratum knowledge in force, and never supersedes or amends upward (Stratum Authority Invariant). PRD, ADR, Epic, Sprint, Ticket, Release, and similar terms are **Representation Aliases** onto canonical tokens — see the [Representation Alias Registry](standard/representation-alias-registry-v1.1.md); methodologies (Scrum, Kanban, …) are convention layers, independent of the Core standard. How knowledge flows through these domains: [Engineering Knowledge Lifecycle](skeleton/docs/lifecycle.md). New users should start with the [Engineering Workflow Guide](skeleton/docs/workflow-guide.md).
 
 ## Reference Implementation
 
@@ -106,6 +106,8 @@ eka export
 # 5. Import it elsewhere
 eka import ./rsf-repo-my-project-1.ekapkg
 ```
+
+New to EKA? Read the [Engineering Workflow Guide](skeleton/docs/workflow-guide.md) first — the primary onboarding document: the mental model, the knowledge lifecycle, and how you, the CLI, and AI participate in it.
 
 ## Installation
 

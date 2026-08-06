@@ -376,6 +376,88 @@ Full token mapping (26 tokens):
 
 Methodologies (Scrum, Kanban, Shape Up, and similar) are **convention layers over EKA**: they may map onto tokens and domains through Representation Aliases, but they are never part of the Core standard.
 
+### 8.2 Engineering Domain Registry
+
+**Engineering Domain Registry.** The **Engineering Domain Registry** is the canonical vocabulary of Engineering Domains: the five domains, their stratum positions, and the knowledge they produce and consume. The Registry is normative: classification, stratum derivation, and the Conformance Rules R10–R12 operate on this vocabulary. The token→domain and dimension→domain mappings remain in §8.1; the Registry defines domain semantics, not the mapping. **Produced Knowledge** is the knowledge an Engineering Domain produces: the Artifact types homed in the domain. **Consumed Knowledge** is the knowledge a domain consumes from other strata: the Artifact types of higher-stratum domains that its Artifacts derive from or depend on.
+
+| Engineering Domain | Stratum | Produced | Consumed | Constrains | Aliases |
+|---|---|---|---|---|---|
+| **Discovery** | 1 | Vision, Strategy, Requirement, research findings | — (nothing above stratum 1) | Architecture, Planning, Execution, Operations | PRD (req-) |
+| **Architecture** | 2 | Architecture Description, ADR, Decision Record, Specification, Standard, Glossary Term | Requirement, research, intent (Discovery) | Planning, Execution, Operations | ADR / RFC (adr-) |
+| **Planning** | 3 | Scope Definition, Epic, Plan, Traceability Artifact | Requirement, intent (Discovery); Decision Record, Specification, Standard (Architecture) | Execution, Operations | Epic (epc-), Initiative (scp-) |
+| **Execution** | 4 | Review, Execution Container, Ticket, Work Item, Session | Plan, Scope (Planning); Specification, Standard, Decision Record (Architecture); Requirement (Discovery) | Operations | Sprint / Iteration (ctr-), Ticket (tkt-), Incident (bug-) |
+| **Operations** | 5 | Runbook, Release Record | execution aggregate, review/session findings (Execution); Standard (Architecture) | — (lowest authority) | Release (rel-), Runbook (run-) |
+
+**Discovery — Stratum 1 (highest authority).**
+
+- **Purpose:** home of intent, requirements, and research knowledge.
+- **Responsibilities:** owns intent, requirements, and research knowledge: Vision/Manifesto, Strategy, Requirement (PRD), research findings (fnd-).
+- **Produced Knowledge:** Vision/Manifesto (vis-), Strategy (str-), Requirement/PRD (req-), research findings (fnd-).
+- **Consumed Knowledge:** none from other strata — nothing ranks above stratum 1; consumption is within-domain (research feeds requirements).
+- **Relationships:** root of the authority chain (derives from nothing); constrains Architecture, Planning, Execution, Operations (representation alias: PRD).
+- **Knowledge Stratum:** 1.
+- **Constraints:** must not be contradicted by lower-stratum knowledge in force (§8.1); must not be superseded or amended by lower-stratum Artifacts (R12).
+
+**Architecture — Stratum 2.**
+
+- **Purpose:** home of decisions, specifications, standards, and vocabulary — the durable design knowledge that binds planning and execution.
+- **Responsibilities:** owns architecture, decisions, specifications, standards, and vocabulary knowledge: Architecture Description, ADR, Decision Record, Specification, Standard/Guideline, Glossary/Term.
+- **Produced Knowledge:** Architecture Description (arc-), ADR (adr-), Decision Record (dec-), Specification (spec-), Standard/Guideline (std-), Glossary/Term (gls-).
+- **Consumed Knowledge:** Discovery — Requirement (req-), research findings (fnd-), intent (vis-, str-): decisions and specifications derive from requirements.
+- **Relationships:** derives from Discovery; constrains Planning, Execution, Operations (representation alias: ADR / RFC).
+- **Knowledge Stratum:** 2.
+- **Constraints:** must not contradict Discovery knowledge in force; must not be redefined by lower strata (Execution must not redefine Architecture); must not be superseded or amended by lower-stratum Artifacts (R12).
+
+**Planning — Stratum 3.**
+
+- **Purpose:** home of commitment knowledge — scope, epics, and plans that convert requirements and decisions into an executable commitment.
+- **Responsibilities:** owns planning knowledge: Scope Definition, Epic, Plan (roadmap), Traceability/Relationship Artifact.
+- **Produced Knowledge:** Scope Definition (scp-), Epic (epc-), Plan (plan-), Traceability Artifact (trc-).
+- **Consumed Knowledge:** Discovery — Requirement (req-), intent (vis-, str-); Architecture — Decision Record/ADR (dec-, adr-), Specification (spec-), Standard (std-): scope derives from requirements; plans honor approved decisions and specifications.
+- **Relationships:** derives from Discovery and Architecture; constrains Execution, Operations (representation aliases: Epic, Initiative).
+- **Knowledge Stratum:** 3.
+- **Constraints:** must not contradict Discovery or Architecture knowledge in force; must not supersede or amend higher-stratum Artifacts (R12).
+
+**Execution — Stratum 4.**
+
+- **Purpose:** home of execution knowledge — work items, containers, tickets, reviews, and sessions that carry work through Protocol.
+- **Responsibilities:** owns execution knowledge and the operating tokens: Review, Execution Container, Ticket, Work Item (story, technical story, bug, tech debt, chore, spike), Session.
+- **Produced Knowledge:** Review (rvw-), Execution Container (ctr-), Ticket (tkt-), Work Items (sto-, ts-, bug-, td-, ch-, spk-), Session (ses-).
+- **Consumed Knowledge:** Planning — Plan (plan-), Scope (scp-); Architecture — Specification (spec-), Standard (std-), Decision Record (dec-, adr-); Discovery — Requirement (req-): execution follows the plan and the specifications it must satisfy.
+- **Relationships:** derives from Planning (transitively Architecture, Discovery); constrains Operations (representation aliases: Sprint/Iteration, Ticket, Incident).
+- **Knowledge Stratum:** 4.
+- **Constraints:** must not redefine Architecture; must not contradict a locked plan (Planning State Immutable) or higher-stratum knowledge in force; must not supersede or amend higher-stratum Artifacts (R12).
+
+**Operations — Stratum 5 (lowest authority).**
+
+- **Purpose:** home of operational knowledge and records — runbooks and release records that preserve what ran and how it runs.
+- **Responsibilities:** owns operations and records knowledge: Runbook/Operational Guide, Release Record.
+- **Produced Knowledge:** Runbook/Operational Guide (run-), Release Record (rel-).
+- **Consumed Knowledge:** Execution — execution aggregate and review/session findings (ctr-, tkt-, sto-, ts-, bug-, td-, ch-, spk-, rvw-, ses-): the Release Record carries the execution aggregate; Architecture — Standard (std-): runbooks comply with standards.
+- **Relationships:** derives from Execution (transitively all higher strata); constrains nothing (representation aliases: Release, Runbook).
+- **Knowledge Stratum:** 5.
+- **Constraints:** must not contradict any higher-stratum knowledge in force; must not supersede or amend higher-stratum Artifacts (R12); must not rewrite executed history (release records preserve the execution aggregate, P12).
+
+**Registry governance.** The Engineering Domain Registry is canonical vocabulary. Refinement — domain addition, stratum reassignment, or boundary change — is taxonomy governance (§14.2): proposal → review → acceptance; a refinement must not weaken the Stratum Authority Invariant (§16.3). Representation Aliases are **not** part of the Registry: they live in the **Representation Alias Registry**, a separate convention-layer document mapping methodology terms onto canonical tokens + Engineering Domain (§8.1 table).
+
+**Refinement decision — Vocabulary → Architecture (kept from v1.1).** The Vocabulary dimension (gls-) is homed in the Architecture domain. Rationale: vocabulary is very-stable, high-governance knowledge whose authority class matches Architecture. Alternative considered and rejected: a dedicated Vocabulary domain — a sixth stratum with no authority gap.
+
+### 8.3 Knowledge Stratification Governance
+
+**Terminology.** **Knowledge Stratum** is the canonical term for the authority level of an Engineering Domain. The term was chosen over "Knowledge Layer" and "Knowledge Level": (1) collision avoidance — "Knowledge Layer" already names the architectural layer (Section 4), and stratification must never be confused with the Layer model; (2) no ranking connotation — "level" implies a value or competence ranking; the stratum order is an authority order, not a quality ranking; (3) the geological metaphor — strata are horizontal bands that rest on and are constrained by the bands above them, exactly the authority semantics of the Stratum Authority Invariant. The architectural Layer (KB/OS/EX) remains the only "Layer" usage in the standard; "Knowledge Layer" or "Knowledge Level" in a stratification context is non-canonical.
+
+**Meaning.** A Knowledge Stratum is the authority level of an Engineering Domain: a fixed position in the strict linear order Discovery → Architecture → Planning → Execution → Operations (stratum 1 highest → 5). The stratum is always derived from the Engineering Domain — never declared by an Artifact, never part of Identity (Section 6.1), never part of the State Vector; reclassification never changes Identity (P15).
+
+**Governance.** The Stratum Authority Invariant (§8.1) is a taxonomy invariant — not one of the global invariants (Section 5.4). It can only be strengthened, never weakened, by extensions (§16.3; §14.2.1). Any change to the domain order or to a stratum assignment is taxonomy governance (§14.2): proposal → review → acceptance, registered as part of the standard.
+
+**Validation implications.** The Conformance Rules set R0–R12 (Naming and Terminology Specification v1.1 §9.3) operationalize stratification:
+
+- **R10 — stratification traceability (warning):** every Artifact not in stratum 1 must have a resolvable derives-from/depends-on chain (direct or transitive) reaching a strictly higher stratum. Exempt: tkt-/ses- tokens and draft knowledge Artifacts (work items own no Content State and are never exempt via the draft clause). Stratification is a structural quality signal, never a commit blocker.
+- **R11 — domain coherence (blocking):** a declared Engineering Domain must be one of the five canonical domains and equal the Type's home domain; absent = derived, no check.
+- **R12 — cross-stratum supersession prohibition (blocking):** supersedes/amends must never target an Artifact in a strictly higher stratum; durable content moves down the authority chain, never up.
+
+**Relationship to Engineering Domains.** Stratification maps 1:1 onto Engineering Domains: stratum(D) is the derived function of the domain order — the domain order **is** the stratum order (§8.2). One Artifact has exactly one Engineering Domain and therefore exactly one stratum; no Artifact declares a stratum.
+
 ---
 
 ## 9. Execution Taxonomy

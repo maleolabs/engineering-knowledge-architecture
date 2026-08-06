@@ -15,6 +15,7 @@ Type legend: **artifact** = file with `type` + `id` frontmatter (artifact rule);
 | `reference/eka-reference-serialization-format-v1.1.md` | Reference Zone | convention | Exchange Spec 4.4, 10, 15, 17.1; Naming 6.1, 7 | RSF v1.1 — canonical serialization projection of the Exchange Package Object Model (reference, not normative): Package Model, Unit Entry (Classification incl. Engineering Domain), Content Representation Model, Attachment Model, Manifest, serialization principles, round-trip mapping, compatibility, conceptual examples, import/export implementation recommendations. |
 | `standard/eka-naming-and-terminology-specification-v1.1.md` | Standard Zone | convention (canonical text) | 3, 14.2, P14 | Meta-specification (Ratified): official ecosystem naming — EKA product identity, "EKA \<Family\> Specification" pattern, reference components, tooling (`eka` + verb subcommands), repository naming (`eka-<component>`), canonical + deprecated term table (incl. Engineering Domain, Knowledge Stratum, Representation Alias), Conformance Rules R0–R12, migration; does not amend the canonical text. |
 | `standard/glossary.md` | Standard Zone | convention | 3 | Exact definitions of Core Concepts terms; not paraphrased. |
+| `standard/representation-alias-registry-v1.1.md` | Standard Zone | convention | Core v1.1 §8.1, §8.2; Naming v1.1 §2.3, §12 | Representation Alias Registry (Ratified, convention layer): methodology terms mapped onto canonical tokens + Engineering Domains (Core §8.1 alias table, extended); aliases are never Identity, never Artifact types, never frontmatter values (R0); extension governance per Naming §12 — extends, never forks. |
 
 ## Reference Zone elements (C)
 
@@ -66,6 +67,7 @@ Type legend: **artifact** = file with `type` + `id` frontmatter (artifact rule);
 |---|---|---|---|---|
 | `skeleton/docs/README.md` | Skeleton Zone | convention | 1.3 | Project serialization entry point; source of truth for the structure. |
 | `skeleton/docs/lifecycle.md` | Skeleton Zone | convention | 11, 8.1 | Engineering Knowledge Lifecycle: produce → organize → validate → project → exchange → consume; Engineering Domain as orientation, stratum as authority. |
+| `skeleton/docs/workflow-guide.md` | Skeleton Zone | convention | 8.1, 8.2, 11 | Primary onboarding guide: Engineering Knowledge Lifecycle, domains/strata, CLI + AI participation, methodology conventions; mental model over templates. |
 | `skeleton/docs/intent/` (`vis-`, `str-`) | Skeleton Zone | KB (folder) | 8 (Product Intent), 10 | Home of vision/manifesto + strategy (new types). |
 | `skeleton/docs/requirements/` (`req-`) | Skeleton Zone | KB (folder) | 8 (Requirements), 10 | Requirement + amendments as instances with `amends`. |
 | `skeleton/docs/architecture/` (`arc-`) | Skeleton Zone | KB (folder) | 8 (Architecture), 10 | Architecture Description. |

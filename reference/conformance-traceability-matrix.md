@@ -1,4 +1,4 @@
-# Conformance Traceability Matrix — EKA v1.0
+# Conformance Traceability Matrix — EKA v1.1
 
 | Property | Value |
 |---|---|
@@ -9,7 +9,7 @@
 
 > **Governance rule (formal).** This matrix is the **single source of truth** for EKA conformance coverage. The matrix **MUST be updated in the same Pull Request** as changes to the specification, the Conformance Rules (`validation.md`), the validator implementation (`conformance/`, `cmd/eka/`), or tests — and conversely, the matrix is never edited without a related change. See [`../CONTRIBUTING.md`](../CONTRIBUTING.md).
 
-> **Domain-aware rules (EKA v1.1).** This matrix covers the v1.0 rule surface R0–R9. The domain-aware rules **R10–R12** (Core v1.1 §8.1) are implemented in `conformance/rules_domain.go` with automated coverage (`conformance/rules_domain_test.go`, `conformance/domain_test.go`, `conformance/validate_test.go`); their rule rows are extended here by the conformance governance change that introduced them (per the governance rule above). Semantics and verdicts: `skeleton/docs/exchange/validation.md` + `conformance-notes.md`.
+> **Domain-aware rules (EKA v1.1).** This matrix covers the **full rule surface R0–R12**. The domain-aware rules **R10–R12** (Core v1.1 §8.1 — Engineering Domains and Knowledge Stratification) arrived with the EKA v1.1 **taxonomy evolution** (Core §14.2.3 taxonomy-extension governance: core closed, taxonomy open; documented in the [migration report](migration-report-engineering-domains-v1.1.md)); their rule rows are added in Section 2 below. They are implemented in `conformance/rules_domain.go` (+ `conformance/domain.go`) with automated coverage (`conformance/rules_domain_test.go`, `conformance/domain_test.go`, `conformance/validate_test.go`). Semantics and verdicts: `skeleton/docs/exchange/validation.md` + `conformance-notes.md`.
 
 ---
 
@@ -19,16 +19,16 @@ This matrix traces conformance coverage through **5 layers**, from requirements 
 
 | # | Layer | Identifier | Example | Source of truth |
 |---|---|---|---|---|
-| 1 | **Engineering Requirement** | `REQ-nnn` (REQ-001..REQ-016) | REQ-002 Identity uniqueness | Section 3 of this document |
+| 1 | **Engineering Requirement** | `REQ-nnn` (REQ-001..REQ-019) | REQ-002 Identity uniqueness | Section 3 of this document |
 | 2 | **Specification** | Anchor `§` (section/principle number) | §6.2.2, P3 | `standard/eka-specification-v1.1.md` |
-| 3 | **Conformance Rule** | `Rn` (R0, R1–R9) | R1 | `skeleton/docs/exchange/validation.md` (R1–R9) + R0 (structural, defined in `conformance/`) |
+| 3 | **Conformance Rule** | `Rn` (R0, R1–R12) | R1 | `skeleton/docs/exchange/validation.md` (R1–R12) + R0 (structural, defined in `conformance/`); R10–R12 per Core v1.1 §8.1 |
 | 4 | **Implementation** | `file:func` (package-relative) | `conformance/rules.go:rule1` | Go code `conformance/` + `cmd/eka/` |
 | 5 | **Automated Test** | function name `TestXxx` | `TestRule2ExactCounts` | `*_test.go` in `conformance/` + `cmd/eka/` |
 
 **Identifier conventions (deterministic, automation-ready):**
 
 - **REQ ID** — `REQ-<3 digits>`; stable, **never reused**. Removed/replaced requirements keep their IDs reserved; new requirements get the next ID.
-- **Rule ID** — R0 (structural) + R1–R9, fixed from `validation.md`; no renumbering.
+- **Rule ID** — R0 (structural) + R1–R12, fixed from `validation.md` (R10–R12 defined by Core v1.1 §8.1); no renumbering.
 - **Implementation** — `path/file.go:funcName` relative to the repo root; helper functions serving one rule are written in parentheses after their main function.
 - **Test** — Go function name (`TestXxx`); one function = one row in Section 4.
 - **Coverage Status** — fixed enumeration values: `Enforced (tested)` (rule implemented + tested), `Governance-only (uncovered)` (normative in the spec, not mechanically enforced), `Partially enforced` (part of the surface enforced).
@@ -37,7 +37,7 @@ This matrix traces conformance coverage through **5 layers**, from requirements 
 
 ## 2. Main matrix
 
-One row per Conformance Rule. The `Enforced (tested)` status applies to all 10 rules: every rule has a Go implementation and automated test coverage.
+One row per Conformance Rule. The `Enforced (tested)` status applies to all 13 rules: every rule has a Go implementation and automated test coverage.
 
 | Rule | Requirement ID(s) | Spec Anchor | Implementation | Automated Tests | Coverage Status | Notes |
 |---|---|---|---|---|---|---|
@@ -51,6 +51,9 @@ One row per Conformance Rule. The `Enforced (tested)` status applies to all 10 r
 | **R7** | REQ-008 | §5.2, P7 | `conformance/rules.go:rule7` (+ `entriesForDomain`, `indexOfEntry`; `conformance/state.go:isLegalTransition`) | `TestRule7ExactCounts` (+ infra: `TestIsLegalTransition`; fixture `invalid-changelog`) | Enforced (tested) | Every owned domain has a change-log entry; last entry == current field value; transitions legal; initial `from: "-"` legal for all domains, `to: "-"` = invalid (#5). **Not enforced:** chain contiguity `entry[i].from == entry[i-1].to` (#4 — static snapshot). Execution State strictly adjacent; other domains forward-only without required adjacency (#6). `phase` entries: value-set + well-formedness only (#7). `tkt-` (empty state vector) may omit the change-log (#8). |
 | **R8** | REQ-009 | §7.4, P6 | `conformance/rules.go:rule8` (+ `workItemsTable`, `compareWorkItemsTable`, `resolveWorkItemCell`, `hasProjectionHeader`, `splitTableRow`) | `TestRule8TicketHeaderAndDerivation`, `TestRule8ContainerTableMismatchIsWarningOnly` (+ fixture `invalid-projection`) | Enforced (tested) | `tkt-`: empty state vector + `derives-from` resolving to a `ctr-` artifact (#19) + projection header mandatory (position free, #18). `## Work Items` table on `ctr-`: GFM format; mismatch with owner state = **warning** (owner state = source of truth); unparseable table / missing state / unresolvable row = warning (#20–21). |
 | **R9** | REQ-010 | §10, §14.2.6 | `conformance/rules.go:rule9` (+ `requiredSectionsFor`, `headingMatches`, `hasReplacement`) | `TestRule9SupersededADRWithReplacement`, `TestRule9VersionedReplacementMustNameInstance` (+ fixture `invalid-sections`, `invalid-adr-superseded`) | Enforced (tested) | Required sections per type family (validation.md rule 9). **`fnd-` requires 4 sections** (Purpose, Content, Investigation Summary, Conclusion — #22). Level-2 heading matching: `## Name` exact or `## Name <suffix>` (#23). ADR `superseded` must be referenced by ≥1 other artifact via `supersedes` resolving to its identity line; versioned references must point to the exact instance (#24). |
+| **R10** | REQ-017 | §8.1, §8.3 | `conformance/rules_domain.go:rule10` (+ `conformance/rules_domain.go:domainNames`; `conformance/domain.go:DomainForToken`/`Stratum`/`StrataAbove`) | `TestRule10Stratification` (+ infra: `TestStratumOrdering`; fixtures `domain-valid`, `domain-invalid`) | Enforced (tested) | Stratification traceability (**warning**, never a commit blocker): every artifact below stratum 1 (Discovery) must have a resolvable `derives-from`/`depends-on` chain (direct or transitive) reaching a strictly higher stratum; deterministic BFS over resolvable edges, cycles/self-references harmless (Core v1.1 §8.3). Exempt: `tkt-`/`ses-` tokens and draft knowledge artifacts (work-item tokens own no `content-state` and are never exempt via the draft clause). **v1.1 addition** (REQ-017) — arrived with the EKA v1.1 taxonomy evolution (Core §14.2.3), see migration report. |
+| **R11** | REQ-018 | §8.1, §8.3; Exchange v1.1 §14.2 R6 | `conformance/rules_domain.go:rule11` (+ `conformance/domain.go:DomainForToken`/`IsDomain`/`DomainNames`; `conformance/artifact.go:analyzeFile` — `Artifact.Domain` parse) | `TestRule11DomainCoherence`, `TestRule11NonStringDomainIsStructural` (+ fixtures `domain-valid`, `domain-invalid`) | Enforced (tested) | Domain coherence (**blocking**): the optional `domain` frontmatter field, when present, must be one of the five canonical Engineering Domains AND equal the artifact's home domain (`DomainForToken`); absent = OK (domain is derived — never Identity, never part of the State Vector, P15). Non-string `domain` value = R0 structural error, not R11. Declared-domain contract per Exchange v1.1 §14.2 R6. **v1.1 addition** (REQ-018). |
+| **R12** | REQ-019 | §8.1 (Stratum Authority Invariant), §8.3 | `conformance/rules_domain.go:rule12` (+ `conformance/rules_domain.go:artifactIdentityForm`; `conformance/domain.go:DomainForToken`/`Stratum`) | `TestRule12SupersessionProhibition` (+ fixtures `domain-valid`, `domain-invalid`) | Enforced (tested) | Cross-stratum supersession prohibition (**blocking**): `supersedes`/`amends` may never target an artifact in a strictly higher stratum (smaller stratum number) — durable content moves down the authority chain, never up (Stratum Authority Invariant). Same-stratum and lower-stratum targets pass; unresolvable targets are left to R5 (R12 evaluates resolvable targets only). **v1.1 addition** (REQ-019). |
 
 ---
 
@@ -70,6 +73,9 @@ One row per Conformance Rule. The `Enforced (tested)` status applies to all 10 r
 | REQ-008 | **Change-log consistency** — every owned domain has an entry; last entry == current value; transitions legal; initial `from: "-"` | §5.2, P7 | R7 | Enforced (tested) | Chain contiguity not enforced (interpretation #4) |
 | REQ-009 | **Single-writer & projection discipline** — `tkt-` empty state vector + `derives-from` to ctr- + projection header; container Work Items tables validated against owner state | §7.4, P6 | R8 | Enforced (tested) | Table vs owner state mismatch = warning (owner = source of truth) |
 | REQ-010 | **Well-formed content** — required sections per type family present; superseded ADR must be referenced by its replacement | §10, §14.2.6 | R9 | Enforced (tested) | `fnd-` requires 4 sections (interpretation #22); level-2 headings (#23) |
+| REQ-017 | **Stratification traceability** — every artifact whose Engineering Domain is not Discovery (stratum 1) has a resolvable `derives-from`/`depends-on` chain (direct or transitive) reaching a strictly higher stratum; exempt: `tkt-`/`ses-` tokens and draft knowledge artifacts | §8.1, §8.3 | R10 | Enforced (tested) | Warning severity (never blocks a commit); **v1.1 addition** (new REQ entry for R10, taxonomy evolution Core §14.2.3) |
+| REQ-018 | **Domain coherence** — the optional `domain` frontmatter field, when present, is one of the five canonical Engineering Domains and equals the artifact's home domain; absent = derived, no check | §8.1, §8.3; Exchange v1.1 §14.2 R6 | R11 | Enforced (tested) | Blocking severity; classification property, never Identity (P15); **v1.1 addition** (new REQ entry for R11) |
+| REQ-019 | **Cross-stratum supersession prohibition** — `supersedes`/`amends` never target an artifact in a strictly higher stratum; durable content moves down the authority chain | §8.1, §8.3 | R12 | Enforced (tested) | Blocking severity; unresolvable targets left to R5; **v1.1 addition** (new REQ entry for R12) |
 
 ### 3(b) Governance-only requirements (normative in the spec, NOT enforced by any rule)
 
@@ -86,7 +92,7 @@ One row per Conformance Rule. The `Enforced (tested)` status applies to all 10 r
 
 ## 4. Test coverage index
 
-Every test function is **classified exactly once** in this index; integration functions (such as `TestInvalidFixtures`) may be re-quoted as cross-references on the rule rows they serve. Total: **54 tests** (46 `conformance` + 8 `cmd/eka`).
+Every test function is **classified exactly once** in this index; integration functions (such as `TestInvalidFixtures`) may be re-quoted as cross-references on the rule rows they serve. Total: **67 tests** (59 `conformance` + 8 `cmd/eka`).
 
 ### 4(a) Rule tests (unit, per rule)
 
@@ -102,6 +108,9 @@ Every test function is **classified exactly once** in this index; integration fu
 | R7 | `TestRule7ExactCounts` (1) |
 | R8 | `TestRule8TicketHeaderAndDerivation`, `TestRule8ContainerTableMismatchIsWarningOnly` (2) |
 | R9 | `TestRule9SupersededADRWithReplacement`, `TestRule9VersionedReplacementMustNameInstance` (2) |
+| R10 | `TestRule10Stratification` (1) |
+| R11 | `TestRule11DomainCoherence`, `TestRule11NonStringDomainIsStructural` (2) |
+| R12 | `TestRule12SupersessionProhibition` (1) |
 
 ### 4(b) Infrastructure tests (not bound to one specific rule)
 
@@ -114,6 +123,7 @@ Explicitly classified as `infrastructure` — protects scan prerequisites, the r
 | Filename parsing (`filename.go`) | `TestParseFilename`, `TestParseFilenameEmpty` (2) |
 | Reference grammar parsing (`rules.go:parseReference`) | `TestParseReference`, `TestParseReferenceCrossNamespace` (2) |
 | State tables & taxonomy (`state.go`) | `TestTypeTokenCount`, `TestOwnedSets`, `TestContentStateVariant`, `TestDimensionTokens`, `TestIsLegalTransition`, `TestPhaseValueSet` (6) |
+| Domain ontology (`domain.go`) | `TestDomainForTokenComplete`, `TestDomainForTokenValues`, `TestDomainForDimensionComplete`, `TestDomainForDimensionValues`, `TestStratumOrdering`, `TestDomainNamesSorted`, `TestIsDomain` (7) |
 | Self-conformance | `TestReferenceImplementationConforms`, `TestFindRepoRoot` (2) |
 | **CLI layer** (`cmd/eka/main_test.go`) | `TestExitCodeUsage`, `TestExitCodeBadPath`, `TestHelpExitsZero`, `TestValidateValidRepoExitsZero`, `TestValidateInvalidRepoExitsOne`, `TestWarningsDoNotAffectExitCode`, `TestDefaultPathIsCurrentDirectory`, `TestOutputIsDeterministic` (8) |
 
@@ -123,6 +133,7 @@ Explicitly classified as `infrastructure` — protects scan prerequisites, the r
 |---|---|
 | `TestValidFixtureRepo` | Valid repo (`valid/`, 6 artifacts) — all rules pass without errors |
 | `TestInvalidFixtures` | 11 invalid scenario directories: `invalid-malformed` → R0; `invalid-dup-identity` → R1; `invalid-filename` → R2; `invalid-state-value` → R3; `invalid-ownership` → R4; `invalid-reference` → R5; `invalid-dimension` → R6; `invalid-changelog` → R7; `invalid-projection` → R8; `invalid-sections` + `invalid-adr-superseded` → R9 |
+| `TestDomainValidFixtureRepo`, `TestDomainInvalidFixtureRepo` | Engineering Domain fixtures: `domain-valid/` (7 artifacts — all rules pass, 0 errors / 0 warnings); `domain-invalid/` → R11 (unknown domain + home-domain mismatch), R12 (upward `supersedes` + `amends`), R10 warnings on the isolated `ctr-`/`sto-` artifacts (draft spec + ticket exempt) |
 
 ---
 
@@ -130,9 +141,9 @@ Explicitly classified as `infrastructure` — protects scan prerequisites, the r
 
 ### Covered
 
-- **Rule coverage: 10/10** — R0 + R1–R9 all `Enforced (tested)`: every rule has a Go implementation called from `conformance/validate.go:Validate` and test coverage (unit, infrastructure, or fixture).
-- **Test coverage: 54 tests** (46 `conformance` + 8 `cmd/eka`), all mapped in Section 4.
-- **Self-conformance PASS** — `go run ./cmd/eka validate .` on this repository: 7 artifacts, 0 errors, 7 warnings (R10 stratification traceability), exit 0 (codified as `TestReferenceImplementationConforms`).
+- **Rule coverage: 13/13** — R0 + R1–R12 all `Enforced (tested)`: every rule has a Go implementation called from `conformance/validate.go:Validate` and test coverage (unit, infrastructure, or fixture).
+- **Test coverage: 67 tests** (59 `conformance` + 8 `cmd/eka`), all mapped in Section 4.
+- **Self-conformance PASS** — `go run ./cmd/eka validate .` on this repository: 8 artifacts, 0 errors, 8 warnings (R10 on the 8 Architecture-stratum ADRs), exit 0 (codified as `TestReferenceImplementationConforms`).
 
 ### Uncovered specification sections
 
@@ -149,11 +160,11 @@ Spec sections covered only as normative requirements (REQ-011..REQ-016, Section 
 
 ### Orphan implementations
 
-**None.** Verified by reading the code: `conformance/validate.go:Validate` calls `analyzeFile` (R0) in the parse phase and `rule1`–`rule9` in the rule phase; all helper functions (Section 2, Implementation column) are referenced by the rule they serve. `conformance/report.go` and `cmd/eka/main.go` are engine/CLI infrastructure, not rules.
+**None.** Verified by reading the code: `conformance/validate.go:Validate` calls `analyzeFile` (R0) in the parse phase and `rule1`–`rule12` in the rule phase; all helper functions (Section 2, Implementation column) are referenced by the rule they serve. `conformance/report.go` and `cmd/eka/main.go` are engine/CLI infrastructure, not rules.
 
 ### Orphan tests
 
-**None.** All 54 test functions are mapped in Section 4 — every function appears exactly once, no duplication, nothing unmapped.
+**None.** All 67 test functions are mapped in Section 4 — every function appears exactly once, no duplication, nothing unmapped.
 
 ### Known gaps (from `conformance-notes.md`)
 
@@ -171,11 +182,11 @@ All three gaps are reflected in the Notes column of Section 2 (R2, R5) and the R
 
 | Metric | Value |
 |---|---|
-| Total Requirements | **16** (10 enforced + 6 governance-only) |
-| Total Conformance Rules | **10** (R0 + R1–R9) |
-| Total Implementations | **10 rule implementations** (`analyzeFile` + `rule1`–`rule9`) + **20 helper functions** (`parseFilename`, `identityKey`, `buildIndex`, `contentStateVariant`, `domainValues`, `isLegalTransition`, `parseReference`, `resolve`, `dimensionFolderFor`, `dimensionList`, `entriesForDomain`, `indexOfEntry`, `workItemsTable`, `compareWorkItemsTable`, `resolveWorkItemCell`, `hasProjectionHeader`, `splitTableRow`, `requiredSectionsFor`, `headingMatches`, `hasReplacement`) + engine/report/CLI (`validate.go`, `report.go`, `cmd/eka/main.go`) |
-| Total Test Suites | **2 packages**: `conformance` 46 tests + `cmd/eka` 8 tests = **54 tests** |
-| Current coverage | **10/10 rules enforced & tested (100% rule coverage)**; requirement coverage = **10 enforced of 16 total**; spec-section coverage — enforced requirements map to §3, §5, §6, §7, §8, §10, §13, §14; governance-only requirements map to §5, §7, §9, §11, §12 |
-| Self-conformance | `eka validate .` = 7 artifacts, 0 errors, 7 warnings (R10), exit 0 |
+| Total Requirements | **19** (13 enforced + 6 governance-only; REQ-017–REQ-019 added as v1.1 entries) |
+| Total Conformance Rules | **13** (R0 + R1–R12; R10–R12 per Core v1.1 §8.1) |
+| Total Implementations | **13 rule implementations** (`analyzeFile` + `rule1`–`rule12`) + **28 helper functions** (`parseFilename`, `identityKey`, `buildIndex`, `contentStateVariant`, `domainValues`, `isLegalTransition`, `parseReference`, `resolve`, `dimensionFolderFor`, `dimensionList`, `entriesForDomain`, `indexOfEntry`, `workItemsTable`, `compareWorkItemsTable`, `resolveWorkItemCell`, `hasProjectionHeader`, `splitTableRow`, `requiredSectionsFor`, `headingMatches`, `hasReplacement`, `domainNames`, `artifactIdentityForm`, `DomainForToken`, `DomainForDimension`, `Stratum`, `StrataAbove`, `DomainNames`, `IsDomain`) + engine/report/CLI (`validate.go`, `report.go`, `cmd/eka/main.go`) |
+| Total Test Suites | **2 packages**: `conformance` 59 tests + `cmd/eka` 8 tests = **67 tests** |
+| Current coverage | **13/13 rules enforced & tested (100% rule coverage)**; requirement coverage = **13 enforced of 19 total**; spec-section coverage — enforced requirements map to §3, §5, §6, §7, §8 (incl. §8.1 Engineering Domains, §8.3 Stratification Governance), §10, §13, §14 (+ Exchange v1.1 §14.2 R6); governance-only requirements map to §5, §7, §9, §11, §12 |
+| Self-conformance | `eka validate .` = 8 artifacts, 0 errors, 8 warnings (R10 on the 8 Architecture-stratum ADRs), exit 0 |
 | Identified gaps | REQ-011..REQ-016 not enforced (6 governance-only requirements) + 3 documented gaps (filename-id, exactly-one-active, bidirectional references) |
 | Recommended follow-ups | (1) Future rule candidates for REQ-011..REQ-016 — **not proposed now**; (2) automation of matrix consumption (deterministic parser over the table structure) — **not now**, the matrix is a living markdown document |

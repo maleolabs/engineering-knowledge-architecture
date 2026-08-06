@@ -21,6 +21,9 @@ the chronological record of State transitions on an Artifact: domain, old value,
 ### Command
 a deterministic execution instruction consumed by an executor (human or agent). Command Content is Content (owned by the Knowledge Layer); its execution is governed by Protocol (Operating Layer). *(Section 3)*
 
+### Consumed Knowledge
+the knowledge a domain consumes from other strata: the Artifact types of higher-stratum domains that its Artifacts derive from or depend on. *(Section 8.2)*
+
 ### Container State
 the Execution Container's State Domain: values `Active → Completed`; responsibility "Execution Container open/closed; concurrency"; owner Operating Layer. Transition rules: "Completed is a derived transition: triggered by the Execution State aggregate (all work items Done); exactly-one-Active (mutual exclusion)." *(Section 7.2)*
 
@@ -39,6 +42,9 @@ transformation of ephemeral knowledge (working context, review findings) into du
 
 ### Engineering Domain
 the home classification of an Artifact: the stratum-aligned category of engineering knowledge to which the Artifact belongs. Classification property (P15 — reclassification never touches Identity); derived from the Artifact's Knowledge Dimension and token family, or declared by an extension; never Identity, never part of the State Vector. *(Section 8.1)*
+
+### Engineering Domain Registry
+the canonical vocabulary of Engineering Domains: the five domains, their stratum positions, and the knowledge they produce and consume. Refinement is taxonomy governance (§14.2). *(Section 8.2)*
 
 ### Exchange Layer
 the third architectural layer: "transformational boundary: serialization, validation, import/export, mediation of external systems". Owns "exchange contracts, round-trip rules, conformance validation"; does not own "Content and State (never becomes an owner)". *(Section 4.1)*
@@ -105,6 +111,9 @@ product/scope context over time (Discovery, MVP, Milestone, Release). Phase is a
 ### Planning State
 plan commitment State Domain: values `Draft → Approved → Immutable`; responsibility "Plan commitment: tentative → committed → locked"; owner Operating Layer. Transition rules: "Forward-only; Approved = ready for execution; **Immutable is reached atomically with the Execution Container creation event** (lock-atomic-with-generation); post-lock changes = new instance (InstanceVersion)." *(Section 7.2)*
 
+### Produced Knowledge
+the knowledge an Engineering Domain produces: the Artifact types homed in the domain. *(Section 8.2)*
+
 ### Protocol
 deterministic rules owned by the Operating Layer: ordering, State transitions, locking, gates, execution commands. *(Section 3)*
 
@@ -124,6 +133,9 @@ an explicit relation between Artifacts referenced by Identity: supersedes, amend
 
 ### Representation Alias
 a methodology term mapped onto a canonical token + Engineering Domain (e.g., PRD → req-, Sprint/Iteration → ctr-); never a frontmatter value, never an Artifact type in its own right. *(Section 8.1)*
+
+### Representation Alias Registry
+the separate convention-layer document mapping methodology terms onto canonical tokens + Engineering Domain; Representation Aliases are not part of the Engineering Domain Registry. *(Section 8.2)*
 
 ### Revision
 tracking the Content evolution of the same instance — **not part of Identity**. "Revision (tracking the Content evolution of the same instance) — **not part of Identity**. Revision changes on every edit and must not break references." *(Sections 6.1, 6.3)*

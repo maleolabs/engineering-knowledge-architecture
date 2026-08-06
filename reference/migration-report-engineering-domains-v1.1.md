@@ -88,7 +88,7 @@ v1.1, not v2.0, because:
 
 | Follow-up | Status | Path |
 |---|---|---|
-| R10 escalation to blocking | **Future minor** | R10 is deliberately a warning today (stratification is a structural quality signal, never a commit blocker). Escalation to blocking severity, if ever, is a future minor change to the conformance suite under Core §14.2 governance — it would make stratification chains mandatory and must be announced as a minor revision. |
+| R10 escalation to blocking | **Future minor** | R10 is deliberately a warning today (stratification is a structural quality signal, never a commit blocker). Escalation to blocking severity, if ever, is a future minor change to the conformance suite under Core §14.2 governance — it would make stratification chains mandatory and must be announced as a minor revision. **Roadmap published:** the phased path (v1.1 warning → v1.2 blocking → future invariant), its escalation criteria, and the migration note are specified in the [R10 Governance Roadmap](conformance-notes.md#r10-governance-roadmap) (conformance notes). |
 | Conformance-traceability-matrix extension for R10–R12 | **Pending governance work** | The current matrix covers the v1.0 rule surface R0–R9 with a note pointing at `conformance/rules_domain.go` coverage; the formal R10–R12 rows are the outstanding governance change that introduced the domain-aware rules. |
 | Protocol-level stratum gates | **Future protocol variant** | Stratum awareness currently lives in the validator and the exchange classification. Protocol-level stratum gates (e.g., stratum-aware transfer policies) belong to a future registered protocol variant (Exchange §18.3) — never a silent core change. |
 | Representation alias registry maintenance | **Standing** | The alias table (Core §8.1) and the RSF Representation Alias metadata (§5.4) must stay in sync; new methodology terms enter only via terminology review (Naming §12.1) — aliases are never frontmatter values and never Artifact types. |
@@ -102,3 +102,40 @@ v1.1, not v2.0, because:
 ---
 
 *End of Migration Report — Engineering Domain Ontology v1.0 → v1.1.*
+
+---
+
+## Addendum — Governance Completion Milestone
+
+This addendum records the governance completion milestone that closed every follow-up item opened by this migration (2026-08-06).
+
+### Changes | # | Governance item | Where | Result |
+|---|---|---|---|
+| 1 | Conformance Traceability Matrix completion | `reference/conformance-traceability-matrix.md` | Full rule surface R0–R12; new REQ-017 (R10), REQ-018 (R11), REQ-019 (R12); implementation/test references; counts synchronized (13 rules, 19 REQ, 67 cited tests, 8 artifacts / 8 warnings). The matrix is again the canonical conformance reference. |
+| 2 | Engineering Workflow Guide | `skeleton/docs/workflow-guide.md` (new) | Primary onboarding document: the three orthogonal axes (domain / stratum / lifecycle), the six-step Engineering Knowledge Lifecycle with CLI and AI participation per step, methodology conventions, mental-model shift. Linked from README, skeleton README, and the guide section of the skeleton navigation map. |
+| 3 | Canonical Engineering Domain Registry | Core v1.1 §8.2 (new) | Per-domain definition blocks (Purpose, Responsibilities, Produced/Consumed Knowledge, Relationships, Stratum, Constraints) + registry table + governance note. Canonical vocabulary of EKA. |
+| 4 | R10 Governance Roadmap | `reference/conformance-notes.md` (new section) | v1.1 warning → v1.2 blocking (with escalation criteria: warning uptake, tooling, guidance, transition window) → future invariant (strengthen-only). No hidden breaking changes. |
+| 5 | Representation Alias Registry | `standard/representation-alias-registry-v1.1.md` (new) | 42 alias→token→domain mappings; governance (proposal → review → acceptance → publication) so methodology packs extend aliases without modifying the Core; methodology-convention statement. |
+| 6 | Knowledge Stratification Governance | Core v1.1 §8.3 (new) | Term confirmed: **Knowledge Stratum** (architecture Layer collision avoided); meaning, governance (taxonomy invariant, strengthen-only), validation implications (R10–R12), relationship to Engineering Domains. |
+
+### Terminology governance
+
+- **Knowledge Stratum** — confirmed canonical; no "Knowledge Layer"/"Level" misuse in stratification contexts (grep-verified; architectural Layer KB/OS/EX untouched).
+- **Engineering Domain** — bare "Domain" forbidden in canonical text (collision with State Domain); enforced in naming discipline and fixed in the alias registry header.
+- **Representation Alias** — consistent across Core §8.1, Naming §2.3, the registry, and the workflow guide; never a frontmatter value.
+- Glossary entries (Produced Knowledge, Consumed Knowledge, Engineering Domain Registry, Representation Alias Registry) quote canonical text verbatim.
+
+### Consistency review
+
+A full governance consistency review was executed before this addendum: terminology, specifications (Core/Exchange/RSF/Naming), validator (R10–R12 semantics == §8.3 == validation.md rules 10–12 == matrix rows), documentation counts and links. Result: **no governance inconsistencies remain**; fixes applied in the same pass (stale counts, example output regeneration, file-path corrections, gofmt).
+
+### Remaining governance debt (documented, not blocking)
+
+1. **R10 escalation** — the 8 Implementation ADRs carry no upward chain (accepted warning debt); escalation to blocking is scheduled for v1.2 per the roadmap in `conformance-notes.md`.
+2. **REQ-011..016 governance-only** — requirement candidates without enforced rules (pre-existing, per the matrix).
+3. **Protocol-level stratum gates** — Operating Layer Gate variant enforcing stratum consistency at approval time (future protocol extension, Core §14.1).
+4. **Alias registry growth** — methodology packs (Scrum, Kanban, Shape Up, internal) may extend the registry via its governance process; no Core modification required.
+
+---
+
+*End of Migration Report — Engineering Domain Ontology v1.0 → v1.1 (Governance Completion Addendum).*

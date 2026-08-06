@@ -7,11 +7,12 @@
 
 This folder is the **EKA v1.1 serialization** (EKA projected to Git + Markdown), **not EKA architecture itself**. The architecture — three layers (Knowledge/Operating/Exchange), five State Domains, the Protocol, and the five Engineering Domains (Core v1.1 §8.1) — is conceptual; this folder is only its file representation. In other words: changing the folder does not change EKA, and EKA can be serialized to other media without losing meaning.
 
-## Navigation Map (16 Entries)
+## Navigation Map (17 Entries)
 
 | Entry | Anchor EKA | Content | Engineering Domain |
 |---|---|---|---|
 | [README.md](.) (this file) | serialization | source of truth + convention summary | — |
+| [workflow-guide.md](workflow-guide.md) | onboarding | Engineering Workflow Guide — primary onboarding: mental model, lifecycle, CLI & AI participation | — |
 | [intent/](intent/) | intent dimension | `vis-` Vision/Manifesto, `str-` Strategy | Discovery |
 | [requirements/](requirements/) | requirements dimension | `req-` Requirement | Discovery |
 | [architecture/](architecture/) | architecture dimension | `arc-` Architecture Description | Architecture |
@@ -42,9 +43,9 @@ Every folder (and every artifact type) belongs to exactly one of the five canoni
 
 The domains form a strict authority chain: **Discovery → Architecture → Planning → Execution → Operations**. **Stratum Authority Invariant:** knowledge in a lower stratum must not contradict knowledge in a higher stratum that is in force — resolve contradictions by changing the lower-stratum knowledge (new instance + relationship, forward-only), never by superseding or amending upward.
 
-Methodology note: **PRD**, **ADR/RFC**, **Epic**, **Initiative**, **Sprint/Iteration**, **Ticket**, **Release**, **Incident**, **Runbook** are **Representation Aliases** — methodology terms mapped onto a canonical token + Engineering Domain (e.g. PRD → `req-`, Sprint → `ctr-`). They are never frontmatter values and never artifact types of their own. Methodologies (Scrum, Kanban, Shape Up, …) are **convention layers over EKA**, not part of the Core standard.
+Methodology note: **PRD**, **ADR/RFC**, **Epic**, **Initiative**, **Sprint/Iteration**, **Ticket**, **Release**, **Incident**, **Runbook** are **Representation Aliases** — methodology terms mapped onto a canonical token + Engineering Domain (e.g. PRD → `req-`, Sprint → `ctr-`). They are never frontmatter values and never artifact types of their own. The full alias catalog and its extension governance live in the [Representation Alias Registry](../../standard/representation-alias-registry-v1.1.md). Methodologies (Scrum, Kanban, Shape Up, …) are **convention layers over EKA**, not part of the Core standard.
 
-How knowledge flows through these domains: [lifecycle.md](lifecycle.md).
+New to EKA? Start with the [Engineering Workflow Guide](workflow-guide.md) — the primary onboarding document. How knowledge flows through these domains: [lifecycle.md](lifecycle.md).
 
 ## Serialization Conventions Summary
 

@@ -86,10 +86,10 @@ func printReport(s *ui.Style, r *conformance.Report) {
 	}
 
 	verdict := "PASS"
-	status := "Repository conforms to EKA v"+standardVersion
+	status := "Repository conforms to EKA v" + standardVersion
 	if !r.Pass() {
 		verdict = "FAIL"
-		status = "Repository does not conform to EKA v"+standardVersion
+		status = "Repository does not conform to EKA v" + standardVersion
 	}
 	colored := s.Success(verdict)
 	if !r.Pass() {
