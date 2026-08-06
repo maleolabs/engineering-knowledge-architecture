@@ -14,6 +14,8 @@
 - **`eka validate`** — the conformance validator: repository conformance must not rest on manual review alone — rules R0–R12 in `skeleton/docs/exchange/validation.md` are designed to be mechanical, and this validator is their canonical implementation (P16: enforcement mechanisms vary, invariants stay identical).
 - **`eka view`** — the Knowledge Projection Engine: read-only projections of the Engineering Knowledge Model (the five domain projections `discovery` / `architecture` / `planning` / `execution` / `operations` + the `ticket` projection) — the canonical executable form of the State Projection semantics (Core Specification §11), relationship-derived, never markdown-rendered.
 
+New to EKA? Start with the [Engineering Operating Guide](../skeleton/docs/workflow-guide.md) — the primary onboarding document (mental model, lifecycle, domains, workflows).
+
 Consequences of this philosophy:
 
 - The validator is the **single source of mechanical truth**; where rule text is ambiguous, interpretation decisions are documented (see `conformance-notes.md`) — no behavior is invented without a basis.

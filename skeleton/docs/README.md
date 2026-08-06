@@ -12,7 +12,7 @@ This folder is the **EKA v1.1 serialization** (EKA projected to Git + Markdown),
 | Entry | Anchor EKA | Content | Engineering Domain |
 |---|---|---|---|
 | [README.md](.) (this file) | serialization | source of truth + convention summary | — |
-| [workflow-guide.md](workflow-guide.md) | onboarding | Engineering Workflow Guide — primary onboarding: mental model, lifecycle, CLI & AI participation | — |
+| [workflow-guide.md](workflow-guide.md) | onboarding | Engineering Operating Guide — canonical, primary onboarding: 12-part journey (why knowledge matters, mental model, lifecycle, domains, evolution, methodology independence, daily/AI/CLI workflows, projections, common mistakes, end-to-end example) | — |
 | [intent/](intent/) | intent dimension | `vis-` Vision/Manifesto, `str-` Strategy | Discovery |
 | [requirements/](requirements/) | requirements dimension | `req-` Requirement | Discovery |
 | [architecture/](architecture/) | architecture dimension | `arc-` Architecture Description | Architecture |
@@ -45,7 +45,7 @@ The domains form a strict authority chain: **Discovery → Architecture → Plan
 
 Methodology note: **PRD**, **ADR/RFC**, **Epic**, **Initiative**, **Sprint/Iteration**, **Ticket**, **Release**, **Incident**, **Runbook** are **Representation Aliases** — methodology terms mapped onto a canonical token + Engineering Domain (e.g. PRD → `req-`, Sprint → `ctr-`). They are never frontmatter values and never artifact types of their own. The full alias catalog and its extension governance live in the [Representation Alias Registry](../../standard/representation-alias-registry-v1.1.md). Methodologies (Scrum, Kanban, Shape Up, …) are **convention layers over EKA**, not part of the Core standard.
 
-New to EKA? Start with the [Engineering Workflow Guide](workflow-guide.md) — the primary onboarding document. How knowledge flows through these domains: [lifecycle.md](lifecycle.md).
+New to EKA? Start with the [Engineering Operating Guide](workflow-guide.md) — the primary onboarding document. How knowledge flows through these domains: [lifecycle.md](lifecycle.md).
 
 ## Serialization Conventions Summary
 
