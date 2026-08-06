@@ -2,11 +2,11 @@ package cmd
 
 import (
 	"fmt"
-	"io"
 	"os"
 	"strings"
 
 	"github.com/maleolabs/engineering-knowledge-architecture/bootstrap"
+	"github.com/maleolabs/engineering-knowledge-architecture/cmd/ui"
 	"github.com/spf13/cobra"
 )
 
@@ -62,6 +62,7 @@ Exit codes:
 				return fmt.Errorf("target %q exists and is not a directory", target)
 			}
 
+			s := styleFor(cmd)
 			outcome, err := bootstrap.Run(bootstrap.Options{
 				Target: target,
 				DryRun: dryRun,
@@ -73,7 +74,7 @@ Exit codes:
 				return fmt.Errorf("init failed: %w", err)
 			}
 
-			printInitOutcome(cmd.OutOrStdout(), outcome)
+			renderInit(s, outcome)
 			if outcome.DryRun {
 				return nil
 			}
@@ -90,57 +91,148 @@ Exit codes:
 	return cmd
 }
 
-// printInitOutcome renders the init result deterministically: summary
-// header, plan (dry-run) or generation counts, validation report, next
-// steps. The exact bytes are part of the CLI contract (preserved from
-// the pre-Cobra implementation).
-func printInitOutcome(out io.Writer, o *bootstrap.Outcome) {
+// initStageNames are the five bootstrap stages (see bootstrap.Bootstrap
+// docs). The tree labels carry the deterministic "[i/5] " prefix.
+const (
+	initStageDiscover  = "Discover workspace"
+	initStagePlan      = "Plan bootstrap"
+	initStageConfigure = "Configure (interactive)"
+	initStageGenerate  = "Generate repository"
+	initStageValidate  = "Validate"
+)
+
+// initHeader renders the context header identifying the repository
+// object and the bootstrap pipeline.
+func initHeader(s *ui.Style, o *bootstrap.Outcome) {
+	ui.NewHeader(s, "Repository").
+		Add("Name", o.ProjectName).
+		Add("Target", o.Target).
+		Add("Namespace", o.Namespace).
+		Add("Knowledge", "EKA v1").
+		Pipeline("Bootstrap").
+		Render()
+}
+
+// renderInit renders the init outcome: the context header, then a
+// progressive tree over the five bootstrap stages plus the closing
+// summary. On a non-TTY the stage lines are emitted sequentially with
+// deterministic details; the tree is fully rendered by the time the
+// command returns.
+func renderInit(s *ui.Style, o *bootstrap.Outcome) {
+	initHeader(s, o)
 	if o.DryRun {
-		fmt.Fprintf(out, "EKA Bootstrap Plan (dry-run)\n")
-		fmt.Fprintf(out, "============================\n")
+		renderInitDryRun(s, o)
+		return
+	}
+
+	tree := ui.NewTree(s, "Repository")
+	tree.Add(ui.Step(1, 5) + initStageDiscover).Done(discoveryDetail(o))
+	tree.Add(ui.Step(2, 5) + initStagePlan).Done(fmt.Sprintf("%s planned", plural(len(o.Plan), "action", "actions")))
+	tree.Add(ui.Step(3, 5) + initStageConfigure).Done(fmt.Sprintf("name: %s, namespace: %s", o.ProjectName, o.Namespace))
+	tree.Add(ui.Step(4, 5) + initStageGenerate).Done(generateDetail(o))
+
+	validate := tree.Add(ui.Step(5, 5) + initStageValidate)
+	if o.Report == nil {
+		validate.Done("not run")
+	} else if o.Report.Pass() {
+		validate.Done(validationDetail(o.Report))
+	} else {
+		validate.Fail(validationDetail(o.Report))
+	}
+	tree.Finish()
+
+	// A failing validation must stay diagnosable: the findings are
+	// printed under the failed leaf (never color alone).
+	if o.Report != nil && !o.Report.Pass() {
+		renderFindings(s, o.Report)
+	}
+
+	if s.Verbose {
+		planItems := make([]string, 0, len(o.Plan))
 		for _, a := range o.Plan {
-			fmt.Fprintf(out, "  %s\n", a.String())
+			planItems = append(planItems, a.String())
 		}
-		fmt.Fprintln(out)
-		fmt.Fprintln(out, "Dry-run: no changes were written.")
-		return
+		s.Bullets("Plan actions:", planItems)
+		s.Bullets("Created dirs:", o.CreatedDirs)
+		s.Bullets("Created files:", o.CreatedFiles)
+		s.Bullets("Reused files:", o.ReusedFiles)
+		s.Bullets("Overwritten files:", o.OverwrittenFiles)
+		s.Bullets("Skipped files:", o.SkippedFiles)
 	}
 
-	fmt.Fprintf(out, "EKA Repository Init\n")
-	fmt.Fprintf(out, "===================\n")
-	fmt.Fprintf(out, "%-23s %s\n", "Target:", o.Target)
-	fmt.Fprintf(out, "%-23s %s\n", "Project Name:", o.ProjectName)
-	fmt.Fprintf(out, "%-23s %s\n", "Namespace:", o.Namespace)
-	fmt.Fprintf(out, "%-23s %s\n", "Repository Type:", o.RepoType)
-	fmt.Fprintf(out, "%-23s %s\n", "Git Status:", o.GitStatus)
-	fmt.Fprintf(out, "%-23s %s\n", "Knowledge Standard:", "EKA v1.0")
-	if !o.AlreadyInitialized {
-		fmt.Fprintf(out, "%-23s %d\n", "Dirs created:", len(o.CreatedDirs))
-		fmt.Fprintf(out, "%-23s %d\n", "Files created:", len(o.CreatedFiles))
-		fmt.Fprintf(out, "%-23s %d\n", "Files reused:", len(o.ReusedFiles))
-		fmt.Fprintf(out, "%-23s %d\n", "Files overwritten:", len(o.OverwrittenFiles))
-		fmt.Fprintf(out, "%-23s %d\n", "Files skipped:", len(o.SkippedFiles))
-	}
+	ui.NewSummary(s).
+		Add("Project Name", o.ProjectName).
+		Add("Namespace", o.Namespace).
+		Add("Repository Type", o.RepoType).
+		Add("Git Status", o.GitStatus).
+		Add("Standard", "EKA v1.0").
+		Add("Validation", validationDetail(o.Report)).
+		Render()
+}
 
-	fmt.Fprintln(out)
-	if o.Report != nil {
-		printReport(out, o.Report)
-		fmt.Fprintln(out)
-		verdict := "PASS"
-		if !o.Report.Pass() {
-			verdict = "FAIL"
+// renderInitDryRun prints the plan as a tree: every planned action is
+// a node (no spinner — nothing is executed). The summary closes with
+// the same fields as a real run, with the plan-derived git status and
+// "not run" validation.
+func renderInitDryRun(s *ui.Style, o *bootstrap.Outcome) {
+	tree := ui.NewTree(s, "Bootstrap plan (dry-run)")
+	for _, a := range o.Plan {
+		detail := ""
+		if s.Verbose && len(a.Content) > 0 {
+			detail = fmt.Sprintf("writes %d bytes", len(a.Content))
 		}
-		fmt.Fprintf(out, "Validation Result: %s (%d errors, %d warnings)\n",
-			verdict, o.Report.ErrorCount(), o.Report.WarningCount())
+		tree.Add(a.String()).Done(detail)
 	}
+	tree.Finish()
+	fmt.Fprintln(s.W, s.Dim("Dry-run: no changes were written."))
 
-	fmt.Fprintln(out)
+	ui.NewSummary(s).
+		Add("Project Name", o.ProjectName).
+		Add("Namespace", o.Namespace).
+		Add("Repository Type", o.RepoType).
+		Add("Git Status", dryRunGitStatus(o.Plan)).
+		Add("Standard", "EKA v1.0").
+		Add("Validation", "not run (dry-run)").
+		Render()
+}
+
+// dryRunGitStatus derives the git status of a dry-run from the plan
+// (the generation stage never runs, so Outcome.GitStatus stays empty).
+func dryRunGitStatus(plan []bootstrap.Action) string {
+	for _, a := range plan {
+		switch a.Kind {
+		case bootstrap.ActionGitInit:
+			return "planned (git init)"
+		case bootstrap.ActionGitSkip:
+			return a.Detail
+		}
+	}
+	return "not planned"
+}
+
+// discoveryDetail renders the deterministic stage-1 detail from the
+// repository classification.
+func discoveryDetail(o *bootstrap.Outcome) string {
+	switch o.RepoType {
+	case "new":
+		return "target does not exist"
+	case "existing-dir":
+		return "existing directory adopted"
+	case "existing-eka":
+		return "existing EKA repository (already initialized)"
+	default:
+		return o.RepoType
+	}
+}
+
+// generateDetail renders the deterministic stage-4 detail from the
+// generation counters.
+func generateDetail(o *bootstrap.Outcome) string {
 	if o.AlreadyInitialized {
-		fmt.Fprintln(out, "Already initialized: no changes were made; repository validated.")
-		return
+		return "no changes made (already initialized)"
 	}
-	fmt.Fprintln(out, "Next steps:")
-	fmt.Fprintln(out, "  - create your first artifact under docs/")
-	fmt.Fprintf(out, "  - set namespace on future artifacts: %s\n", o.Namespace)
-	fmt.Fprintln(out, "  - read docs/README.md for the serialization conventions")
+	return fmt.Sprintf("created %s, %s; reused %d; overwritten %d; skipped %d",
+		plural(len(o.CreatedDirs), "dir", "dirs"),
+		plural(len(o.CreatedFiles), "file", "files"),
+		len(o.ReusedFiles), len(o.OverwrittenFiles), len(o.SkippedFiles))
 }

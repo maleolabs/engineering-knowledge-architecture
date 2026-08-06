@@ -3,9 +3,10 @@ package cmd
 import (
 	"errors"
 	"fmt"
-	"io"
+	"sort"
 	"strconv"
 
+	"github.com/maleolabs/engineering-knowledge-architecture/cmd/ui"
 	"github.com/maleolabs/engineering-knowledge-architecture/exchange"
 	"github.com/spf13/cobra"
 )
@@ -56,7 +57,7 @@ Exit codes:
   2  usage or internal error (bad target, unwritable output)`,
 		Example: `  eka export
   eka export sto:login-email
-  eka export adr:001-login-serialization:1
+  eka export adr:001-exchange:1
   eka export plan:rilis-1 sto:login-email
   eka export -o /tmp/package
   eka export -o my-package.ekapkg`,
@@ -66,18 +67,25 @@ Exit codes:
 			if err != nil {
 				return fmt.Errorf("export failed: %w", err)
 			}
+			s := styleFor(cmd)
+			// A contextual loading state while the engine runs (TTY:
+			// animated spinner; non-TTY: one deterministic line). The
+			// context header follows on success — it carries the package
+			// identity, which only exists after the engine ran.
+			spinner := ui.NewSpinner(s, "Loading Engineering Knowledge...")
 			res, err := exchange.Export(".", exchange.Options{Targets: args, Output: output})
+			spinner.Stop()
 			if err != nil {
 				var ve *exchange.ValidationError
 				if errors.As(err, &ve) {
 					// Blocking violations: print the full report and exit 1.
-					printReport(cmd.OutOrStdout(), ve.Report)
+					printReport(s, ve.Report)
 					fmt.Fprintf(cmd.ErrOrStderr(), "eka: %s\n", ve.Error())
 					return &exitError{code: exitFail}
 				}
 				return err // Mapped to exit 2 by Execute.
 			}
-			printExportOutcome(cmd.OutOrStdout(), res)
+			renderExport(s, res)
 			return nil
 		},
 	}
@@ -86,23 +94,88 @@ Exit codes:
 	return cmd
 }
 
-// printExportOutcome renders the export result deterministically: summary
-// header, package identity, scope, counts, destination. The exact bytes
-// are part of the CLI contract.
-func printExportOutcome(out io.Writer, r *exchange.Result) {
-	fmt.Fprintf(out, "EKA Export\n")
-	fmt.Fprintf(out, "==========\n")
-	fmt.Fprintf(out, "%-20s %s\n", "Package Label:", r.Label)
-	fmt.Fprintf(out, "%-20s %s\n", "Scope:", r.Package.Header.ExportScope)
-	fmt.Fprintf(out, "%-20s %s\n", "Namespace:", r.Package.Header.Namespace)
-	fmt.Fprintf(out, "%-20s %d\n", "Units:", r.Units)
-	fmt.Fprintf(out, "%-20s %d\n", "Attachments:", r.Attachments)
-	fmt.Fprintf(out, "%-20s %d\n", "External refs:", r.ExternalReferences)
-	kind := "ZIP container"
-	if r.Directory {
-		kind = "directory"
+// exportStageNames are the six export stages. The tree labels carry the
+// deterministic "[i/6] " prefix.
+const (
+	exportStageDiscover  = "Discover repository"
+	exportStageLoad      = "Load Engineering Knowledge"
+	exportStageBuild     = "Build Exchange Model"
+	exportStageSerialize = "Serialize Knowledge Package"
+	exportStageWrite     = "Write package"
+	exportStageValidate  = "Validate package"
+)
+
+// renderExport renders the export outcome: the context header
+// identifying the knowledge package (canonical identity: the package
+// label), the six-stage tree and the closing summary.
+func renderExport(s *ui.Style, r *exchange.Result) {
+	ui.NewHeader(s, "Knowledge Package").
+		Add("Package", r.Label).
+		Add("Scope", string(r.Package.Header.ExportScope)).
+		Add("Output", r.Output).
+		Add("Format", "RSF v1").
+		Add("Knowledge", "EKA v1").
+		Pipeline("Export").
+		Render()
+
+	tree := ui.NewTree(s, "Knowledge Package")
+	tree.Add(ui.Step(1, 6) + exportStageDiscover).Done(fmt.Sprintf("scanned %s, %s",
+		plural(r.Validation.FilesScanned, ".md file", ".md files"),
+		plural(r.Validation.Artifacts, "artifact", "artifacts")))
+	tree.Add(ui.Step(2, 6) + exportStageLoad).Done(fmt.Sprintf("loaded %s, %s, %s",
+		plural(r.Units, "unit", "units"),
+		plural(r.Attachments, "attachment", "attachments"),
+		plural(r.ExternalReferences, "external reference", "external references")))
+	tree.Add(ui.Step(3, 6) + exportStageBuild).Done(fmt.Sprintf("scope %s, namespace %s",
+		string(r.Package.Header.ExportScope), r.Package.Header.Namespace))
+	tree.Add(ui.Step(4, 6) + exportStageSerialize).Done(fmt.Sprintf("RSF v1.0 (serialization version %s)",
+		exchange.SerializationVersion))
+	tree.Add(ui.Step(5, 6) + exportStageWrite).Done(fmt.Sprintf("wrote %s (%s)", r.Output, outputKind(r)))
+	tree.Add(ui.Step(6, 6) + exportStageValidate).Done(validationDetail(r.Validation))
+	tree.Finish()
+
+	renderExportSummary(s, r)
+}
+
+// renderExportSummary renders the optional verbose detail sections
+// (per-unit lists) and the closing summary block.
+func renderExportSummary(s *ui.Style, r *exchange.Result) {
+	if s.Verbose {
+		units := make([]string, 0, len(r.Package.Units))
+		for _, u := range r.Package.Units {
+			units = append(units, u.CanonicalIdentityForm)
+		}
+		sort.Strings(units)
+		s.Bullets("Units:", units)
+		attachments := make([]string, 0, len(r.Package.Attachments))
+		for _, a := range r.Package.Attachments {
+			attachments = append(attachments, a.ID)
+		}
+		sort.Strings(attachments)
+		s.Bullets("Attachments:", attachments)
+		externals := make([]string, 0, len(r.Package.Declarations.ExternalReferences))
+		for _, ext := range r.Package.Declarations.ExternalReferences {
+			externals = append(externals, fmt.Sprintf("%s %s %s", ext.Source, ui.IconArrow, ext.Target))
+		}
+		s.Bullets("External references:", externals)
 	}
-	fmt.Fprintf(out, "%-20s %s (%s)\n", "Output:", r.Output, kind)
-	fmt.Fprintf(out, "%-20s %s\n", "Validation:", "PASS (0 errors, "+strconv.Itoa(r.Validation.WarningCount())+" warnings)")
-	fmt.Fprintf(out, "%-20s %s\n", "Serialization:", "RSF v1.0 (serialization version 1)")
+
+	ui.NewSummary(s).
+		Add("Package Label", r.Label).
+		Add("Output", r.Output+" ("+outputKind(r)+")").
+		Add("Scope", string(r.Package.Header.ExportScope)).
+		Add("Artifacts", strconv.Itoa(r.Units)).
+		Add("Attachments", strconv.Itoa(r.Attachments)).
+		Add("External References", strconv.Itoa(r.ExternalReferences)).
+		Add("Integrity (SHA-256)", r.Package.Integrity.PackageDigest).
+		Add("Validation", validationDetail(r.Validation)).
+		Render()
+}
+
+// outputKind classifies the written package form.
+func outputKind(r *exchange.Result) string {
+	if r.Directory {
+		return "directory"
+	}
+	return "ZIP container"
 }

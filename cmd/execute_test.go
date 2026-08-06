@@ -113,6 +113,15 @@ func TestValidateValidRepoExitsZero(t *testing.T) {
 	if !strings.Contains(text, "Artifacts: 6") {
 		t.Errorf("output must contain the artifact count:\n%s", text)
 	}
+	if !strings.Contains(text, "Verdict: PASS") {
+		t.Errorf("output must contain the verdict line:\n%s", text)
+	}
+	if !strings.Contains(text, "↓ Validate") {
+		t.Errorf("output must contain the validate pipeline header:\n%s", text)
+	}
+	if !strings.Contains(text, "Knowledge   EKA v1") {
+		t.Errorf("output must identify the knowledge standard:\n%s", text)
+	}
 }
 
 func TestValidateInvalidRepoExitsOne(t *testing.T) {
@@ -122,6 +131,9 @@ func TestValidateInvalidRepoExitsOne(t *testing.T) {
 	}
 	if !strings.Contains(text, "FAIL") {
 		t.Errorf("output must contain FAIL:\n%s", text)
+	}
+	if !strings.Contains(text, "Verdict: FAIL") {
+		t.Errorf("output must contain the verdict line:\n%s", text)
 	}
 	if !strings.Contains(text, "R6") {
 		t.Errorf("output must list the R6 violations:\n%s", text)
@@ -181,7 +193,7 @@ c
 	if code != 0 {
 		t.Fatalf("exit = %d, want 0 (warnings must not block)\noutput:\n%s", code, text)
 	}
-	if !strings.Contains(text, "Warnings:  1") {
+	if !strings.Contains(text, "Warnings: 1") {
 		t.Errorf("output must count the warning:\n%s", text)
 	}
 }
@@ -202,7 +214,7 @@ func TestDefaultPathIsCurrentDirectory(t *testing.T) {
 	if code != 0 {
 		t.Fatalf("exit = %d, want 0\nstderr: %s", code, text)
 	}
-	if !strings.Contains(text, "Root:      .") {
+	if !strings.Contains(text, "Root: . — 0 .md files") {
 		t.Errorf("default root must be '.':\n%s", text)
 	}
 }
@@ -322,8 +334,11 @@ func TestInitDryRunWritesNothing(t *testing.T) {
 	if code != 0 {
 		t.Fatalf("exit = %d, want 0", code)
 	}
-	if !strings.Contains(text, "EKA Bootstrap Plan (dry-run)") {
+	if !strings.Contains(text, "Bootstrap plan (dry-run)") {
 		t.Errorf("output must show the plan header:\n%s", text)
+	}
+	if !strings.Contains(text, "↓ Bootstrap") {
+		t.Errorf("output must show the bootstrap pipeline header:\n%s", text)
 	}
 	if !strings.Contains(text, "create dir: docs/") {
 		t.Errorf("output must contain plan lines:\n%s", text)
@@ -366,7 +381,7 @@ func TestInitCurrentDirectory(t *testing.T) {
 	if code != 0 {
 		t.Fatalf("exit = %d, want 0\nstderr: %s\nstdout: %s", code, errText, text)
 	}
-	if !strings.Contains(text, "Validation Result: PASS") {
+	if !strings.Contains(text, "Validation: PASS") {
 		t.Errorf("output must report PASS:\n%s", text)
 	}
 	for _, want := range []string{"docs/operating/protocol.md", "docs/exchange/validation.md", "README.md"} {
@@ -393,21 +408,9 @@ func TestInitNamedDirectory(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(dir, "myproj", "docs")); err != nil {
 		t.Errorf("expected myproj/docs to exist: %v", err)
 	}
-	if !fieldIs(text, "Repository Type:", "new") {
+	if !strings.Contains(text, "Repository Type: new") {
 		t.Errorf("output must classify the repo as new:\n%s", text)
 	}
-}
-
-// fieldIs reports whether a line in text starts with label and its value
-// (after the colon) equals want, ignoring alignment padding.
-func fieldIs(text, label, want string) bool {
-	for _, line := range strings.Split(text, "\n") {
-		if strings.HasPrefix(line, label) {
-			value := strings.TrimSpace(strings.TrimPrefix(line, label))
-			return value == want
-		}
-	}
-	return false
 }
 
 // TestInitNonConformantExitsOne pre-places a malformed artifact and
@@ -432,8 +435,14 @@ func TestInitNonConformantExitsOne(t *testing.T) {
 	if !strings.Contains(errText, "non-conformant") {
 		t.Errorf("stderr must explain the non-conformant result, got %q", errText)
 	}
-	if !strings.Contains(text, "Validation Result: FAIL") {
+	if !strings.Contains(text, "Validation: FAIL") {
 		t.Errorf("output must report FAIL:\n%s", text)
+	}
+	if !strings.Contains(text, "Validation findings:") {
+		t.Errorf("output must show the findings under the failed validation stage:\n%s", text)
+	}
+	if !strings.Contains(text, "R0") {
+		t.Errorf("findings must list the R0 violation:\n%s", text)
 	}
 }
 
@@ -454,7 +463,7 @@ func TestInitTwiceIsIdempotent(t *testing.T) {
 	if code != 0 {
 		t.Fatalf("second init: exit = %d, want 0:\n%s", code, text)
 	}
-	if !strings.Contains(text, "Already initialized") {
+	if !strings.Contains(text, "already initialized") {
 		t.Errorf("second run must report already initialized:\n%s", text)
 	}
 	after, err := snapshot(dir)
@@ -547,10 +556,18 @@ func TestExportHappyPath(t *testing.T) {
 	if code != 0 {
 		t.Fatalf("exit = %d, want 0\nstdout: %s\nstderr: %s", code, text, errText)
 	}
-	for _, want := range []string{"EKA Export", "rsf-repo-eka-valid-fixture-1", "Units:", "6", "Attachments:", "1", "Output:"} {
+	for _, want := range []string{"Knowledge Package", "↓ Export", "rsf-repo-eka-valid-fixture-1", "Artifacts: 6", "Attachments: 1", "Output:", "PASS (0 errors"} {
 		if !strings.Contains(text, want) {
 			t.Errorf("output must contain %q:\n%s", want, text)
 		}
+	}
+	// The loading state must carry a contextual message, never a bare
+	// spinner (and never a spinner frame on non-TTY).
+	if !strings.Contains(text, "Loading Engineering Knowledge...") {
+		t.Errorf("output must show the contextual loading message:\n%s", text)
+	}
+	if strings.Contains(text, "⠋") {
+		t.Errorf("non-TTY output must not contain spinner frames:\n%s", text)
 	}
 	if _, err := os.Stat(out); err != nil {
 		t.Fatalf("package file missing: %v", err)
@@ -567,7 +584,7 @@ func TestExportRefusesInvalidRepo(t *testing.T) {
 	if code != 1 {
 		t.Fatalf("exit = %d, want 1\nstdout: %s\nstderr: %s", code, text, errText)
 	}
-	if !strings.Contains(text, "FAIL") {
+	if !strings.Contains(text, "Verdict: FAIL") {
 		t.Errorf("stdout must contain the validation report:\n%s", text)
 	}
 	if !strings.Contains(errText, "export refused") {
@@ -728,7 +745,7 @@ func TestImportHappyPathExitsZero(t *testing.T) {
 	if code != 0 {
 		t.Fatalf("exit = %d, want 0\nstdout: %s\nstderr: %s", code, text, errText)
 	}
-	for _, want := range []string{"EKA Import", "rsf-repo-eka-valid-fixture-1", "Imported:", "6", "Skipped (no-op):", "0", "Conflicts:", "0", "Validation (pre):", "PASS", "Validation (post):", "PASS"} {
+	for _, want := range []string{"Knowledge Package", "↓ Import", "rsf-repo-eka-valid-fixture-1", "Imported: 6", "Skipped (no-op): 0", "Conflicts: 0", "Validation: PASS"} {
 		if !strings.Contains(text, want) {
 			t.Errorf("output must contain %q:\n%s", want, text)
 		}
@@ -755,10 +772,10 @@ func TestImportTwiceExitsZero(t *testing.T) {
 	if code != 0 {
 		t.Fatalf("second import: exit = %d, want 0\nstdout: %s\nstderr: %s", code, text, errText)
 	}
-	if !strings.Contains(text, "Imported:            0") {
+	if !strings.Contains(text, "Imported: 0") {
 		t.Errorf("second import must report 0 imported:\n%s", text)
 	}
-	if !strings.Contains(text, "Skipped (no-op):     6") {
+	if !strings.Contains(text, "Skipped (no-op): 6") {
 		t.Errorf("second import must report 6 skipped no-ops:\n%s", text)
 	}
 }
@@ -889,5 +906,133 @@ func TestImportRelationshipErrorExitsOne(t *testing.T) {
 		"  - eka-valid-fixture/adr:001-exchange:1 -> depends-on eka-valid-fixture/sto:login-email:1 (declared external reference does not resolve in the target repository)\n"
 	if errText != want {
 		t.Errorf("stderr must be deterministic:\ngot  %q\nwant %q", errText, want)
+	}
+}
+
+// --- presentation contract tests ---------------------------------------
+
+// TestNoANSIEscapesInNonTTYOutput verifies the determinism contract:
+// every command run against a non-terminal writer emits plain text
+// (plus UTF-8 icons) with zero ANSI escape sequences — in stdout and
+// stderr alike.
+func TestNoANSIEscapesInNonTTYOutput(t *testing.T) {
+	valid := filepath.Join("..", "conformance", "testdata", "valid")
+	type scenario struct {
+		name string
+		args []string
+		want int
+	}
+	scenarios := []scenario{
+		{"validate-pass", []string{"validate", valid}, 0},
+		{"validate-fail", []string{"validate", filepath.Join("..", "conformance", "testdata", "invalid-dimension")}, 1},
+	}
+	// The validate paths are relative to the package directory: run them
+	// before any chdir in this test.
+	assertNoANSI := func(sc scenario) {
+		t.Helper()
+		var out, errb bytes.Buffer
+		code := Execute(sc.args, strings.NewReader(""), &out, &errb)
+		if strings.Contains(out.String(), "\x1b") || strings.Contains(errb.String(), "\x1b") {
+			t.Errorf("%s: non-TTY output must not contain ANSI escapes:\nstdout: %q\nstderr: %q",
+				sc.name, out.String(), errb.String())
+		}
+		if code != sc.want {
+			t.Errorf("%s: exit = %d, want %d", sc.name, code, sc.want)
+		}
+	}
+	assertNoANSI(scenarios[0])
+	assertNoANSI(scenarios[1])
+
+	// importPackageFixture resolves its fixture against the package
+	// directory, so it must run before any chdir in this test; the
+	// export fixture path is resolved here for the same reason.
+	exportFixture := exportFixtureAbs(t, "valid")
+	pkg, repo := importPackageFixture(t)
+	chdirInto(t, repo)
+	assertNoANSI(scenario{"import", []string{"import", pkg}, 0})
+
+	dir := t.TempDir()
+	chdirInto(t, dir)
+	assertNoANSI(scenario{"init-dry-run", []string{"init", "--dry-run"}, 0})
+
+	// Export roots at the current directory: chdir into the fixture.
+	chdirInto(t, exportFixture)
+	assertNoANSI(scenario{"export", []string{"export", "-o", filepath.Join(t.TempDir(), "noansi.ekapkg")}, 0})
+}
+
+// TestOutputDeterministicPerCommand verifies that two runs of each
+// command against identical state produce byte-identical non-TTY
+// output.
+func TestOutputDeterministicPerCommand(t *testing.T) {
+	// validate runs first: its path is relative to the package
+	// directory, so it must run before any chdir in this test.
+	path := filepath.Join("..", "conformance", "testdata", "invalid-projection")
+	_, a, _ := runIn([]string{"validate", path})
+	_, b, _ := runIn([]string{"validate", path})
+	if a != b {
+		t.Error("validate output differs between runs")
+	}
+
+	// Resolve absolute paths while the package directory is still the
+	// working directory.
+	exportFixture := exportFixtureAbs(t, "valid")
+	pkg, _ := importPackageFixture(t)
+
+	// init --dry-run (same directory, writes nothing)
+	dir := t.TempDir()
+	chdirInto(t, dir)
+	_, a, _ = runIn([]string{"init", "--dry-run"})
+	_, b, _ = runIn([]string{"init", "--dry-run"})
+	if a != b {
+		t.Error("init --dry-run output differs between runs")
+	}
+
+	// export (same fixture, same output path, stdout only)
+	chdirInto(t, exportFixture)
+	out := filepath.Join(t.TempDir(), "det.ekapkg")
+	_, a, _ = runIn([]string{"export", "-o", out})
+	_, b, _ = runIn([]string{"export", "-o", out})
+	if a != b {
+		t.Error("export output differs between runs")
+	}
+
+	// import (two identical fresh repositories)
+	runImport := func() string {
+		repo := t.TempDir()
+		if err := os.MkdirAll(filepath.Join(repo, "docs"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		chdirInto(t, repo)
+		_, text, _ := runIn([]string{"import", pkg})
+		return text
+	}
+	if a, b := runImport(), runImport(); a != b {
+		t.Error("import output differs between runs")
+	}
+}
+
+// TestVerboseAddsDetail verifies the presentation-only --verbose flag:
+// verbose output contains the per-unit detail lines and is strictly
+// longer than the default concise output.
+func TestVerboseAddsDetail(t *testing.T) {
+	chdirInto(t, exportFixtureAbs(t, "valid"))
+	tmp := t.TempDir()
+	_, concise, _ := runIn([]string{"export", "-o", filepath.Join(tmp, "c.ekapkg")})
+	_, verbose, _ := runIn([]string{"export", "-v", "-o", filepath.Join(tmp, "v.ekapkg")})
+
+	if strings.Contains(concise, "eka-valid-fixture/adr:001-exchange:1") {
+		t.Errorf("default output must not list per-unit identities:\n%s", concise)
+	}
+	if !strings.Contains(verbose, "eka-valid-fixture/adr:001-exchange:1") {
+		t.Errorf("verbose output must list per-unit identities:\n%s", verbose)
+	}
+	if !strings.Contains(verbose, "Units:") {
+		t.Errorf("verbose output must contain the Units section:\n%s", verbose)
+	}
+	if len(verbose) <= len(concise) {
+		t.Errorf("verbose output must contain more detail than default (%d <= %d bytes)", len(verbose), len(concise))
+	}
+	if strings.Contains(verbose, "\x1b") {
+		t.Errorf("verbose non-TTY output must stay ANSI-free:\n%s", verbose)
 	}
 }

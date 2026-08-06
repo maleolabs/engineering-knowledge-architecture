@@ -107,9 +107,15 @@ func newRootCommand() *cobra.Command {
 
 eka validate checks a repository against the EKA conformance rules,
 eka init bootstraps a new EKA repository from the embedded skeleton
-(validating the result afterwards), and eka export projects a
-repository to a deterministic package in the EKA Reference
-Serialization Format (RSF) v1.0.
+(validating the result afterwards), eka export projects a repository
+to a deterministic package in the EKA Reference Serialization Format
+(RSF) v1.0, and eka import consumes such a package.
+
+Command output is deterministic: the same input always produces the
+same bytes. On a terminal the output is colored and progress is shown
+in place; when piped or redirected it is plain text with no control
+sequences. Use --verbose/-v for additional detail lines (per-unit
+lists, plan actions).
 
 Exit codes:
   0  fully compliant (warnings allowed)
@@ -136,6 +142,8 @@ Exit codes:
 		SilenceErrors: true,
 		SilenceUsage:  true,
 	}
+	root.PersistentFlags().BoolP(flagVerbose, "v", false,
+		"verbose output: additional detail lines (per-unit lists, plan actions)")
 	root.AddCommand(newValidateCommand(), newInitCommand(), newExportCommand(), newImportCommand())
 	return root
 }

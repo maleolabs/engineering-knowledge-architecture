@@ -2,8 +2,9 @@ package cmd
 
 import (
 	"fmt"
-	"io"
+	"strconv"
 
+	"github.com/maleolabs/engineering-knowledge-architecture/cmd/ui"
 	"github.com/maleolabs/engineering-knowledge-architecture/conformance"
 	"github.com/spf13/cobra"
 )
@@ -35,7 +36,13 @@ the exit code; blocking violations exit 1. Usage or internal errors
 			if err != nil {
 				return fmt.Errorf("validate failed: %w", err)
 			}
-			printReport(cmd.OutOrStdout(), report)
+			s := styleFor(cmd)
+			ui.NewHeader(s, "Repository").
+				Add("Path", report.Root).
+				Add("Knowledge", "EKA v1").
+				Pipeline("Validate").
+				Render()
+			printReport(s, report)
 			if !report.Pass() {
 				return &exitError{code: exitFail}
 			}
@@ -44,32 +51,55 @@ the exit code; blocking violations exit 1. Usage or internal errors
 	}
 }
 
-// printReport renders the report to out in a deterministic format:
-// scan summary, sorted results, execution summary. The exact bytes are
-// part of the CLI contract (preserved from the pre-Cobra implementation).
-func printReport(out io.Writer, r *conformance.Report) {
-	fmt.Fprintf(out, "EKA Conformance Validation\n")
-	fmt.Fprintf(out, "==========================\n")
-	fmt.Fprintf(out, "Root:      %s\n", r.Root)
-	fmt.Fprintf(out, ".md files: %d\n", r.FilesScanned)
-	fmt.Fprintf(out, "Artifacts: %d\n", r.Artifacts)
-	fmt.Fprintf(out, "Errors:    %d\n", r.ErrorCount())
-	fmt.Fprintf(out, "Warnings:  %d\n", r.WarningCount())
+// printReport renders the report in the deterministic non-TTY format
+// (plain text plus UTF-8 icons, no ANSI escapes) and the colored TTY
+// format (heading in accent, verdict colored):
+//
+//	Repository validation
+//	Root: <root> — <n> .md files, <n> artifacts, <n> errors, <n> warnings
+//
+//	Results (sorted by file, then rule):
+//	  [ERROR] R6 docs/foo.md: message
+//
+//	Verdict: PASS
+//	Summary:
+//	└── Artifacts: 6
+//	└── Errors: 0
+//	└── Warnings: 0
+//	└── Status: Repository conforms to EKA v1
+//
+// The report IS the command output: nothing is dropped, the results
+// list keeps its content and ordering contract.
+func printReport(s *ui.Style, r *conformance.Report) {
+	fmt.Fprintf(s.W, "%s\n", s.Accent("Repository validation"))
+	fmt.Fprintf(s.W, "%s\n", s.Dim(fmt.Sprintf("Root: %s — %d .md files, %d artifacts, %d errors, %d warnings",
+		r.Root, r.FilesScanned, r.Artifacts, r.ErrorCount(), r.WarningCount())))
 
-	fmt.Fprintf(out, "\nResults (sorted by file, then rule):\n")
+	fmt.Fprintf(s.W, "\nResults (sorted by file, then rule):\n")
 	results := r.SortedResults()
 	if len(results) == 0 {
-		fmt.Fprintf(out, "  (no violations found)\n")
+		fmt.Fprintf(s.W, "  (no violations found)\n")
 	} else {
 		for _, res := range results {
-			fmt.Fprintf(out, "  [%s] %s %s: %s\n", res.Severity, res.Rule, res.File, res.Message)
+			fmt.Fprintf(s.W, "  [%s] %s %s: %s\n", res.Severity, res.Rule, res.File, res.Message)
 		}
 	}
 
 	verdict := "PASS"
+	status := "Repository conforms to EKA v1"
 	if !r.Pass() {
 		verdict = "FAIL"
+		status = "Repository does not conform to EKA v1"
 	}
-	fmt.Fprintf(out, "\nExecution: %s (%d errors, %d warnings)\n",
-		verdict, r.ErrorCount(), r.WarningCount())
+	colored := s.Success(verdict)
+	if !r.Pass() {
+		colored = s.Error(verdict)
+	}
+	fmt.Fprintf(s.W, "\nVerdict: %s\n", colored)
+	ui.NewSummary(s).
+		Add("Artifacts", strconv.Itoa(r.Artifacts)).
+		Add("Errors", strconv.Itoa(r.ErrorCount())).
+		Add("Warnings", strconv.Itoa(r.WarningCount())).
+		Add("Status", status).
+		Render()
 }

@@ -3,9 +3,9 @@ package cmd
 import (
 	"errors"
 	"fmt"
-	"io"
 	"strconv"
 
+	"github.com/maleolabs/engineering-knowledge-architecture/cmd/ui"
 	"github.com/maleolabs/engineering-knowledge-architecture/exchange"
 	"github.com/spf13/cobra"
 )
@@ -26,6 +26,10 @@ import (
 //	2  usage or internal error (missing/extra arguments, unreadable or
 //	   malformed package, integrity failure, unsupported versions,
 //	   filesystem failure)
+//
+// Output contract: nothing is written to stdout until the import
+// succeeds; failure diagnostics go to stderr only. This keeps the
+// stdout-empty-on-error property (asserted by the CLI tests) intact.
 func newImportCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "import <package-path>",
@@ -61,10 +65,11 @@ Exit codes:
 		RunE: func(cmd *cobra.Command, args []string) error {
 			res, err := exchange.Import(args[0], exchange.ImportOptions{Root: "."})
 			if err != nil {
+				s := styleFor(cmd)
 				var ive *exchange.ImportValidationError
 				if errors.As(err, &ive) {
 					if ive.Report != nil {
-						printReport(cmd.OutOrStdout(), ive.Report)
+						printReport(s, ive.Report)
 					}
 					fmt.Fprintf(cmd.ErrOrStderr(), "eka: %s\n", ive.Error())
 					return &exitError{code: exitFail}
@@ -87,35 +92,74 @@ Exit codes:
 				}
 				return err // Mapped to exit 2 by Execute.
 			}
-			printImportOutcome(cmd.OutOrStdout(), res)
+			renderImport(styleFor(cmd), res, args[0])
 			return nil
 		},
 	}
 	return cmd
 }
 
-// printImportOutcome renders the import result deterministically: summary
-// header, repository, package identity, versions verified, verdict counts,
-// validation status (pre + post), next steps. The exact bytes are part of
-// the CLI contract.
-func printImportOutcome(out io.Writer, r *exchange.ImportResult) {
-	fmt.Fprintf(out, "EKA Import\n")
-	fmt.Fprintf(out, "==========\n")
-	fmt.Fprintf(out, "%-20s %s\n", "Repository Root:", r.Root)
-	fmt.Fprintf(out, "%-20s %s\n", "Package Label:", r.PackageLabel)
-	fmt.Fprintf(out, "%-20s %s\n", "Versions:", "RSF v1.0 (serialization 1, exchange format 1, specification 1.0)")
-	fmt.Fprintf(out, "%-20s %d\n", "Imported:", len(r.ImportedArtifacts))
-	fmt.Fprintf(out, "%-20s %d\n", "Skipped (no-op):", len(r.SkippedArtifacts))
-	fmt.Fprintf(out, "%-20s %d\n", "Attachments:", len(r.AttachmentsImported))
-	fmt.Fprintf(out, "%-20s %d\n", "Attachments skipped:", len(r.AttachmentsSkipped))
-	fmt.Fprintf(out, "%-20s %d\n", "Conflicts:", len(r.Conflicts))
-	fmt.Fprintf(out, "%-20s %s\n", "Validation (pre):", "PASS ("+strconv.Itoa(r.PreValidation.ErrorCount())+" errors, "+strconv.Itoa(r.PreValidation.WarningCount())+" warnings)")
-	fmt.Fprintf(out, "%-20s %s\n", "Validation (post):", "PASS ("+strconv.Itoa(r.Validation.ErrorCount())+" errors, "+strconv.Itoa(r.Validation.WarningCount())+" warnings)")
+// importStageNames are the seven import stages (Exchange Contract
+// phases). The tree labels carry the deterministic "[i/7] " prefix.
+const (
+	importStageVerify       = "Verify package"
+	importStageValidateRepo = "Validate repository"
+	importStageIdentities   = "Resolve identities"
+	importStageRelations    = "Resolve relationships"
+	importStageConflicts    = "Detect conflicts"
+	importStageIntegrate    = "Integrate"
+	importStageRevalidate   = "Revalidate"
+)
+
+// renderImport renders the import outcome: the context header
+// identifying the knowledge package (identity: the package path), the
+// seven Exchange Contract phase tree and the closing summary. It runs
+// only after a successful import, so stdout stays empty on every error
+// path.
+func renderImport(s *ui.Style, r *exchange.ImportResult, pkgPath string) {
+	ui.NewHeader(s, "Knowledge Package").
+		Add("Package", pkgPath).
+		Add("Format", "RSF v1").
+		Add("Knowledge", "EKA v1").
+		Pipeline("Import").
+		Render()
+
+	tree := ui.NewTree(s, "Knowledge Package")
+	tree.Add(ui.Step(1, 7) + importStageVerify).Done(fmt.Sprintf("%s (RSF v1.0, serialization %s, exchange format %s, specification %s)",
+		r.PackageLabel, exchange.SerializationVersion, exchange.ExchangeFormatVersion, exchange.SpecificationVersion))
+	tree.Add(ui.Step(2, 7) + importStageValidateRepo).Done(validationDetail(r.PreValidation))
+	tree.Add(ui.Step(3, 7) + importStageIdentities).Done(fmt.Sprintf("resolved %s",
+		plural(len(r.ImportedArtifacts)+len(r.SkippedArtifacts), "identity", "identities")))
+
+	relations := "all relationships resolved"
 	if len(r.Warnings) > 0 {
-		fmt.Fprintf(out, "%-20s %d\n", "Warnings:", len(r.Warnings))
-		for _, w := range r.Warnings {
-			fmt.Fprintf(out, "  - %s\n", w)
-		}
+		relations = plural(len(r.Warnings), "draft tolerance warning", "draft tolerance warnings")
 	}
-	fmt.Fprintln(out, "Next steps: run `eka validate` and review the imported artifacts under docs/")
+	tree.Add(ui.Step(4, 7) + importStageRelations).Done(relations)
+	tree.Add(ui.Step(5, 7) + importStageConflicts).Done("no conflicts")
+	tree.Add(ui.Step(6, 7) + importStageIntegrate).Done(fmt.Sprintf("wrote %s, skipped %s, %s",
+		plural(len(r.ImportedArtifacts), "artifact", "artifacts"),
+		plural(len(r.SkippedArtifacts), "no-op duplicate", "no-op duplicates"),
+		plural(len(r.AttachmentsImported), "attachment", "attachments")))
+	tree.Add(ui.Step(7, 7) + importStageRevalidate).Done(validationDetail(r.Validation))
+	tree.Finish()
+
+	if s.Verbose {
+		s.Bullets("Imported:", r.ImportedArtifacts)
+		s.Bullets("Skipped (no-op):", r.SkippedArtifacts)
+		s.Bullets("Warnings:", r.Warnings)
+	}
+
+	attachments := strconv.Itoa(len(r.AttachmentsImported))
+	if n := len(r.AttachmentsSkipped); n > 0 {
+		attachments += fmt.Sprintf(" (+%d skipped)", n)
+	}
+	ui.NewSummary(s).
+		Add("Imported", strconv.Itoa(len(r.ImportedArtifacts))).
+		Add("Skipped (no-op)", strconv.Itoa(len(r.SkippedArtifacts))).
+		Add("Conflicts", strconv.Itoa(len(r.Conflicts))).
+		Add("Attachments", attachments).
+		Add("Warnings", strconv.Itoa(len(r.Warnings))).
+		Add("Validation", validationDetail(r.Validation)).
+		Render()
 }
