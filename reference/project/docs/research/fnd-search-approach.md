@@ -1,0 +1,64 @@
+---
+namespace: feather
+type: fnd
+id: search-approach
+instance-version: 1
+revision: 1
+content-state: approved
+existence-state: active
+dimension: research
+author: Jonas Berg
+created: 2026-06-05
+updated: 2026-06-12
+supersedes: []
+derives-from: []
+depends-on: []
+amends: []
+validates: []
+change-log:
+  - date: 2026-06-05
+    domain: existence-state
+    from: "-"
+    to: active
+    by: Jonas Berg
+  - date: 2026-06-05
+    domain: content-state
+    from: "-"
+    to: draft
+    by: Jonas Berg
+  - date: 2026-06-09
+    domain: content-state
+    from: draft
+    to: review
+    by: Jonas Berg
+  - date: 2026-06-12
+    domain: content-state
+    from: review
+    to: approved
+    by: Jonas Berg
+---
+
+# Research Finding — Search Approach
+
+## Purpose
+
+Answer the question behind the site search feature: how should full-text search over posts be implemented, given the single-binary architecture and the projected scale (thousands of posts)?
+
+## Content
+
+Three approaches were compared:
+
+1. **SQLite FTS5.** Virtual table over the post index; supports prefix matching, ranking, and phrase queries with zero extra infrastructure.
+2. **LIKE / GLOB scans.** Plain SQL pattern matching over title and body; simple but no ranking, no stemming, and slow beyond a few thousand rows.
+3. **External search engine (Meilisearch/Elasticsearch).** Best quality, but a second service to run, monitor, and back up — violates the single-binary constraint.
+
+## Investigation Summary
+
+- Benchmarked FTS5 vs LIKE on a synthetic corpus of 10,000 posts (~40 MB of markdown). FTS5 median query time 3 ms; LIKE median 180 ms at 10k posts and degrades linearly.
+- FTS5 requires no external dependency: it is compiled into the SQLite driver Feather already uses.
+- Rebuild cost: indexing 10k posts takes ~1.4 s on a laptop; a content-hash trigger keeps the index incrementally fresh.
+- The gap to an external engine (typography, language detection) is irrelevant at this scale and audience.
+
+## Conclusion
+
+Adopt **SQLite FTS5** for v1 search: it satisfies the requirement class at the projected scale, stays inside the single binary, and needs no new operational surface. This finding distills into `adr:search-sqlite-fts`.

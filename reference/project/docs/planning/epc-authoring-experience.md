@@ -1,0 +1,57 @@
+---
+namespace: feather
+type: epc
+id: authoring-experience
+instance-version: 1
+revision: 1
+content-state: review
+existence-state: active
+dimension: planning
+author: Maya Patel
+created: 2026-07-05
+updated: 2026-07-10
+supersedes: []
+derives-from:
+  - scp:mvp-v1:1
+depends-on: []
+amends: []
+validates: []
+change-log:
+  - date: 2026-07-05
+    domain: existence-state
+    from: "-"
+    to: active
+    by: Maya Patel
+  - date: 2026-07-05
+    domain: content-state
+    from: "-"
+    to: draft
+    by: Maya Patel
+  - date: 2026-07-10
+    domain: content-state
+    from: draft
+    to: review
+    by: Maya Patel
+---
+
+# Epic — Authoring Experience
+
+## Objective
+
+Deliver the writing loop the strategy ranks first: create, autosave, preview, publish, and edit posts with an editor that never gets in the way. This epic realizes the `publishing-core` requirement inside the MVP scope.
+
+## Scope
+
+- `sto:publish-post` — publish a draft with one action (done).
+- `sto:draft-autosave` — autosave drafts with at most one keystroke of loss (in progress).
+- `ts:markdown-renderer` — markdown rendering with syntax highlighting (in review).
+- `spk:markdown-syntax-extension` — decide tables/footnotes support (planned).
+- `bug:empty-title-crash` — publishing with an empty title must not crash (done).
+
+Acceptance for the epic as a whole: a writer can go from "new post" to "published page" in under a minute, and loses no work on reload.
+
+## Out of Scope
+
+- Rich (WYSIWYG) editing — rejected by `fnd:markdown-editor-options`.
+- Comments, engagement, and distribution features — they belong to other epics/requirements.
+- Plugin or theme extensibility (`adr:plugin-model-deferred`).

@@ -1,0 +1,32 @@
+---
+namespace: feather
+type: tkt
+id: sto-publish-post
+instance-version: 1
+revision: 1
+author: Lukas Weber
+created: 2026-07-29
+updated: 2026-08-03
+supersedes: []
+derives-from:
+  - ctr:wave-7
+  - sto:publish-post
+depends-on: []
+amends: []
+validates: []
+---
+
+> Generated — State Projection. Do NOT edit state here; refresh on read.
+
+# Ticket — publish-post
+
+## Commands
+
+- `eka view ticket tkt-sto-publish-post` — render this projection (status derived from `sto:publish-post`).
+- `eka view execution` — see the active container board (Wave 7).
+- `eka export sto:publish-post` — export the work item as an exchange unit.
+- `go test ./internal/posts/...` — run the tests covering the publish flow.
+
+## Projected Status
+
+Projected from `sto:publish-post` (owner state, read on refresh): **done**.

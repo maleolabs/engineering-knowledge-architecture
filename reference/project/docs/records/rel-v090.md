@@ -1,0 +1,64 @@
+---
+namespace: feather
+type: rel
+id: v090
+instance-version: 1
+revision: 1
+content-state: approved
+existence-state: active
+dimension: records
+author: Amira Khan
+created: 2026-08-05
+updated: 2026-08-05
+supersedes: []
+derives-from:
+  - plan:roadmap-v1:1
+depends-on:
+  - ctr:wave-6
+amends: []
+validates: []
+change-log:
+  - date: 2026-08-05
+    domain: existence-state
+    from: "-"
+    to: active
+    by: Amira Khan
+  - date: 2026-08-05
+    domain: content-state
+    from: "-"
+    to: draft
+    by: Amira Khan
+  - date: 2026-08-05
+    domain: content-state
+    from: draft
+    to: review
+    by: Amira Khan
+  - date: 2026-08-05
+    domain: content-state
+    from: review
+    to: approved
+    by: Amira Khan
+---
+
+# Release Record — v0.9.0
+
+## Purpose
+
+Record the v0.9.0 release of Feather: the post publishing core plus autosave, executed under the roadmap plan and the foundation wave. This record is the execution aggregate + release gates of the release (records README: relationships reference, never re-quote).
+
+## Content
+
+**Release:** v0.9.0 — "Publishing Core". Deployed 2026-08-05 via `run:deploy-feather` (build, migrate, restart behind Caddy). Tag `v0.9.0` on `main`.
+
+**Execution aggregate:**
+
+- Delivered by the Wave 7 container (`ctr:wave-7`, active): `sto:publish-post` done, `bug:empty-title-crash` done; `sto:draft-autosave` and `ts:markdown-renderer` in flight (land in v0.9.1).
+- Foundation from the completed Wave 6 container (`ctr:wave-6`): repository bootstrap, CI gate, storage layout, scaffolding.
+- Verified by `rvw:publishing-core-review` (review gate open — autosave findings tracked on the work item).
+
+**Release gates:**
+
+- Readiness: `req:publishing-core` approved; `adr:content-storage` + `adr:search-sqlite-fts` accepted; scope `scp:mvp-v1` approved; plan `plan:roadmap-v1` approved (locks atomically with `ctr:wave-7`).
+- Quality: `eka validate` 0 errors / 0 warnings; full test suite green; DoD (`std:definition-of-done`) met for shipped work items.
+
+**Known post-release state:** FTS search live; distribution (RSS/sitemap) and comments remain out of scope per `scp:mvp-v1` and `req:comments-phase2`.

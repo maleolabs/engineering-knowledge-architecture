@@ -615,7 +615,7 @@ Knowledge   EKA v1.1
 ↓ Validate
 
 Repository validation
-Root: . — 62 .md files, 8 artifacts, 0 errors, 8 warnings
+Root: . — 131 .md files, 45 artifacts, 0 errors, 8 warnings
 
 Results (sorted by file, then rule):
   [warning] R10 reference/decisions/adr-001-identity-serialization.md: no resolvable derives-from/depends-on chain reaches a stratum above Architecture (stratum 2); stratification traceability is missing (chains must reach one of: Discovery)
@@ -629,13 +629,13 @@ Results (sorted by file, then rule):
 
 Verdict: PASS
 Summary:
-└── Artifacts: 8
+└── Artifacts: 45
 └── Errors: 0
 └── Warnings: 8
 └── Status: Repository conforms to EKA v1.1
 ```
 
-> Note: the `.md files` count is a snapshot — it grows with every new convention document added; the output format stays fixed. The artifact, error, and warning counts are the contract (8 artifacts; error > 0 ⇒ FAIL). The 8 R10 warnings are the repository's own stratification traceability gap: the 8 Implementation ADRs (Architecture, stratum 2) carry no `derives-from`/`depends-on` chain reaching a higher stratum. R10 is a warning — it never blocks the verdict; the exit code stays `0`.
+> Note: the `.md files` count is a snapshot — it grows with every new convention document added; the output format stays fixed. The artifact, error, and warning counts are the contract (45 artifacts; error > 0 ⇒ FAIL). The 8 R10 warnings are the repository's own stratification traceability gap: the 8 Implementation ADRs (Architecture, stratum 2) carry no `derives-from`/`depends-on` chain reaching a higher stratum. The Reference Project (`reference/project/`) demonstrates the best practice: **37 artifacts, 0 errors, 0 warnings** (every artifact carries a stratification chain). R10 is a warning — it never blocks the verdict; the exit code stays `0`.
 
 Output structure:
 
@@ -687,7 +687,7 @@ source <(eka completion bash)
 
 ## Repository conformance
 
-The EKA repository **passes its own conformance suite**: all `.md` files scanned, 8 artifacts (8 Implementation ADRs in `reference/decisions/`), **0 errors, 8 warnings (R10 stratification traceability), exit 0** (see example output above). R10 warnings never block the verdict.
+The EKA repository **passes its own conformance suite**: all `.md` files scanned, 45 artifacts (37 in the Reference Project `reference/project/` + 8 Implementation ADRs), **0 errors, 8 warnings (R10 stratification traceability), exit 0** (see example output above). R10 warnings never block the verdict.
 
 This milestone is codified as the automated test `TestReferenceImplementationConforms` in `conformance/self_validation_test.go`: the test locates the repository root, runs `Validate` over the whole repository, and asserts 0 blocking errors. Any conformance regression (e.g., a new ADR violating a rule) therefore breaks the test suite before it can reach a commit.
 

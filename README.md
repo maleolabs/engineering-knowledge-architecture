@@ -68,6 +68,7 @@ This repository is the official **Reference Implementation**: a working serializ
 - **The Standard Zone** (`standard/`) — the canonical specification texts.
 - **The Skeleton Zone** (`skeleton/`) — the copyable project structure (`eka init` generates repositories from it).
 - **The Reference Zone** (`reference/`) — implementation meta-documentation, ADRs, and traceability matrices.
+- **The Reference Project** ([`reference/project/`](reference/project/)) — a complete, conformant example repository ("Feather", a markdown blogging platform): 37 artifacts across all five Engineering Domains, zero validation warnings, screenshots and CLI scenarios in [reference/reference-project.md](reference/reference-project.md). It demonstrates Engineering Knowledge in practice — read it as the worked example of the standard, not as software architecture complexity.
 - **The Reference Validator** — the `eka` CLI, the canonical executable form of the Conformance Rules.
 
 ## CLI Overview

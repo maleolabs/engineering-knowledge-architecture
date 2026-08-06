@@ -1,0 +1,89 @@
+---
+namespace: feather
+type: spec
+id: publishing-api
+instance-version: 1
+revision: 2
+content-state: review
+existence-state: active
+dimension: specifications
+author: Lukas Weber
+created: 2026-07-01
+updated: 2026-08-04
+supersedes: []
+derives-from:
+  - adr:content-storage
+depends-on: []
+amends: []
+validates: []
+change-log:
+  - date: 2026-07-01
+    domain: existence-state
+    from: "-"
+    to: active
+    by: Lukas Weber
+  - date: 2026-07-01
+    domain: content-state
+    from: "-"
+    to: draft
+    by: Lukas Weber
+  - date: 2026-07-09
+    domain: content-state
+    from: draft
+    to: review
+    by: Lukas Weber
+---
+
+# Specification — Publishing API
+
+## Purpose
+
+The HTTP contract of the publishing core: create, update, publish, and delete posts. It implements the storage model of `adr:content-storage` (Markdown files + SQLite index) behind a JSON API. Revision 2 incorporates review feedback from the authoring session (autosave endpoint, `If-Match` on update).
+
+## Content
+
+All endpoints are JSON, prefixed `/api`. The server is the single writer of the index; the file is written atomically (temp file + rename).
+
+| Method | Path | Purpose | Auth |
+|---|---|---|---|
+| POST | `/api/posts` | Create a draft | session cookie |
+| GET | `/api/posts` | List posts (query: `status`, `q` for FTS search) | public for published, session for drafts |
+| GET | `/api/posts/{id}` | Read one post | public for published |
+| PATCH | `/api/posts/{id}` | Update content (body or metadata); `If-Match` revision header required | session cookie |
+| POST | `/api/posts/{id}/publish` | Flip draft → published | session cookie |
+| DELETE | `/api/posts/{id}` | Archive a post (file kept, index row removed) | session cookie |
+
+**Create — request:**
+
+```json
+POST /api/posts
+{ "title": "Hello, world", "body": "# Hello\n\nFirst post.", "slug": "hello-world" }
+```
+
+**Create — response (201):**
+
+```json
+{ "id": "p-7f3a", "slug": "hello-world", "status": "draft",
+  "revision": 1, "created-at": "2026-07-01T10:00:00Z" }
+```
+
+**Publish — response (200):**
+
+```json
+{ "id": "p-7f3a", "status": "published", "published-at": "2026-07-01T10:05:00Z" }
+```
+
+**Errors:**
+
+| Code | Meaning |
+|---|---|
+| 400 | malformed body, empty title (see `bug:empty-title-crash`), invalid slug |
+| 404 | unknown post id |
+| 409 | `If-Match` revision mismatch (concurrent edit) |
+| 401 | unauthenticated |
+
+**Rules:**
+
+- A post is identified by `id` (internal) and `slug` (public URL); slug must be unique among published posts.
+- `PATCH` with `If-Match` failing returns 409 — the client must reload and re-apply (autosave relies on this, see `sto:draft-autosave`).
+- Search query `q` runs through FTS5 (`adr:search-sqlite-fts`) over title + body.

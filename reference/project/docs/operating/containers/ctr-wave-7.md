@@ -1,0 +1,58 @@
+---
+namespace: feather
+type: ctr
+id: wave-7
+instance-version: 1
+revision: 1
+container-state: active
+existence-state: active
+author: Lukas Weber
+created: 2026-07-29
+updated: 2026-08-05
+supersedes: []
+derives-from: []
+depends-on:
+  - plan:roadmap-v1:1
+amends: []
+validates: []
+change-log:
+  - date: 2026-07-29
+    domain: existence-state
+    from: "-"
+    to: active
+    by: Lukas Weber
+  - date: 2026-07-29
+    domain: container-state
+    from: "-"
+    to: active
+    by: Lukas Weber
+---
+
+# Container — Wave 7: Publishing Core
+
+## Objective
+
+Execute the publishing core under the locked roadmap plan (`plan:roadmap-v1:1`): publish flow, autosave, markdown rendering, the empty-title crash fix, plus the registered debt, chore, and spike. This is the active execution container — exactly one at a time (protocol §3).
+
+## Work Items
+
+> Generated — State Projection. Do NOT edit state here; refresh on read.
+
+| Work Item | Execution State |
+|---|---|
+| sto:publish-post | done |
+| sto:draft-autosave | in-progress |
+| ts:markdown-renderer | in-review |
+| bug:empty-title-crash | done |
+| td:reduce-query-count | planned |
+| ch:update-go-version | todo |
+| spk:markdown-syntax-extension | planned |
+
+The table above is a read projection of the work items' owner state (R8: on mismatch, owner state wins). Tickets under this container: `tkt:sto-publish-post`, `tkt:sto-draft-autosave`, `tkt:ts-markdown-renderer`, `tkt:bug-empty-title-crash`.
+
+## Change Log
+
+- 2026-07-29: container created (active), locking `plan:roadmap-v1:1`.
+- 2026-08-03: `sto:publish-post` reached done; `bug:empty-title-crash` reached done.
+- 2026-08-04: `ts:markdown-renderer` entered in-review.
+- 2026-08-05: `sto:draft-autosave` in progress; projection refreshed.
