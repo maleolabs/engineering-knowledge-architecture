@@ -647,19 +647,20 @@ Domain      Execution
 ↓ View
 
 ┌─────────────┬─────────────┬─────────────┬─────────────┬─────────────┐
-│ Planned     │ Todo        │ In Progress │ In Review   │ Done        │
+│ Planned (2) │ Todo (1)    │ In Progress │ In Review   │ Done (3)    │
+│             │             │ (1)         │ (1)         │             │
 ├─────────────┼─────────────┼─────────────┼─────────────┼─────────────┤
-│ • sto-alpha │ • sto-gamma │ → sto-delta │ • sto-      │ ✓ sto-zeta  │
-│ • sto-beta  │             │             │   epsilon   │ ✓ sto-eta   │
-│             │             │             │             │ ✓ sto-theta │
+│ ▸ sto-alpha │ ▸ sto-gamma │ ▸ sto-delta │ ▸ sto-      │ ▸ sto-zeta  │
+│ ▸ sto-beta  │             │             │   epsilon   │ ▸ sto-eta   │
+│             │             │             │             │ ▸ sto-theta │
 └─────────────┴─────────────┴─────────────┴─────────────┴─────────────┘
 
 Summary:
 └── Container: eka-cli/ctr:sprint-12
-└── Active work: 5 (2 planned, 1 todo, 1 in-progress, 1 in-review)
-└── Completed work: 3
-└── Review queue: 1
-└── Overall progress: 3 of 8 work items done
+└── Active Work: 2
+└── Completed Work: 3
+└── Review Queue: 1
+└── Overall Progress: 3/8 (38%)
 └── Status: active
 ```
 

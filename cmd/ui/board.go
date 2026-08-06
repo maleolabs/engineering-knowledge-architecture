@@ -36,6 +36,11 @@ const (
 	boardMaxWidth = 16
 )
 
+// itemPrefix marks each item label on the board so list membership is
+// readable at a glance; it is part of the cell content and counts
+// toward the column width.
+const itemPrefix = "▸ " // two display cells
+
 // NewBoard starts a kanban board for the given style.
 func NewBoard(s *Style) *Board { return &Board{s: s} }
 
@@ -62,8 +67,9 @@ func (b *Board) Render() {
 		headers[i] = fmt.Sprintf("%s (%d)", c.title, len(c.items))
 		w := len(headers[i])
 		for _, it := range c.items {
-			if len(it) > w {
-				w = len(it)
+			// Each item carries the "▸ " prefix inside its cell.
+			if displayWidth(it)+displayWidth(itemPrefix) > w {
+				w = displayWidth(it) + displayWidth(itemPrefix)
 			}
 		}
 		if w < boardMinWidth {
@@ -125,7 +131,7 @@ func (b *Board) Render() {
 				}
 				return "", nil
 			}
-			return c.items[r], c.color
+			return itemPrefix + c.items[r], c.color
 		}))
 	}
 
@@ -144,14 +150,16 @@ func (b *Board) Render() {
 }
 
 // truncate shortens text to the display width, appending "…" when it
-// does not fit. Titles, ids and item labels are ASCII by the reference
-// grammar; the "…" ellipsis is the only multi-byte glyph the board
-// emits.
+// does not fit. Titles and ids are ASCII by the reference grammar; item
+// cells may carry the "▸ " prefix and the "…" ellipsis — the only
+// multi-byte glyphs the board emits — so truncation operates on runes
+// (display cells), never on bytes.
 func truncate(text string, width int) string {
-	if len(text) <= width {
+	if displayWidth(text) <= width {
 		return text
 	}
-	return text[:width-1] + "…"
+	runes := []rune(text)
+	return string(runes[:width-1]) + "…"
 }
 
 // displayWidth returns the terminal display width of text. Every glyph

@@ -22,8 +22,8 @@ func TestBoardLayout(t *testing.T) {
 		"┌──────────┬──────────┐\n" +
 		"│ Todo (2) │ Done (1) │\n" +
 		"├──────────┼──────────┤\n" +
-		"│ alpha    │ gamma    │\n" +
-		"│ beta     │          │\n" +
+		"│ ▸ alpha  │ ▸ gamma  │\n" +
+		"│ ▸ beta   │          │\n" +
 		"└──────────┴──────────┘\n"
 	if got := buf.String(); got != want {
 		t.Errorf("board layout mismatch:\n got: %q\nwant: %q", got, want)
@@ -37,7 +37,7 @@ func TestBoardEmptyColumnShowsDash(t *testing.T) {
 		AddColumn("Todo", nil, nil).
 		Render()
 	out := buf.String()
-	if !strings.Contains(out, "│ alpha") {
+	if !strings.Contains(out, "│ ▸ alpha") {
 		t.Errorf("filled column must show its item:\n%s", out)
 	}
 	if !strings.Contains(out, "—") {
@@ -81,8 +81,8 @@ func TestBoardTruncationCappedAtMaxWidth(t *testing.T) {
 	if !strings.Contains(out, "…") {
 		t.Errorf("truncated item must carry the ellipsis:\n%s", out)
 	}
-	// Display width of the truncated cell: 15 x + ellipsis = 16.
-	if !strings.Contains(out, "xxxxxxxxxxxxxxx…") {
+	// Display width of the truncated cell: "▸ " + 14 x + ellipsis = 16.
+	if !strings.Contains(out, "▸ xxxxxxxxxxxxx…") {
 		t.Errorf("truncation must cap at 16 display cells:\n%s", out)
 	}
 }

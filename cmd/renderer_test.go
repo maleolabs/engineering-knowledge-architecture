@@ -54,9 +54,9 @@ func TestRenderExecutionBoard(t *testing.T) {
 		"│ In Progress (1)",
 		"│ In Review (0)",
 		"│ Done (1)",
-		"│ alpha",
-		"│ beta",
-		"│ gamma",
+		"│ ▸ alpha",
+		"│ ▸ beta",
+		"│ ▸ gamma",
 		"—", // empty columns
 		"2 tickets project these work items",
 		"Active Work: 1",
