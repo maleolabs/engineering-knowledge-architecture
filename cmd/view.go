@@ -19,10 +19,15 @@ import (
 // conformance gate, renders the projection and maps the result to the
 // exit code contract.
 //
+// The projections are domain-first: discovery, architecture, planning,
+// execution and operations render one Engineering Domain each; ticket
+// renders a single ticket. The former sprint and wave projections
+// remain registered as aliases of execution (identical output).
+//
 // Exit codes:
 //
 //	0  projection produced (including empty projections: no active
-//	   container, no tickets)
+//	   container, no domain artifacts, no tickets)
 //	1  repository validation failed: no projection is produced (the
 //	   full report is printed)
 //	2  usage or internal error (unknown projection, missing or unknown
@@ -39,17 +44,33 @@ The repository is validated against the conformance rules first
 (R0-R12); a repository with blocking violations is refused and no
 projection is produced. Warnings never block a projection.
 
-Projections:
+Projections (domain-first):
 
-  sprint   the active execution container's work items, grouped by
-           execution state (planned/todo/in-progress/in-review/done)
-  wave     the active container's tickets and work item progress
-  ticket   one ticket's projected status, derived from the referenced
-           work item's execution state (ticket body content is never
-           read)
+  discovery    the Discovery domain: vis-, str-, req-, fnd- artifacts
+               grouped by type with their content states
+  architecture the Architecture domain: adr-, dec-, arc-, spec-, std-,
+               gls- artifacts grouped by type with their content states
+               (Decisions merge adr- and dec-)
+  planning     the Planning domain: scp-, epc-, plan-, trc- artifacts
+               grouped by type with content state, planning state and
+               phase context
+  execution    the active execution container: its tickets with the
+               status projected from their work items, and its work
+               items grouped by execution state
+               (planned/todo/in-progress/in-review/done)
+  operations   the Operations domain: run-, rel- artifacts grouped by
+               type with their content states
+  ticket       one ticket's projected status, derived from the
+               referenced work item's execution state (ticket body
+               content is never read)
+
+Aliases:
+
+  sprint, wave resolve to the execution projection (identical output)
 
 The target argument is required by the ticket projection only
-(a bare ticket id, tkt-<id> or tkt:<id>); sprint and wave ignore it.
+(a bare ticket id, tkt-<id> or tkt:<id>); the domain and execution
+projections ignore it.
 
 With no arguments the available projections are listed.
 
@@ -59,8 +80,8 @@ Exit codes:
   2  usage or internal error (unknown projection, missing or unknown
      ticket target)`,
 		Example: `  eka view
-  eka view sprint
-  eka view wave
+  eka view execution
+  eka view planning
   eka view ticket tkt-sto-alpha
   eka view ticket sto-alpha`,
 		Args: cobra.MaximumNArgs(2),
@@ -72,7 +93,7 @@ Exit codes:
 			name := args[0]
 			if !view.IsProjection(name) {
 				return fmt.Errorf("unknown projection %q — available projections: %s",
-					name, strings.Join(view.Projections(), ", "))
+					name, view.HelpList())
 			}
 			target := ""
 			if len(args) == 2 {
@@ -106,7 +127,7 @@ Exit codes:
 			if err != nil {
 				if errors.Is(err, view.ErrUnknownProjection) {
 					return fmt.Errorf("unknown projection %q — available projections: %s",
-						name, strings.Join(view.Projections(), ", "))
+						name, view.HelpList())
 				}
 				return err // TargetNotFoundError etc. map to exit 2.
 			}
@@ -119,24 +140,32 @@ Exit codes:
 // viewDescriptions are the one-line projection descriptions used by the
 // no-argument landing.
 var viewDescriptions = map[string]string{
-	"sprint": "active container sprint board (work items by execution state)",
-	"wave":   "active container wave: tickets and work item progress",
-	"ticket": "one ticket's projected status from its work item",
+	"discovery":    "Discovery domain artifacts (vis-, str-, req-, fnd-)",
+	"architecture": "Architecture domain artifacts (adr-, dec-, arc-, spec-, std-, gls-)",
+	"planning":     "Planning domain artifacts (scp-, epc-, plan-, trc-)",
+	"execution":    "active container: tickets and work items by execution state",
+	"operations":   "Operations domain artifacts (run-, rel-)",
+	"ticket":       "one ticket's projected status from its work item",
 }
 
 // printViewLanding renders the calm no-argument orientation: the
-// available projections and usage pointers. Informational output —
-// exits 0, deterministic.
+// available projections (canonical + aliases) and usage pointers.
+// Informational output — exits 0, deterministic.
 func printViewLanding(s *ui.Style) {
 	fmt.Fprintln(s.W, s.Accent("Knowledge Projections"))
 	fmt.Fprintln(s.W)
 	fmt.Fprintln(s.W, "  The EKA Knowledge Projection Engine: read-only views over the")
 	fmt.Fprintln(s.W, "  Engineering Knowledge Model — repository artifacts and their")
-	fmt.Fprintln(s.W, "  relationships, projected by state.")
+	fmt.Fprintln(s.W, "  relationships, projected by domain and state.")
 	fmt.Fprintln(s.W)
 	fmt.Fprintln(s.W, "Projections")
 	for _, name := range view.Projections() {
-		fmt.Fprintf(s.W, "  %-10s %s\n", name, viewDescriptions[name])
+		fmt.Fprintf(s.W, "  %-12s %s\n", name, viewDescriptions[name])
+	}
+	fmt.Fprintln(s.W)
+	fmt.Fprintln(s.W, "Aliases")
+	for _, alias := range view.Aliases() {
+		fmt.Fprintf(s.W, "  %-12s → %s\n", alias, view.AliasTarget(alias))
 	}
 	fmt.Fprintln(s.W)
 	fmt.Fprintln(s.W, "Usage")
@@ -146,16 +175,22 @@ func printViewLanding(s *ui.Style) {
 }
 
 // renderView dispatches to the concrete projection renderer. The
-// registry is closed over the three projections; an unknown concrete
-// type is a programming error, not user input.
+// registry is closed over the six canonical projections; an unknown
+// concrete type is a programming error, not user input.
 func renderView(s *ui.Style, g *view.Graph, p view.Projection) {
 	switch p := p.(type) {
-	case *view.SprintProjection:
-		renderSprint(s, g, p)
-	case *view.WaveProjection:
-		renderWave(s, g, p)
+	case *view.ExecutionProjection:
+		renderExecution(s, g, p)
 	case *view.TicketProjection:
 		renderTicket(s, g, p)
+	case *view.PlanningProjection:
+		renderPlanning(s, g, p)
+	case *view.ArchitectureProjection:
+		renderArchitecture(s, g, p)
+	case *view.DiscoveryProjection:
+		renderDiscovery(s, g, p)
+	case *view.OperationsProjection:
+		renderOperations(s, g, p)
 	default:
 		fmt.Fprintln(s.W, s.Error("cannot render projection"))
 	}
@@ -177,6 +212,45 @@ func stateColor(s *ui.Style, state string) func(string) string {
 	case "done":
 		return s.Success
 	case "unresolved":
+		return s.Warning
+	default:
+		return s.Dim
+	}
+}
+
+// contentStateColor returns the presentation color of a content-state
+// value: draft dim, review info, approved success, amended warning,
+// proposed info, accepted success, superseded warning.
+func contentStateColor(s *ui.Style, state string) func(string) string {
+	switch state {
+	case "draft":
+		return s.Dim
+	case "review":
+		return s.Info
+	case "approved":
+		return s.Success
+	case "amended":
+		return s.Warning
+	case "proposed":
+		return s.Info
+	case "accepted":
+		return s.Success
+	case "superseded":
+		return s.Warning
+	default:
+		return s.Dim
+	}
+}
+
+// planningStateColor returns the presentation color of a planning-state
+// value: draft dim, approved success, immutable warning.
+func planningStateColor(s *ui.Style, state string) func(string) string {
+	switch state {
+	case "draft":
+		return s.Dim
+	case "approved":
+		return s.Success
+	case "immutable":
 		return s.Warning
 	default:
 		return s.Dim
@@ -215,12 +289,12 @@ func renderStateColumns(s *ui.Style, cols view.StateColumns) {
 	}
 }
 
-func renderSprint(s *ui.Style, g *view.Graph, p *view.SprintProjection) {
+func renderExecution(s *ui.Style, g *view.Graph, p *view.ExecutionProjection) {
 	container := "none"
 	if p.Container != nil {
 		container = p.Container.Identity
 	}
-	ui.NewHeader(s, "Sprint").
+	ui.NewHeader(s, "Execution").
 		Add("Container", container).
 		Add("Repository", g.Root()).
 		Add("Knowledge", "EKA v"+standardVersion).
@@ -234,59 +308,18 @@ func renderSprint(s *ui.Style, g *view.Graph, p *view.SprintProjection) {
 		// Empty projection: a calm line, still exit 0 with the summary.
 		fmt.Fprintf(s.W, "%s\n", s.Dim("No active container."))
 	} else {
-		renderStateColumns(s, p.Columns)
-	}
-	renderSprintSummary(s, p)
-}
-
-func renderSprintSummary(s *ui.Style, p *view.SprintProjection) {
-	container, status := "none", "no active container"
-	if p.Container != nil {
-		container = p.Container.Identity
-		status = p.Container.State
-	}
-	ui.NewSummary(s).
-		Add("Container", container).
-		Add("Work items", strconv.Itoa(p.Total)).
-		Add("In progress", strconv.Itoa(p.Columns.Count("in-progress"))).
-		Add("Done", strconv.Itoa(p.Columns.Count("done"))).
-		Add("Tickets", strconv.Itoa(p.Tickets)).
-		Add("Status", status).
-		Render()
-}
-
-func renderWave(s *ui.Style, g *view.Graph, p *view.WaveProjection) {
-	container := "none"
-	if p.Container != nil {
-		container = p.Container.Identity
-	}
-	ui.NewHeader(s, "Wave").
-		Add("Container", container).
-		Add("Repository", g.Root()).
-		Add("Knowledge", "EKA v"+standardVersion).
-		Add("Domain", "Execution").
-		Pipeline("View").
-		Render()
-	if p.MultipleActive {
-		fmt.Fprintf(s.W, "%s\n", s.Warning("Multiple active containers — showing "+p.Container.Identity))
-	}
-	if p.Container == nil {
-		fmt.Fprintf(s.W, "%s\n", s.Dim("No active container."))
-	} else {
 		fmt.Fprintf(s.W, "%s\n", s.Info(fmt.Sprintf("Tickets (%d)", len(p.Tickets))))
 		for _, t := range p.Tickets {
 			fmt.Fprintf(s.W, "  %s %s %s\n", stateMark(s, t.Projected), t.Identity,
 				stateColor(s, t.Projected)("("+t.Projected+")"))
 		}
-		fmt.Fprintf(s.W, "\n%s\n", s.Info("Progress"))
-		for _, col := range p.Columns {
-			fmt.Fprintf(s.W, "  %-11s %d\n", stateColor(s, col.State)(col.State), len(col.WorkItems))
-		}
+		fmt.Fprintln(s.W)
+		renderStateColumns(s, p.Columns)
 	}
-	renderWaveSummary(s, p)
+	renderExecutionSummary(s, p)
 }
 
-func renderWaveSummary(s *ui.Style, p *view.WaveProjection) {
+func renderExecutionSummary(s *ui.Style, p *view.ExecutionProjection) {
 	container, status := "none", "no active container"
 	if p.Container != nil {
 		container = p.Container.Identity
@@ -300,6 +333,99 @@ func renderWaveSummary(s *ui.Style, p *view.WaveProjection) {
 		Add("Done", strconv.Itoa(p.Columns.Count("done"))).
 		Add("Status", status).
 		Render()
+}
+
+// renderDomainArtifact renders one artifact line of a domain group:
+// identity plus the state values relevant to the group, colored by
+// state value. The part order is fixed: content-state, planning-state,
+// phase — never map iteration.
+func renderDomainArtifact(s *ui.Style, a view.DomainArtifact) {
+	var parts []string
+	if a.HasContentState {
+		parts = append(parts, contentStateColor(s, a.ContentState)(a.ContentState))
+	}
+	if a.HasPlanningState {
+		parts = append(parts, "planning-state "+planningStateColor(s, a.PlanningState)(a.PlanningState))
+	}
+	if a.HasPhase {
+		parts = append(parts, "phase "+a.Phase)
+	}
+	line := "  " + ui.IconBullet + " " + a.Identity
+	if len(parts) > 0 {
+		line += "  (" + strings.Join(parts, ", ") + ")"
+	}
+	fmt.Fprintln(s.W, line)
+}
+
+// renderDomainProjection renders one domain projection: the header
+// (Domain row = the projection's domain), the artifact groups in fixed
+// order, the calm empty-domain line, and the summary. Empty groups are
+// skipped; a domain with no artifacts at all renders a single calm line
+// and still exits 0.
+func renderDomainProjection(s *ui.Style, g *view.Graph, domain string, groups []view.Group, renderSummary func()) {
+	ui.NewHeader(s, domain).
+		Add("Repository", g.Root()).
+		Add("Knowledge", "EKA v"+standardVersion).
+		Add("Domain", domain).
+		Pipeline("View").
+		Render()
+	if view.GroupTotal(groups) == 0 {
+		fmt.Fprintf(s.W, "%s\n", s.Dim("No "+domain+" artifacts."))
+	} else {
+		for _, gr := range groups {
+			if len(gr.Artifacts) == 0 {
+				continue
+			}
+			fmt.Fprintf(s.W, "%s\n", s.Info(gr.Name))
+			for _, a := range gr.Artifacts {
+				renderDomainArtifact(s, a)
+			}
+			fmt.Fprintln(s.W)
+		}
+	}
+	renderSummary()
+}
+
+// renderGroupSummary renders the per-group artifact counts.
+func renderGroupSummary(s *ui.Style, groups []view.Group) {
+	sm := ui.NewSummary(s)
+	for _, gr := range groups {
+		sm.Add(gr.Name, strconv.Itoa(len(gr.Artifacts)))
+	}
+	sm.Render()
+}
+
+func renderPlanning(s *ui.Style, g *view.Graph, p *view.PlanningProjection) {
+	renderDomainProjection(s, g, "Planning", p.Groups, func() {
+		byState := make([]string, 0, len(p.PlansByState))
+		for _, sc := range p.PlansByState {
+			byState = append(byState, fmt.Sprintf("%s %d", sc.State, sc.Count))
+		}
+		sm := ui.NewSummary(s)
+		for _, gr := range p.Groups {
+			sm.Add(gr.Name, strconv.Itoa(len(gr.Artifacts)))
+		}
+		sm.Add("Plans by state", strings.Join(byState, ", "))
+		sm.Render()
+	})
+}
+
+func renderArchitecture(s *ui.Style, g *view.Graph, p *view.ArchitectureProjection) {
+	renderDomainProjection(s, g, "Architecture", p.Groups, func() {
+		renderGroupSummary(s, p.Groups)
+	})
+}
+
+func renderDiscovery(s *ui.Style, g *view.Graph, p *view.DiscoveryProjection) {
+	renderDomainProjection(s, g, "Discovery", p.Groups, func() {
+		renderGroupSummary(s, p.Groups)
+	})
+}
+
+func renderOperations(s *ui.Style, g *view.Graph, p *view.OperationsProjection) {
+	renderDomainProjection(s, g, "Operations", p.Groups, func() {
+		renderGroupSummary(s, p.Groups)
+	})
 }
 
 func renderTicket(s *ui.Style, g *view.Graph, p *view.TicketProjection) {

@@ -11,18 +11,26 @@ import (
 // named projections the engine can build. Each projection is an
 // independent builder function; a future projection is added by
 // registering a builder here — there is no pipeline to redesign.
+//
+// The registry is domain-first: the canonical projections are the five
+// Engineering Domains (discovery, architecture, planning, execution,
+// operations) plus the ticket projection. The former sprint and wave
+// projections are registered as aliases of execution: they resolve to
+// the same builder, so `eka view sprint` renders byte-identical output
+// to `eka view execution`.
 
 // Projection is one view over the Knowledge Graph. The model types are
 // plain data with deterministic ordering; rendering is the caller's
 // concern.
 type Projection interface {
-	// Name returns the projection's registry name ("sprint", "wave",
-	// "ticket").
+	// Name returns the projection's registry name ("execution",
+	// "ticket", "planning", ...). Aliases resolve to the canonical
+	// projection, so the name is always canonical.
 	Name() string
 }
 
 // ErrUnknownProjection is returned by Build for a projection name that
-// is not registered.
+// is not registered (neither canonical nor alias).
 var ErrUnknownProjection = errors.New("unknown projection")
 
 // TargetNotFoundError reports an unresolvable ticket target with the
@@ -52,15 +60,28 @@ func (e *TargetNotFoundError) Error() string {
 // it.
 type builder func(g *Graph, target string) (Projection, error)
 
-// registry maps projection names to their independent builders.
+// registry maps the canonical projection names to their independent
+// builders.
 var registry = map[string]builder{
-	"sprint": buildSprint,
-	"wave":   buildWave,
-	"ticket": buildTicket,
+	"discovery":    buildDiscovery,
+	"architecture": buildArchitecture,
+	"planning":     buildPlanning,
+	"execution":    buildExecution,
+	"operations":   buildOperations,
+	"ticket":       buildTicket,
 }
 
-// Projections returns the registered projection names, sorted —
-// deterministic regardless of map iteration order.
+// aliases maps alias names to their canonical projection. An alias is
+// a registered projection name (IsProjection reports it) that resolves
+// to the canonical builder, producing identical output.
+var aliases = map[string]string{
+	"sprint": "execution",
+	"wave":   "execution",
+}
+
+// Projections returns the canonical projection names, sorted —
+// deterministic regardless of map iteration order. Aliases are
+// excluded; see Aliases.
 func Projections() []string {
 	names := make([]string, 0, len(registry))
 	for name := range registry {
@@ -70,20 +91,56 @@ func Projections() []string {
 	return names
 }
 
-// IsProjection reports whether name is a registered projection.
+// Aliases returns the registered alias names, sorted.
+func Aliases() []string {
+	names := make([]string, 0, len(aliases))
+	for name := range aliases {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	return names
+}
+
+// AliasTarget returns the canonical projection an alias resolves to,
+// or "" when name is not a registered alias.
+func AliasTarget(name string) string {
+	return aliases[name]
+}
+
+// HelpList renders the canonical projections and their aliases for
+// diagnostics: "architecture, discovery, execution, operations,
+// planning, ticket (aliases: sprint, wave)". Deterministic.
+func HelpList() string {
+	return fmt.Sprintf("%s (aliases: %s)",
+		strings.Join(Projections(), ", "), strings.Join(Aliases(), ", "))
+}
+
+// IsProjection reports whether name is a registered projection —
+// canonical or alias.
 func IsProjection(name string) bool {
-	_, ok := registry[name]
+	if _, ok := registry[name]; ok {
+		return true
+	}
+	_, ok := aliases[name]
 	return ok
 }
 
-// Build constructs the named projection over the graph. It returns
-// ErrUnknownProjection (wrapped) for unregistered names and
-// *TargetNotFoundError when the ticket target does not resolve. A
-// missing target on a target-requiring projection is an error.
+// Build constructs the named projection over the graph. An alias name
+// resolves to its canonical projection, so the returned model and its
+// Name are always canonical. It returns ErrUnknownProjection (wrapped,
+// with the canonical projections and aliases listed) for unregistered
+// names and *TargetNotFoundError when the ticket target does not
+// resolve. A missing target on a target-requiring projection is an
+// error.
 func Build(name string, g *Graph, target string) (Projection, error) {
 	b, ok := registry[name]
 	if !ok {
-		return nil, fmt.Errorf("%w: %q", ErrUnknownProjection, name)
+		if canonical, isAlias := aliases[name]; isAlias {
+			b = registry[canonical]
+		} else {
+			return nil, fmt.Errorf("%w: %q — available projections: %s",
+				ErrUnknownProjection, name, HelpList())
+		}
 	}
 	return b(g, target)
 }

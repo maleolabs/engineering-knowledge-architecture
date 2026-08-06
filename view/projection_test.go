@@ -8,13 +8,18 @@ import (
 )
 
 // TestProjectionsListsRegisteredNames verifies the registry surface:
-// sorted, deterministic, closed over the three projections.
+// canonical names sorted (aliases excluded), aliases listed separately,
+// and IsProjection accepting both.
 func TestProjectionsListsRegisteredNames(t *testing.T) {
-	want := []string{"sprint", "ticket", "wave"}
+	want := []string{"architecture", "discovery", "execution", "operations", "planning", "ticket"}
 	if got := Projections(); !reflect.DeepEqual(got, want) {
 		t.Errorf("Projections() = %v, want %v", got, want)
 	}
-	for _, name := range want {
+	wantAliases := []string{"sprint", "wave"}
+	if got := Aliases(); !reflect.DeepEqual(got, wantAliases) {
+		t.Errorf("Aliases() = %v, want %v", got, wantAliases)
+	}
+	for _, name := range append(want, wantAliases...) {
 		if !IsProjection(name) {
 			t.Errorf("IsProjection(%q) = false", name)
 		}
@@ -24,8 +29,33 @@ func TestProjectionsListsRegisteredNames(t *testing.T) {
 	}
 }
 
+// TestAliasTarget verifies the alias -> canonical mapping used by the
+// CLI help.
+func TestAliasTarget(t *testing.T) {
+	for alias, want := range map[string]string{"sprint": "execution", "wave": "execution"} {
+		if got := AliasTarget(alias); got != want {
+			t.Errorf("AliasTarget(%q) = %q, want %q", alias, got, want)
+		}
+	}
+	for _, name := range []string{"execution", "bogus"} {
+		if got := AliasTarget(name); got != "" {
+			t.Errorf("AliasTarget(%q) = %q, want \"\"", name, got)
+		}
+	}
+}
+
+// TestHelpList verifies the deterministic diagnostic listing canonical
+// projections plus aliases.
+func TestHelpList(t *testing.T) {
+	want := "architecture, discovery, execution, operations, planning, ticket (aliases: sprint, wave)"
+	if got := HelpList(); got != want {
+		t.Errorf("HelpList() = %q, want %q", got, want)
+	}
+}
+
 // TestUnknownProjection verifies Build's error contract for unregistered
-// names.
+// names: ErrUnknownProjection, wrapped with the canonical projections
+// and aliases listed.
 func TestUnknownProjection(t *testing.T) {
 	g := loadFixture(t, "valid")
 	_, err := Build("bogus", g, "")
@@ -34,6 +64,14 @@ func TestUnknownProjection(t *testing.T) {
 	}
 	if err == nil || !strings.Contains(err.Error(), "bogus") {
 		t.Errorf("Build(bogus) error must name the projection, got %v", err)
+	}
+	for _, want := range []string{
+		"architecture", "discovery", "execution", "operations", "planning", "ticket",
+		"sprint", "wave",
+	} {
+		if err == nil || !strings.Contains(err.Error(), want) {
+			t.Errorf("Build(bogus) error must list %q, got %v", want, err)
+		}
 	}
 }
 
@@ -80,16 +118,16 @@ func TestTargetRequired(t *testing.T) {
 	}
 }
 
-// TestSprintIgnoresTarget verifies sprint/wave ignore the optional
-// target argument.
-func TestSprintIgnoresTarget(t *testing.T) {
+// TestAliasesIgnoreTarget verifies the execution aliases resolve to the
+// canonical projection and ignore the optional target argument.
+func TestAliasesIgnoreTarget(t *testing.T) {
 	g := loadFixture(t, "valid")
 	p, err := Build("sprint", g, "tkt-ghost")
 	if err != nil {
 		t.Fatalf("sprint with a target must not fail: %v", err)
 	}
-	if p.Name() != "sprint" {
-		t.Errorf("Name() = %q, want sprint", p.Name())
+	if p.Name() != "execution" {
+		t.Errorf("Build(sprint).Name() = %q, want execution (canonical)", p.Name())
 	}
 	if _, err := Build("wave", g, "anything"); err != nil {
 		t.Errorf("wave with a target must not fail: %v", err)

@@ -118,8 +118,11 @@ func TestDeterministicOrdering(t *testing.T) {
 		return p
 	}
 	for _, tc := range []struct{ name, target string }{
-		{"sprint", ""},
-		{"wave", ""},
+		{"discovery", ""},
+		{"architecture", ""},
+		{"planning", ""},
+		{"execution", ""},
+		{"operations", ""},
 		{"ticket", "tkt-ts-gamma"},
 	} {
 		a, b := build(tc.name, tc.target), build(tc.name, tc.target)

@@ -204,13 +204,13 @@ func TestTicketTargetsFirstResolvableWins(t *testing.T) {
 	if !reflect.DeepEqual(container, c2) || !reflect.DeepEqual(workItem, w2) {
 		t.Error("ticketTargets is not deterministic")
 	}
-	// The wave projection surfaces the same deterministic pick.
-	p, err := Build("wave", g, "")
+	// The execution projection surfaces the same deterministic pick.
+	p, err := Build("execution", g, "")
 	if err != nil {
-		t.Fatalf("Build(wave): %v", err)
+		t.Fatalf("Build(execution): %v", err)
 	}
-	wave := p.(*WaveProjection)
-	for _, tkt := range wave.Tickets {
+	exec := p.(*ExecutionProjection)
+	for _, tkt := range exec.Tickets {
 		if tkt.ID == "sto-beta-multi" && tkt.Projected != "todo" {
 			t.Errorf("tkt:sto-beta-multi projects %q, want todo (sto:beta wins over ts:gamma)", tkt.Projected)
 		}
