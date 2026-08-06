@@ -108,6 +108,8 @@ Extension of the registry is the only path for new representation names. It is *
 - Aliases are never frontmatter values: unknown aliases in frontmatter are rejected by R0 — the type token is the only valid type value.
 - A rejected proposal is rejected for a stated reason; resubmission requires the reason to be addressed.
 
+**CLI-surface aliases.** Command-line projections follow the same convention-layer philosophy: the CLI accepts methodology terms as **projection aliases** — `eka view sprint` and `eka view wave` resolve to the canonical `execution` projection with identical output (see `reference/cli.md`, `eka view` section). These are CLI-surface aliases, not artifact aliases: they map a methodology term onto a canonical projection object, never onto Identity, State, or an Artifact type. They therefore need **no registry row** — this registry governs artifact-level Representation Aliases (token + Engineering Domain); CLI aliases are command-line conveniences documented in the CLI reference. This note exists only to prevent confusion between the two alias kinds.
+
 ## 4. Methodology Conventions
 
 Scrum, Kanban, Shape Up, and internal workflows are **convention layers over EKA** (Core §8.1). They map their terminology onto this registry; they may add aliases through the extension process (Section 3); they never extend the canonical domain model.

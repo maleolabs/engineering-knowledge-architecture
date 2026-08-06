@@ -99,13 +99,13 @@ Together: the domain says *what kind of knowledge it is*, the stratum says *how 
 
 ### 3.4 Project — read-only views
 
-**What happens.** `eka view` projects the repository without writing anything: **sprint**, **wave**, and **ticket** are Execution projections — read-only views over Execution-domain artifacts (`ctr-`, `tkt-`, work items), derived from the model (identity, state, relationships), never from markdown text.
+**What happens.** `eka view` projects the repository without writing anything: the **domain projections** — `discovery`, `architecture`, `planning`, `execution`, `operations` — plus the **ticket** projection. Each domain projection is a read-only view over the artifacts of one Engineering Domain (Core v1.1 §8.1), derived from the model (identity, state, relationships), never from markdown text. `execution` shows the active container's tickets and work items by Execution State; `planning` groups scope/epic/plan/traceability artifacts by Planning State and phase; `architecture` groups decisions, specifications, and standards by Content State; `ticket <id>` projects one ticket's status from its owner work item.
 
-**What you do.** Read projections to see the current execution picture — what is planned, in progress, done. Never edit a projection: projections are refreshed on read, not edited (P6). A projection has no State of its own and never becomes a writer.
+**What you do.** Read projections to see the current picture — what is planned, in progress, approved, done. Never edit a projection: projections are refreshed on read, not edited (P6). A projection has no State of its own and never becomes a writer.
 
-**CLI participation.** `eka view sprint` / `eka view wave` / `eka view ticket <id>` — the Knowledge Projection Engine: conformance-gated, deterministic, read-only.
+**CLI participation.** `eka view execution` / `eka view planning` / `eka view architecture` / `eka view discovery` / `eka view operations` / `eka view ticket <id>` — the Knowledge Projection Engine: conformance-gated, deterministic, read-only. The methodology names still work: `eka view sprint` and `eka view wave` are CLI-level aliases that resolve to the `execution` projection with identical output — the same convention-layer philosophy as the Representation Alias Registry: methodology terms stay convention-layer names, the projection model stays canonical.
 
-**AI participation.** Projections give AI structured context: deterministic, relationship-derived views of execution state, free of markdown noise — a reliable input for agents that need to know the current state of work.
+**AI participation.** Projections give AI structured context: deterministic, relationship-derived views of engineering knowledge by domain, free of markdown noise — a reliable input for agents that need to know the current state of work.
 
 ### 3.5 Exchange — portable knowledge packages
 
@@ -138,7 +138,7 @@ A typical session, end to end:
 1. **Initialize** — `eka init my-project` analyzes the workspace, generates the repository from the Reference Skeleton, and validates the result.
 2. **Write your first artifacts** — a requirement under `docs/requirements/`, a decision under `docs/decisions/`, a runbook under `docs/operations/`, following the conventions in [docs/README.md](README.md): identity frontmatter, classification, relationships.
 3. **Validate before commit** — `eka validate` gives the verdict; fix errors, consider warnings.
-4. **See the execution picture** — `eka view sprint` shows the active container's work by execution state; `eka view ticket <id>` shows one ticket's projected status.
+4. **See the execution picture** — `eka view execution` shows the active container's work by execution state (`eka view sprint` and `eka view wave` are aliases for it); `eka view ticket <id>` shows one ticket's projected status.
 5. **Exchange when needed** — `eka export` produces a portable package; another repository receives it with `eka import`.
 
 **Adopting into an existing project** is the same command: `eka init` detects the workspace (README, `docs/`, existing EKA markers), reuses what already exists, and only generates what is missing. It is idempotent and never overwrites user content — running it twice changes nothing.
@@ -150,7 +150,7 @@ You never manipulate the model directly: you edit Markdown, and the CLI keeps th
 AI participates in every lifecycle step, through the same model:
 
 - **Same interface, same conventions.** AI reads and writes Markdown with the same frontmatter, state fields, and relationships as humans. There is no separate AI format and no separate AI lane.
-- **Structured context.** Projections (`eka view`) give AI deterministic, relationship-derived views of execution state; Exchange Packages give AI portable, self-contained knowledge units.
+- **Structured context.** Projections (`eka view`) give AI deterministic, relationship-derived views of engineering knowledge — per-domain views (`discovery`, `architecture`, `planning`, `execution`, `operations`) and per-ticket status; Exchange Packages give AI portable, self-contained knowledge units.
 - **Distillation support.** AI can propose and draft distillation — turning session notes into a decision, findings into a runbook — but the distillation obligation and the governance channel remain.
 - **Validation is never bypassed.** Whatever produces an artifact — human or AI — the R0–R12 gate applies identically (P16). AI is a faster author and reader, not an exception.
 

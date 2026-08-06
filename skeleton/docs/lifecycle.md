@@ -46,13 +46,16 @@ Before commit, run the mechanical checklist in [exchange/validation.md](exchange
 
 ## Project
 
-`eka view` projects the repository without writing anything:
+`eka view` projects the repository without writing anything — one projection per Engineering Domain, plus the ticket projection:
 
-- **`eka view sprint`** — the active Execution Container's work items by Execution State columns.
-- **`eka view wave`** — the active container's tickets with projected status.
+- **`eka view discovery`** — Discovery artifacts (`vis-`, `str-`, `req-`, `fnd-`).
+- **`eka view architecture`** — Architecture artifacts (`adr-`, `dec-`, `arc-`, `spec-`, `std-`, `gls-`), grouped by Content State.
+- **`eka view planning`** — Planning artifacts (`scp-`, `epc-`, `plan-`, `trc-`), grouped by Planning State and phase.
+- **`eka view execution`** — the active Execution Container's tickets and work items by Execution State columns.
+- **`eka view operations`** — Operations artifacts (`run-`, `rel-`).
 - **`eka view ticket <id>`** — one ticket's projected status, derived from owner state.
 
-Sprint, wave, and ticket are **Execution projections** — read-only views over Execution-domain artifacts (`ctr-`, `tkt-`, work items). The context header carries a `Domain: Execution` row. **A projection never writes** (P6): it has no State of its own, and refresh-on-read is the only policy. Projections are how Execution knowledge is *seen*; they are not how it is *stored*.
+The projections are **read-only views over one Engineering Domain** (Core v1.1 §8.1): domain projections select artifacts by the token → domain mapping, never by markdown parsing, and the context header carries a `Domain: <domain>` row. `eka view sprint` and `eka view wave` are CLI-level aliases that resolve to the `execution` projection with identical output. **A projection never writes** (P6): it has no State of its own, and refresh-on-read is the only policy. Projections are how knowledge is *seen*; they are not how it is *stored*.
 
 ## Exchange
 
@@ -82,7 +85,7 @@ Each lifecycle step is dominated by one Engineering Domain — the domain whose 
 | **Produce** | Discovery (+ Execution) | needs and findings (`req-`, `fnd-`); ephemeral session/spike knowledge |
 | **Organize** | Architecture | durable form: `arc-`, `adr-`, `spec-`, `std-`, `gls-` |
 | **Validate** | all (Exchange Layer) | the R0–R12 verdict over every artifact |
-| **Project** | Execution | sprint/wave/ticket views — read-only |
+| **Project** | all (one projection per domain) | domain projections (discovery / architecture / planning / execution / operations) + ticket views — read-only |
 | **Exchange** | all (Exchange Layer) | packages carrying every domain |
 | **Consume** | Operations (+ Execution) | `run-` executed; tickets read |
 

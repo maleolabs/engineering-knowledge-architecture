@@ -19,7 +19,8 @@ func viewFixtureAbs(t *testing.T, name string) string {
 }
 
 // TestViewNoArgsListsProjections: `eka view` without arguments is a
-// calm mini-landing listing the available projections — exit 0.
+// calm mini-landing listing the canonical projections and their
+// aliases — exit 0.
 func TestViewNoArgsListsProjections(t *testing.T) {
 	code, out, errText := runIn([]string{"view"})
 	if code != 0 {
@@ -28,7 +29,12 @@ func TestViewNoArgsListsProjections(t *testing.T) {
 	if errText != "" {
 		t.Errorf("stderr must be empty, got %q", errText)
 	}
-	for _, want := range []string{"Knowledge Projections", "sprint", "wave", "ticket", "eka view ticket <tkt-id>"} {
+	for _, want := range []string{
+		"Knowledge Projections",
+		"discovery", "architecture", "planning", "execution", "operations", "ticket",
+		"Aliases", "sprint", "wave",
+		"eka view ticket <tkt-id>",
+	} {
 		if !strings.Contains(out, want) {
 			t.Errorf("landing missing %q:\n%s", want, out)
 		}
@@ -46,7 +52,7 @@ func TestViewHelpExitsZero(t *testing.T) {
 		if code != 0 {
 			t.Errorf("args %v: exit = %d, want 0", args, code)
 		}
-		for _, want := range []string{"eka view", "sprint", "wave", "ticket"} {
+		for _, want := range []string{"eka view", "discovery", "architecture", "planning", "execution", "operations", "ticket", "sprint", "wave"} {
 			if !strings.Contains(text, want) {
 				t.Errorf("args %v: help missing %q:\n%s", args, want, text)
 			}
@@ -55,7 +61,8 @@ func TestViewHelpExitsZero(t *testing.T) {
 }
 
 // TestViewUnknownProjectionExitsTwo: an unregistered projection is a
-// usage error with the available list — exit 2, no repository access.
+// usage error with the available list (canonical + aliases) — exit 2,
+// no repository access.
 func TestViewUnknownProjectionExitsTwo(t *testing.T) {
 	code, _, errText := runIn([]string{"view", "bogus"})
 	if code != 2 {
@@ -64,8 +71,8 @@ func TestViewUnknownProjectionExitsTwo(t *testing.T) {
 	if !strings.Contains(errText, "unknown projection \"bogus\"") {
 		t.Errorf("stderr must name the projection, got %q", errText)
 	}
-	if !strings.Contains(errText, "available projections: sprint, ticket, wave") {
-		t.Errorf("stderr must list the available projections, got %q", errText)
+	if !strings.Contains(errText, "available projections: architecture, discovery, execution, operations, planning, ticket (aliases: sprint, wave)") {
+		t.Errorf("stderr must list canonical projections and aliases, got %q", errText)
 	}
 }
 
@@ -83,27 +90,31 @@ func TestViewTicketMissingTargetExitsTwo(t *testing.T) {
 
 // TestViewTooManyArgsExitsTwo: at most one projection and one target.
 func TestViewTooManyArgsExitsTwo(t *testing.T) {
-	code, _, _ := runIn([]string{"view", "sprint", "a", "b"})
+	code, _, _ := runIn([]string{"view", "execution", "a", "b"})
 	if code != 2 {
 		t.Errorf("exit = %d, want 2", code)
 	}
 }
 
-// TestViewSprintHappyPath: the sprint projection of a conformant
-// fixture — exit 0 with the header, columns and summary.
-func TestViewSprintHappyPath(t *testing.T) {
+// TestViewExecutionHappyPath: the execution projection of a conformant
+// fixture — header, tickets with projected status, state columns and
+// the merged summary — exit 0.
+func TestViewExecutionHappyPath(t *testing.T) {
 	chdirInto(t, viewFixtureAbs(t, "valid"))
-	code, out, errText := runIn([]string{"view", "sprint"})
+	code, out, errText := runIn([]string{"view", "execution"})
 	if code != 0 {
 		t.Fatalf("exit = %d, want 0\nstdout: %s\nstderr: %s", code, out, errText)
 	}
 	for _, want := range []string{
-		"Sprint",
+		"Execution",
 		"Container    eka-view-fixture/ctr:wave-1",
 		"Repository   .",
 		"Knowledge    EKA v1",
 		"Domain       Execution",
 		"↓ View",
+		"Tickets (8)",
+		"eka-view-fixture/tkt:ts-gamma (in-progress)",
+		"eka-view-fixture/tkt:unresolved (unresolved)",
 		"planned (1)",
 		"todo (1)",
 		"in-progress (1)",
@@ -113,10 +124,11 @@ func TestViewSprintHappyPath(t *testing.T) {
 		"  → eka-view-fixture/ts:gamma",
 		"  ✓ eka-view-fixture/ch:epsilon",
 		"Summary:",
+		"Container: eka-view-fixture/ctr:wave-1",
+		"Tickets: 8",
 		"Work items: 5",
 		"In progress: 1",
 		"Done: 1",
-		"Tickets: 8",
 		"Status: active",
 	} {
 		if !strings.Contains(out, want) {
@@ -125,14 +137,29 @@ func TestViewSprintHappyPath(t *testing.T) {
 	}
 }
 
+// TestViewExecutionAliasesIdentical: the sprint and wave aliases render
+// byte-identical output to the canonical execution projection.
+func TestViewExecutionAliasesIdentical(t *testing.T) {
+	chdirInto(t, viewFixtureAbs(t, "valid"))
+	runOnce := func(args ...string) string {
+		_, out, _ := runIn(args)
+		return out
+	}
+	execution := runOnce([]string{"view", "execution"}...)
+	for _, alias := range []string{"sprint", "wave"} {
+		if got := runOnce([]string{"view", alias}...); got != execution {
+			t.Errorf("view %s output must be byte-identical to view execution", alias)
+		}
+	}
+}
+
 // TestViewMultipleActiveWarning: the multi-active container anomaly is
 // surfaced at the CLI — the warning line names the deterministically
 // chosen container (lexicographically smallest canonical identity) and
-// the command still exits 0. Regression: the warning was only covered at
-// graph/projection level.
+// the command still exits 0.
 func TestViewMultipleActiveWarning(t *testing.T) {
 	chdirInto(t, viewFixtureAbs(t, "multi-active"))
-	code, out, errText := runIn([]string{"view", "sprint"})
+	code, out, errText := runIn([]string{"view", "execution"})
 	if code != 0 {
 		t.Fatalf("exit = %d, want 0\nstdout: %s\nstderr: %s", code, out, errText)
 	}
@@ -150,32 +177,131 @@ func TestViewMultipleActiveWarning(t *testing.T) {
 		}
 	}
 	// Deterministic across runs, like every other projection.
-	_, out2, _ := runIn([]string{"view", "sprint"})
+	_, out2, _ := runIn([]string{"view", "execution"})
 	if out != out2 {
-		t.Error("multi-active sprint output is not deterministic")
+		t.Error("multi-active execution output is not deterministic")
 	}
 }
 
-// TestViewWaveHappyPath: the wave projection — tickets with projected
-// status and progress counts.
-func TestViewWaveHappyPath(t *testing.T) {
+// TestViewPlanningHappyPath: the planning projection — artifact groups
+// in fixed order with content state, planning state and phase context.
+func TestViewPlanningHappyPath(t *testing.T) {
 	chdirInto(t, viewFixtureAbs(t, "valid"))
-	code, out, errText := runIn([]string{"view", "wave"})
+	code, out, errText := runIn([]string{"view", "planning"})
 	if code != 0 {
 		t.Fatalf("exit = %d, want 0\nstdout: %s\nstderr: %s", code, out, errText)
 	}
 	for _, want := range []string{
-		"Wave",
-		"Tickets (8)",
-		"eka-view-fixture/tkt:ts-gamma (in-progress)",
-		"eka-view-fixture/tkt:unresolved (unresolved)",
-		"Domain       Execution",
-		"Progress",
-		"planned     1",
-		"in-progress 1",
-		"done        1",
-		"Tickets: 8",
-		"Work items: 5",
+		"Planning",
+		"Domain       Planning",
+		"Scope Definitions",
+		"eka-view-fixture/scp:wave-2  (approved, phase mvp)",
+		"Epics",
+		"eka-view-fixture/epc:auth  (review)",
+		"Plans",
+		"eka-view-fixture/plan:roadmap-2026  (approved, planning-state approved, phase release)",
+		"Traceability",
+		"eka-view-fixture/trc:spec-trace  (draft)",
+		"Summary:",
+		"Scope Definitions: 1",
+		"Epics: 1",
+		"Plans: 1",
+		"Traceability: 1",
+		"Plans by state: draft 0, approved 1, immutable 0",
+	} {
+		if !strings.Contains(out, want) {
+			t.Errorf("output must contain %q:\n%s", want, out)
+		}
+	}
+}
+
+// TestViewArchitectureHappyPath: the architecture projection — the
+// Decisions group merges adr-/dec- (including the superseded ADR), the
+// remaining groups are single-token.
+func TestViewArchitectureHappyPath(t *testing.T) {
+	chdirInto(t, viewFixtureAbs(t, "valid"))
+	code, out, errText := runIn([]string{"view", "architecture"})
+	if code != 0 {
+		t.Fatalf("exit = %d, want 0\nstdout: %s\nstderr: %s", code, out, errText)
+	}
+	for _, want := range []string{
+		"Architecture",
+		"Domain       Architecture",
+		"Decisions",
+		"eka-view-fixture/adr:001-login-serialization  (accepted)",
+		"eka-view-fixture/adr:002-session-encoding  (superseded)",
+		"eka-view-fixture/adr:003-token-format  (accepted)",
+		"eka-view-fixture/dec:001-api-shape  (accepted)",
+		"Architecture Descriptions",
+		"eka-view-fixture/arc:system-architecture  (approved)",
+		"Specifications",
+		"eka-view-fixture/spec:auth-flow  (draft)",
+		"Standards & Guidelines",
+		"eka-view-fixture/std:gofmt  (review)",
+		"Vocabulary",
+		"eka-view-fixture/gls:domain-terms  (amended)",
+		"Summary:",
+		"Decisions: 4",
+		"Architecture Descriptions: 1",
+		"Specifications: 1",
+		"Standards & Guidelines: 1",
+		"Vocabulary: 1",
+	} {
+		if !strings.Contains(out, want) {
+			t.Errorf("output must contain %q:\n%s", want, out)
+		}
+	}
+}
+
+// TestViewDiscoveryHappyPath: the discovery projection — vision,
+// strategy, requirements and research findings with content states.
+func TestViewDiscoveryHappyPath(t *testing.T) {
+	chdirInto(t, viewFixtureAbs(t, "valid"))
+	code, out, errText := runIn([]string{"view", "discovery"})
+	if code != 0 {
+		t.Fatalf("exit = %d, want 0\nstdout: %s\nstderr: %s", code, out, errText)
+	}
+	for _, want := range []string{
+		"Discovery",
+		"Domain       Discovery",
+		"Vision",
+		"eka-view-fixture/vis:product-vision  (draft)",
+		"Strategy",
+		"eka-view-fixture/str:go-to-market  (review)",
+		"Requirements",
+		"eka-view-fixture/req:onboarding  (approved)",
+		"Research Findings",
+		"eka-view-fixture/fnd:market-research  (approved)",
+		"Summary:",
+		"Vision: 1",
+		"Strategy: 1",
+		"Requirements: 1",
+		"Research Findings: 1",
+	} {
+		if !strings.Contains(out, want) {
+			t.Errorf("output must contain %q:\n%s", want, out)
+		}
+	}
+}
+
+// TestViewOperationsHappyPath: the operations projection — runbooks and
+// release records with content states.
+func TestViewOperationsHappyPath(t *testing.T) {
+	chdirInto(t, viewFixtureAbs(t, "valid"))
+	code, out, errText := runIn([]string{"view", "operations"})
+	if code != 0 {
+		t.Fatalf("exit = %d, want 0\nstdout: %s\nstderr: %s", code, out, errText)
+	}
+	for _, want := range []string{
+		"Operations",
+		"Domain       Operations",
+		"Runbooks",
+		"eka-view-fixture/run:deploy  (approved)",
+		"Release Records",
+		"eka-view-fixture/rel:release-1  (review)",
+		"Summary:",
+		"Runbooks: 1",
+		"Release Records: 1",
 	} {
 		if !strings.Contains(out, want) {
 			t.Errorf("output must contain %q:\n%s", want, out)
@@ -272,7 +398,7 @@ func TestViewInvalidRepoExitsOne(t *testing.T) {
 		t.Fatal(err)
 	}
 	chdirInto(t, dir)
-	code, out, errText := runIn([]string{"view", "sprint"})
+	code, out, errText := runIn([]string{"view", "execution"})
 	if code != 1 {
 		t.Fatalf("exit = %d, want 1\nstdout: %s\nstderr: %s", code, out, errText)
 	}
@@ -285,17 +411,42 @@ func TestViewInvalidRepoExitsOne(t *testing.T) {
 }
 
 // TestViewEmptyProjectionExitsZero: an empty directory is trivially
-// conformant; the sprint projection renders a calm "No active
+// conformant; the execution projection renders a calm "No active
 // container" line and still exits 0.
 func TestViewEmptyProjectionExitsZero(t *testing.T) {
 	chdirInto(t, t.TempDir())
-	code, out, errText := runIn([]string{"view", "sprint"})
+	code, out, errText := runIn([]string{"view", "execution"})
 	if code != 0 {
 		t.Fatalf("exit = %d, want 0\nstdout: %s\nstderr: %s", code, out, errText)
 	}
 	for _, want := range []string{"No active container.", "Work items: 0", "Tickets: 0", "Status: no active container"} {
 		if !strings.Contains(out, want) {
 			t.Errorf("output must contain %q:\n%s", want, out)
+		}
+	}
+}
+
+// TestViewEmptyDomainExitsZero: a repository without artifacts of a
+// domain renders a calm "No <Domain> artifacts." line per domain and
+// still exits 0.
+func TestViewEmptyDomainExitsZero(t *testing.T) {
+	chdirInto(t, t.TempDir())
+	for domain, want := range map[string]string{
+		"planning":     "No Planning artifacts.",
+		"architecture": "No Architecture artifacts.",
+		"discovery":    "No Discovery artifacts.",
+		"operations":   "No Operations artifacts.",
+	} {
+		code, out, errText := runIn([]string{"view", domain})
+		if code != 0 {
+			t.Fatalf("view %s: exit = %d, want 0\nstdout: %s\nstderr: %s", domain, code, out, errText)
+		}
+		if !strings.Contains(out, want) {
+			t.Errorf("view %s must render %q:\n%s", domain, want, out)
+		}
+		// The summary block follows the calm line; assert its shape.
+		if !strings.Contains(out, "Summary:") {
+			t.Errorf("view %s must still render the summary:\n%s", domain, out)
 		}
 	}
 }
@@ -310,10 +461,15 @@ func TestViewDeterministicCLI(t *testing.T) {
 	}
 	for _, args := range [][]string{
 		{"view"},
-		{"view", "sprint"},
-		{"view", "wave"},
+		{"view", "discovery"},
+		{"view", "architecture"},
+		{"view", "planning"},
+		{"view", "execution"},
+		{"view", "operations"},
 		{"view", "ticket", "tkt-ts-gamma"},
 		{"view", "ticket", "tkt-unresolved"},
+		{"view", "sprint"},
+		{"view", "wave"},
 	} {
 		if a, b := runOnce(args...), runOnce(args...); a != b {
 			t.Errorf("output differs between runs for %v", args)
@@ -328,9 +484,14 @@ func TestViewNoANSIEscapesInNonTTYOutput(t *testing.T) {
 	chdirInto(t, viewFixtureAbs(t, "valid"))
 	for _, args := range [][]string{
 		{"view"},
+		{"view", "discovery"},
+		{"view", "architecture"},
+		{"view", "planning"},
+		{"view", "execution"},
+		{"view", "operations"},
+		{"view", "ticket", "tkt-ts-gamma"},
 		{"view", "sprint"},
 		{"view", "wave"},
-		{"view", "ticket", "tkt-ts-gamma"},
 	} {
 		var out, errb bytes.Buffer
 		code := Execute(args, strings.NewReader(""), &out, &errb)

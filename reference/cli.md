@@ -12,7 +12,7 @@
 - **`eka export`** — the first practical implementation of the Exchange Specification: exports engineering knowledge as an **Exchange Package** per the Reference Serialization Format (RSF).
 - **`eka import`** — the inverse of export: consumes an Exchange Package and integrates knowledge into an existing EKA repository — implementing the import semantics of Exchange Specification §11.
 - **`eka validate`** — the conformance validator: repository conformance must not rest on manual review alone — rules R0–R12 in `skeleton/docs/exchange/validation.md` are designed to be mechanical, and this validator is their canonical implementation (P16: enforcement mechanisms vary, invariants stay identical).
-- **`eka view`** — the Knowledge Projection Engine: read-only projections of the Engineering Knowledge Model (sprint / wave / ticket — Execution projections) — the canonical executable form of the State Projection semantics (Core Specification §11), relationship-derived, never markdown-rendered.
+- **`eka view`** — the Knowledge Projection Engine: read-only projections of the Engineering Knowledge Model (the five domain projections `discovery` / `architecture` / `planning` / `execution` / `operations` + the `ticket` projection) — the canonical executable form of the State Projection semantics (Core Specification §11), relationship-derived, never markdown-rendered.
 
 Consequences of this philosophy:
 
@@ -422,7 +422,7 @@ No partial integration: all analysis happens before a single file is written.
 eka view [projection] [target]
 ```
 
-`eka view` projects the **Engineering Knowledge Model** of the repository rooted at the current directory: read-only views over the repository's artifacts and their relationships. The `target` argument is required by the ticket projection only (a bare ticket id, `tkt-<id>` or `tkt:<id>`); `sprint` and `wave` ignore it. With no arguments, the available projections are listed and the command exits `0`.
+`eka view` projects the **Engineering Knowledge Model** of the repository rooted at the current directory: read-only views over the repository's artifacts and their relationships. Projections are named by **Engineering Domain** — `discovery`, `architecture`, `planning`, `execution`, `operations` — plus the `ticket` projection. The `target` argument is required by the ticket projection only (a bare ticket id, `tkt-<id>` or `tkt:<id>`); domain projections ignore it. With no arguments, the available projections are listed and the command exits `0`.
 
 ### Projection philosophy — Knowledge Projection
 
@@ -450,7 +450,7 @@ The engine is synchronous and stateless: a future loading state can wrap the who
 
 | Code | Meaning |
 |---|---|
-| `0` | Projection produced — including empty projections (no active container, no tickets) |
+| `0` | Projection produced — including empty projections (no active container, no domain artifacts) |
 | `1` | Repository validation failed — no projection is produced (the full report is printed) |
 | `2` | Usage or internal error — unknown projection, missing or unknown ticket target, unreadable root |
 
@@ -458,17 +458,27 @@ Warnings never block a projection.
 
 ### Projections
 
-| Command | View |
-|---|---|
-| `eka view sprint` | The **active Execution Container**'s work items, grouped by Execution State columns (`planned`, `todo`, `in-progress`, `in-review`, `done` — the fixed five-column set, empty columns keep their heading) |
-| `eka view wave` | The active container's **tickets** (each with its projected status) + work item progress counts by state + summary |
-| `eka view ticket <id>` | One ticket's detail: **projected status derived from the referenced work item's owner Execution State — never from the ticket's own text** — plus the container it derives from and its `derives-from` references |
+The canonical projections — one per Engineering Domain, plus the ticket projection:
 
-**Engineering Domains:** sprint, wave, and ticket are **Execution projections** (Core v1.1 §8.1) — read-only views over Execution-domain artifacts (`ctr-`, `tkt-`, work items). The context header therefore carries a `Domain: Execution` row alongside `Knowledge`. The projections never write (P6); the Engineering Domain itself is derived from the token family and is never part of a projection's state.
+| Command | Engineering Domain | Content |
+|---|---|---|
+| `eka view discovery` | Discovery | `vis-` / `str-` / `req-` / `fnd-` artifacts — vision, strategy, requirements, research findings |
+| `eka view architecture` | Architecture | `adr-` / `dec-` / `arc-` / `spec-` / `std-` / `gls-` artifacts — decisions, architecture descriptions, specifications, standards, vocabulary, grouped by **Content State** (`draft` / `review` / `approved` / post-approval terminals, incl. the ADR/decision variants) |
+| `eka view planning` | Planning | `scp-` / `epc-` / `plan-` / `trc-` artifacts — scope definitions, epics, plans, traceability artifacts, grouped by **Planning State** (`draft` / `approved` / `immutable`) and phase |
+| `eka view execution` | Execution | The **active Execution Container**: its tickets (each with projected status) + work items grouped by Execution State columns (`planned`, `todo`, `in-progress`, `in-review`, `done` — the fixed five-column set, empty columns keep their heading) + progress counts + summary |
+| `eka view operations` | Operations | `run-` / `rel-` artifacts — runbooks, operational guides, release records |
+| `eka view ticket <id>` | Execution | One ticket's detail: **projected status derived from the referenced work item's owner Execution State — never from the ticket's own text** — plus the container it derives from and its `derives-from` references |
 
-**Membership derivation rule** (the single source of membership — relationships only, never file text): a work item belongs to an execution container iff a ticket (`tkt-`) of that container derives from it. A ticket belongs to a container iff one of its `derives-from` references resolves to the container's identity line. Container `## Work Items` tables are **not** parsed; the ticket is never parsed beyond its frontmatter relationships.
+**Engineering Domain context header.** Every projection carries a `Domain: <domain>` row in its context header alongside `Knowledge` — the Engineering Domain the projection reads (Core v1.1 §8.1). Domain projections are named after the domain they select; `ticket` is an Execution-domain projection. The projections never write (P6); the Engineering Domain itself is derived from the token family and is never part of a projection's state.
 
-- No active container → a valid empty projection (`No active container.`), exit `0`.
+**CLI-level aliases.** `eka view sprint` and `eka view wave` are accepted and resolve to the **`execution` projection** with **identical output** — they are CLI-surface aliases only, never projections of their own. This follows the Representation Alias Registry philosophy ([`standard/representation-alias-registry-v1.1.md`](../standard/representation-alias-registry-v1.1.md)): methodology terms are convention-layer names mapped onto canonical model objects; the CLI accepts them for familiarity while the projection model stays canonical and closed. Unlike artifact aliases, CLI aliases need **no registry row** — they are command-line conveniences, not knowledge-model vocabulary — but the registry's governance note documents the relationship (see Section 3 there).
+
+**Membership derivation rule** (relationships and the token mapping only — never file text):
+
+- **Execution membership** — a work item belongs to an execution container iff a ticket (`tkt-`) of that container derives from it. A ticket belongs to a container iff one of its `derives-from` references resolves to the container's identity line. Container `## Work Items` tables are **not** parsed; the ticket is never parsed beyond its frontmatter relationships.
+- **Domain projection membership** — `discovery`, `architecture`, `planning`, `execution`, and `operations` select every artifact whose token family is homed in that Engineering Domain (the token → domain mapping, Core v1.1 §8.1). Selection is relationship-only — no markdown parsing, no content inspection; grouping inside a projection uses the domain's own State (Content State, Planning State, Execution State).
+
+- No active container → the execution projection is a valid empty projection (`No active container.`), exit `0`; a domain projection on a repository with no artifacts in that domain projects empty, exit `0`.
 - Several active containers (invalid state) → the lexicographically smallest canonical identity is shown with a warning line.
 - Ticket target forms: `eka view ticket <id>`, `eka view ticket tkt-<id>`, `eka view ticket tkt:<id>` (the prefix is stripped; `tkt-` and `tkt:` are equivalent).
 
@@ -478,12 +488,12 @@ Two layers, one dependency direction:
 
 | Layer | Location | Role |
 |---|---|---|
-| Projection engine | `view/` (public package) | Knowledge Graph (identity index, relationship resolution, membership helpers) + independent projection builders (`buildSprint`, `buildWave`, `buildTicket`) + the projection registry. Pure data in, pure data out. |
+| Projection engine | `view/` (public package) | Knowledge Graph (identity index, relationship resolution, membership helpers) + independent projection builders (one per projection: `discovery`, `architecture`, `planning`, `execution`, `operations`, `ticket`) + the projection registry. Pure data in, pure data out. |
 | Terminal rendering | `cmd/view.go` | Argument validation, the conformance gate, dispatch to `cmd/ui` rendering, exit-code mapping. No projection logic. |
 
 - The **renderer does not know the repository layout**; the **builders do not know terminals**.
-- The registry is the closed set of named projections; a future projection is added by registering an independent builder — **no pipeline redesign**.
-- Determinism contract: all ordering is canonical — artifacts by canonical line identity form, execution-state columns in the fixed value order, tickets by canonical identity, references in file order.
+- The registry is the closed set of named projections; a future projection is added by registering an independent builder — **no pipeline redesign**. The sprint/wave aliases are resolved at the command layer (they never enter the registry).
+- Determinism contract: all ordering is canonical — artifacts by canonical line identity form, state groups in the fixed value order of their domain (execution states, content-state variants, planning-state), tickets by canonical identity, references in file order.
 
 ### Validation
 
@@ -491,8 +501,12 @@ An automatic **pre-render conformance check**: `conformance.Validate` runs befor
 
 ### Determinism and UX
 
-- **Context header** — object kind (`Sprint`, `Wave`, `Ticket`) + identity rows (`Container` / `Ticket`, `Repository`) + `Knowledge EKA v1` + `Domain Execution` (Execution projection), closed by the `↓ View` pipeline.
-- **State colors** — `planned` dim, `todo` info, `in-progress` progress, `in-review` warning, `done` success; `unresolved` reads as warning. Icons decorate (`✓` done, `→` in progress, `•` everything else); the state word carries the meaning.
+- **Context header** — object kind (`Discovery`, `Architecture`, `Planning`, `Execution`, `Operations`, `Ticket`) + identity rows (`Container` / `Ticket`, `Repository`) + `Knowledge EKA v1` + `Domain <domain>` (the projection's Engineering Domain), closed by the `↓ View` pipeline.
+- **State colors** — per-domain state semantics:
+  - **Execution states** — `planned` dim, `todo` info, `in-progress` progress, `in-review` warning, `done` success; `unresolved` reads as warning.
+  - **Content-state variants** (architecture, planning, discovery, operations) — `draft` dim, `review` / `proposed` warning, `approved` / `accepted` success, `superseded` / `amended` dim (terminal records).
+  - **Planning state** — `draft` dim, `approved` info, `immutable` success (locked plan in force).
+  Icons decorate (`✓` done/approved, `→` in progress, `•` everything else); the state word carries the meaning.
 - **Summary block** — every projection closes with a `Summary:` of outcome facts (container, counts, status).
 - **Calm tone** — no banners, no ALL-CAPS, color is never the sole carrier of meaning.
 - **Non-TTY deterministic** — piped/CI output is byte-identical plain text with UTF-8 icons, no ANSI escapes; color auto-disables on non-TTY, `NO_COLOR` or `TERM=dumb`.
@@ -501,15 +515,20 @@ An automatic **pre-render conformance check**: `conformance.Validate` runs befor
 
 Illustrative non-TTY output sketches (identities and counts vary per repository; the layout is fixed):
 
-`eka view sprint`:
+`eka view execution` (the aliases `eka view sprint` and `eka view wave` produce identical output):
 
 ```
-Sprint
+Execution
 Container   eka-cli/ctr:sprint-12
 Repository  .
 Knowledge   EKA v1
 Domain      Execution
 ↓ View
+
+Tickets (5)
+  → tkt-sto-delta (in-progress)
+  • tkt-sto-alpha (planned)
+  ✓ tkt-sto-zeta (done)
 
 planned (2)
   • eka-cli/sto-alpha
@@ -533,34 +552,27 @@ Summary:
 └── Status: active
 ```
 
-`eka view wave`:
+`eka view planning`:
 
 ```
-Wave
-Container   eka-cli/ctr:sprint-12
+Planning
 Repository  .
 Knowledge   EKA v1
-Domain      Execution
+Domain      Planning
 ↓ View
 
-Tickets (5)
-  → tkt-sto-delta (in-progress)
-  • tkt-sto-alpha (planned)
-  ✓ tkt-sto-zeta (done)
-
-Progress
-  planned      2
-  todo         1
-  in-progress  1
-  in-review    1
-  done         3
+draft (2)
+  • eka-cli/scp-onboarding
+  • eka-cli/epc-login-ux
+approved (1)
+  • eka-cli/plan-release-1 (phase: release-1)
+immutable (1)
+  • eka-cli/plan-release-1-v2 (phase: release-1)
 Summary:
-└── Container: eka-cli/ctr:sprint-12
-└── Tickets: 5
-└── Work items: 8
-└── In progress: 1
-└── Done: 3
-└── Status: active
+└── Artifacts: 4
+└── Draft: 2
+└── Approved: 1
+└── Immutable: 1
 ```
 
 `eka view ticket sto-alpha`:
@@ -744,7 +756,7 @@ A new command is added without architectural refactoring:
 | `eka init` | **Implemented** | Repository Bootstrapper (5 stages, adaptive wizard, dry-run, idempotent, post-generation validation). |
 | `eka export` | **Implemented** | Exchange Package export (RSF v1.1): repo/line/instance/collection scope, automatic validation, deterministic, external reference declaration, attachments, SHA-256 digests. |
 | `eka import` | **Implemented** | Exchange Package import (RSF v1.1 + Exchange §11): package + integrity validation, identity/relationship resolution, conflict → abort, atomic staged commit, rollback, post-import revalidation. |
-| `eka view` | **Implemented** | Knowledge projections (sprint / wave / ticket): read-only views derived from the Engineering Knowledge Model — relationships + State, never markdown text. Conformance-gated, deterministic, exit codes 0/1/2. |
+| `eka view` | **Implemented** | Knowledge projections (execution / planning / architecture / discovery / operations / ticket; CLI aliases `sprint`, `wave` → execution): read-only views derived from the Engineering Knowledge Model — relationships + State, never markdown text. Conformance-gated, deterministic, exit codes 0/1/2. |
 | `eka validate` | **Implemented** | Full conformance validator (R0–R12: R1–R9 + structural R0 + domain-aware R10–R12). |
 | `eka version` | **Implemented** | CLI build version + EKA standard version (currently `EKA standard 1.1`). |
 | `eka completion` | **Implemented** | bash/zsh/fish/powershell completion scripts (provided by Cobra). |

@@ -80,7 +80,7 @@ The `eka` CLI is the official interface of the architecture (Cobra-based command
 | `eka validate` | Conformance validator: runs Conformance Rules R0–R12 mechanically, with deterministic output and exit codes (0/1/2). |
 | `eka export` | Exports engineering knowledge into a canonical Exchange Package following the RSF — deterministic, validated before export, scopes: repository / line / instance / collection. |
 | `eka import` | Integrates an Exchange Package into an existing repository — atomic, conservative merge, conflict detection, rollback, post-import validation. |
-| `eka view` | Knowledge projections: `sprint`, `wave`, `ticket` — read-only, relationship-derived Execution projections over the Engineering Knowledge Model (never markdown text); conformance-gated, deterministic. |
+| `eka view` | Knowledge projections: `execution`, `planning`, `architecture`, `discovery`, `operations`, `ticket` — read-only, relationship-derived projections over the Engineering Knowledge Model (never markdown text); `sprint` / `wave` are CLI aliases of `execution`; conformance-gated, deterministic. |
 | `eka completion` | Shell completion (bash/zsh/fish/powershell). |
 | `eka version` | CLI build version and the EKA standard version implemented. |
 | `eka` | Product landing: a calm orientation with a compact command overview (help and version pointers). |
