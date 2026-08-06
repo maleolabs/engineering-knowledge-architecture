@@ -223,7 +223,7 @@ func TestGeneratedReadmeHeading(t *testing.T) {
 	if lines[0] != "# my-project" {
 		t.Errorf("first line = %q, want %q", lines[0], "# my-project")
 	}
-	if !strings.Contains(got, "Tanggal templat: 2026-08-05") {
+	if !strings.Contains(got, "Template date: 2026-08-05") {
 		t.Error("template date must be preserved verbatim")
 	}
 	// Byte-identical to the template apart from the heading line.

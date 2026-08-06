@@ -209,7 +209,7 @@ func fileMatches(path string, want []byte) bool {
 }
 
 // generatedReadme returns the README content for the given project name:
-// the embedded template with the exact heading line "# <Nama Produk>"
+// the embedded template with the exact heading line "# <Product Name>"
 // replaced by "# <name>". Every other line (including the template date)
 // stays verbatim.
 func generatedReadme(name string) []byte {
@@ -218,7 +218,7 @@ func generatedReadme(name string) []byte {
 		return nil
 	}
 	lines := strings.Split(string(data), "\n")
-	if len(lines) > 0 && lines[0] == "# <Nama Produk>" {
+	if len(lines) > 0 && lines[0] == "# <Product Name>" {
 		lines[0] = "# " + name
 	}
 	return []byte(strings.Join(lines, "\n"))
