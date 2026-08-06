@@ -35,7 +35,7 @@ func renderOperations(s *ui.Style, g *view.Graph, p *view.OperationsProjection) 
 			cards.Add(contentStateIcon(rel.ContentState)+" "+rel.Identity,
 				contentStateColor(s, rel.ContentState), body)
 		}
-		cards.Render()
+		cards.Grid().Render()
 		fmt.Fprintln(s.W)
 	}
 	if runbooks := groupByName(p.Groups, "Runbooks"); len(runbooks) > 0 {

@@ -38,7 +38,7 @@ func renderDiscovery(s *ui.Style, g *view.Graph, p *view.DiscoveryProjection) {
 			cards.Add(contentStateIcon(a.ContentState)+" "+a.Identity,
 				contentStateColor(s, a.ContentState), []string{body})
 		}
-		cards.Render()
+		cards.Grid().Render()
 		if i < len(p.Groups)-1 {
 			fmt.Fprintln(s.W)
 		}
