@@ -401,11 +401,13 @@ The canonical projections, one per Engineering Domain, plus the ticket view:
 | Projection | What it shows |
 |---|---|
 | `eka view discovery` | Vision, strategy, requirements, research findings |
-| `eka view architecture` | Decisions, architecture descriptions, specifications, standards, vocabulary — grouped by content state (draft / review / approved) |
-| `eka view planning` | Scope, epics, plans, traceability — grouped by planning state and phase |
-| `eka view execution` | The active container's tickets and work items, grouped by execution state (planned / todo / in-progress / in-review / done) |
+| `eka view architecture` | Decisions, architecture descriptions, specifications, standards, vocabulary — a dependency tree; each node shows its content state (draft / review / approved) |
+| `eka view planning` | Scope, epics, plans, traceability — a roadmap by phase; each entry shows its planning state and phase |
+| `eka view execution` | The active container's work items on a five-column Kanban board (planned / todo / in-progress / in-review / done); tickets project individually as detail cards (`eka view ticket <id>`) |
 | `eka view operations` | Runbooks and release records |
 | `eka view ticket <id>` | One ticket's projected status — derived from its owner work item, never from ticket text |
+
+The same model can be visualized differently per domain. Each projection renders as a **purpose-built console** for its domain's question: a **Kanban board** for execution, a **roadmap** for planning, a **dependency tree** for architecture, **information cards** for discovery, a **release timeline** for operations. The visualization is read-only presentation of the model — never new state. You never edit a board, a roadmap, or a tree; you edit the source of truth and re-render (P6).
 
 Projections are derived from the model — identity, state, relationships — never from parsing markdown text. That is what makes them deterministic and trustworthy: two engineers, or an engineer and an agent, always see the same picture. The CLI-level aliases `sprint` and `wave` resolve to the `execution` projection with identical output — methodology vocabulary stays convention-layer, the projection model stays canonical.
 

@@ -97,8 +97,9 @@ func TestViewTooManyArgsExitsTwo(t *testing.T) {
 }
 
 // TestViewExecutionHappyPath: the execution projection of a conformant
-// fixture — header, tickets with projected status, state columns and
-// the merged summary — exit 0.
+// fixture — header, container line, the kanban board (column titles
+// with counts, short work item ids, box borders) and the insight
+// summary — exit 0.
 func TestViewExecutionHappyPath(t *testing.T) {
 	chdirInto(t, viewFixtureAbs(t, "valid"))
 	code, out, errText := runIn([]string{"view", "execution"})
@@ -112,24 +113,28 @@ func TestViewExecutionHappyPath(t *testing.T) {
 		"Knowledge    EKA v1",
 		"Domain       Execution",
 		"↓ View",
-		"Tickets (8)",
-		"eka-view-fixture/tkt:ts-gamma (in-progress)",
-		"eka-view-fixture/tkt:unresolved (unresolved)",
-		"planned (1)",
-		"todo (1)",
-		"in-progress (1)",
-		"in-review (1)",
-		"done (1)",
-		"  • eka-view-fixture/sto:alpha",
-		"  → eka-view-fixture/ts:gamma",
-		"  ✓ eka-view-fixture/ch:epsilon",
+		"• eka-view-fixture/ctr:wave-1  (active)",
+		// The board: box borders, the five fixed columns with counts,
+		// and the short ids of the work items.
+		"┌",
+		"┐",
+		"│ Planned (1)",
+		"│ Todo (1)",
+		"│ In Progress (1)",
+		"│ In Review (1)",
+		"│ Done (1)",
+		"│ alpha",
+		"│ beta",
+		"│ gamma",
+		"│ delta",
+		"│ epsilon",
+		"8 tickets project these work items",
+		// The insight summary: meaningful numbers, not raw columns.
 		"Summary:",
-		"Container: eka-view-fixture/ctr:wave-1",
-		"Tickets: 8",
-		"Work items: 5",
-		"In progress: 1",
-		"Done: 1",
-		"Status: active",
+		"Active Work: 2",
+		"Completed Work: 1",
+		"Review Queue: 1",
+		"Overall Progress: 1/5 (20%)",
 	} {
 		if !strings.Contains(out, want) {
 			t.Errorf("output must contain %q:\n%s", want, out)
@@ -169,8 +174,11 @@ func TestViewMultipleActiveWarning(t *testing.T) {
 	for _, want := range []string{
 		"Multiple active containers — showing eka-view-fixture/ctr:wave-1",
 		"Container    eka-view-fixture/ctr:wave-1",
-		"Work items: 0",
-		"Tickets: 0",
+		"│ Planned (0)",
+		"│ Done (0)",
+		"—",
+		"Active Work: 0",
+		"Overall Progress: 0/0 (0%)",
 	} {
 		if !strings.Contains(out, want) {
 			t.Errorf("output must contain %q:\n%s", want, out)
@@ -183,8 +191,9 @@ func TestViewMultipleActiveWarning(t *testing.T) {
 	}
 }
 
-// TestViewPlanningHappyPath: the planning projection — artifact groups
-// in fixed order with content state, planning state and phase context.
+// TestViewPlanningHappyPath: the planning projection — the roadmap
+// timeline (plan milestone, scope and epics rows, traceability footer)
+// and the insight summary.
 func TestViewPlanningHappyPath(t *testing.T) {
 	chdirInto(t, viewFixtureAbs(t, "valid"))
 	code, out, errText := runIn([]string{"view", "planning"})
@@ -194,20 +203,15 @@ func TestViewPlanningHappyPath(t *testing.T) {
 	for _, want := range []string{
 		"Planning",
 		"Domain       Planning",
-		"Scope Definitions",
-		"eka-view-fixture/scp:wave-2  (approved, phase mvp)",
-		"Epics",
-		"eka-view-fixture/epc:auth  (review)",
-		"Plans",
-		"eka-view-fixture/plan:roadmap-2026  (approved, planning-state approved, phase release)",
-		"Traceability",
-		"eka-view-fixture/trc:spec-trace  (draft)",
+		"│ ✓ eka-view-fixture/plan:roadmap-2026  (approved, planning-state approved, phase release)",
+		"──", // milestone separator
+		"│ ▸ eka-view-fixture/scp:wave-2  (approved, phase mvp)",
+		"│ ▸ eka-view-fixture/epc:auth  (review)",
+		"traceability: eka-view-fixture/trc:spec-trace (draft)",
 		"Summary:",
-		"Scope Definitions: 1",
-		"Epics: 1",
-		"Plans: 1",
-		"Traceability: 1",
-		"Plans by state: draft 0, approved 1, immutable 0",
+		"Committed: 1",
+		"Exploring: 0",
+		"Next milestone: release",
 	} {
 		if !strings.Contains(out, want) {
 			t.Errorf("output must contain %q:\n%s", want, out)
@@ -216,8 +220,9 @@ func TestViewPlanningHappyPath(t *testing.T) {
 }
 
 // TestViewArchitectureHappyPath: the architecture projection — the
-// Decisions group merges adr-/dec- (including the superseded ADR), the
-// remaining groups are single-token.
+// dependency tree rooted at the architecture description with the
+// grouped subtrees, and the insight summary. The Decisions group merges
+// adr-/dec- (including the superseded ADR).
 func TestViewArchitectureHappyPath(t *testing.T) {
 	chdirInto(t, viewFixtureAbs(t, "valid"))
 	code, out, errText := runIn([]string{"view", "architecture"})
@@ -227,25 +232,22 @@ func TestViewArchitectureHappyPath(t *testing.T) {
 	for _, want := range []string{
 		"Architecture",
 		"Domain       Architecture",
-		"Decisions",
-		"eka-view-fixture/adr:001-login-serialization  (accepted)",
-		"eka-view-fixture/adr:002-session-encoding  (superseded)",
-		"eka-view-fixture/adr:003-token-format  (accepted)",
-		"eka-view-fixture/dec:001-api-shape  (accepted)",
-		"Architecture Descriptions",
 		"eka-view-fixture/arc:system-architecture  (approved)",
-		"Specifications",
-		"eka-view-fixture/spec:auth-flow  (draft)",
-		"Standards & Guidelines",
-		"eka-view-fixture/std:gofmt  (review)",
-		"Vocabulary",
-		"eka-view-fixture/gls:domain-terms  (amended)",
+		"├── Decisions",
+		"│  ├── ✓ eka-view-fixture/adr:001-login-serialization  (accepted)",
+		"│  ├── • eka-view-fixture/adr:002-session-encoding  (superseded)",
+		"│  ├── ✓ eka-view-fixture/adr:003-token-format  (accepted)",
+		"│  └── ✓ eka-view-fixture/dec:001-api-shape  (accepted)",
+		"├── Specifications",
+		"│  └── ○ eka-view-fixture/spec:auth-flow  (draft)",
+		"├── Standards & Guidelines",
+		"│  └── • eka-view-fixture/std:gofmt  (review)",
+		"└── Vocabulary",
+		"   └── • eka-view-fixture/gls:domain-terms  (amended)",
 		"Summary:",
-		"Decisions: 4",
-		"Architecture Descriptions: 1",
-		"Specifications: 1",
-		"Standards & Guidelines: 1",
-		"Vocabulary: 1",
+		"Accepted decisions: 3",
+		"Open items: 0",
+		"Superseded: 1",
 	} {
 		if !strings.Contains(out, want) {
 			t.Errorf("output must contain %q:\n%s", want, out)
@@ -253,8 +255,9 @@ func TestViewArchitectureHappyPath(t *testing.T) {
 	}
 }
 
-// TestViewDiscoveryHappyPath: the discovery projection — vision,
-// strategy, requirements and research findings with content states.
+// TestViewDiscoveryHappyPath: the discovery projection — one boxed card
+// per artifact under its group heading, drafts visually distinct (○),
+// and the insight summary.
 func TestViewDiscoveryHappyPath(t *testing.T) {
 	chdirInto(t, viewFixtureAbs(t, "valid"))
 	code, out, errText := runIn([]string{"view", "discovery"})
@@ -265,18 +268,20 @@ func TestViewDiscoveryHappyPath(t *testing.T) {
 		"Discovery",
 		"Domain       Discovery",
 		"Vision",
-		"eka-view-fixture/vis:product-vision  (draft)",
+		"┌",
+		"│ ○ eka-view-fixture/vis:product-vision │",
+		"│ draft · revision 1",
 		"Strategy",
-		"eka-view-fixture/str:go-to-market  (review)",
+		"│ • eka-view-fixture/str:go-to-market │",
+		"│ review · revision 1",
 		"Requirements",
-		"eka-view-fixture/req:onboarding  (approved)",
+		"│ ✓ eka-view-fixture/req:onboarding │",
+		"│ approved · revision 1",
 		"Research Findings",
-		"eka-view-fixture/fnd:market-research  (approved)",
+		"│ ✓ eka-view-fixture/fnd:market-research │",
 		"Summary:",
-		"Vision: 1",
-		"Strategy: 1",
-		"Requirements: 1",
-		"Research Findings: 1",
+		"Committed direction: 2",
+		"Exploring: 1",
 	} {
 		if !strings.Contains(out, want) {
 			t.Errorf("output must contain %q:\n%s", want, out)
@@ -284,8 +289,9 @@ func TestViewDiscoveryHappyPath(t *testing.T) {
 	}
 }
 
-// TestViewOperationsHappyPath: the operations projection — runbooks and
-// release records with content states.
+// TestViewOperationsHappyPath: the operations projection — the release
+// record card and the runbook activity timeline, with the insight
+// summary.
 func TestViewOperationsHappyPath(t *testing.T) {
 	chdirInto(t, viewFixtureAbs(t, "valid"))
 	code, out, errText := runIn([]string{"view", "operations"})
@@ -295,13 +301,15 @@ func TestViewOperationsHappyPath(t *testing.T) {
 	for _, want := range []string{
 		"Operations",
 		"Domain       Operations",
-		"Runbooks",
-		"eka-view-fixture/run:deploy  (approved)",
 		"Release Records",
-		"eka-view-fixture/rel:release-1  (review)",
+		"┌",
+		"│ • eka-view-fixture/rel:release-1 │",
+		"│ review",
+		"Runbooks",
+		"│ ▸ eka-view-fixture/run:deploy  (approved)",
 		"Summary:",
-		"Runbooks: 1",
-		"Release Records: 1",
+		"Releases delivered: 0",
+		"Runbooks maintained: 1",
 	} {
 		if !strings.Contains(out, want) {
 			t.Errorf("output must contain %q:\n%s", want, out)
@@ -310,7 +318,8 @@ func TestViewOperationsHappyPath(t *testing.T) {
 }
 
 // TestViewTicketHappyPath: the ticket projection derives the projected
-// status from the work item's owner state.
+// status from the work item's owner state; the status leads the detail
+// card.
 func TestViewTicketHappyPath(t *testing.T) {
 	chdirInto(t, viewFixtureAbs(t, "valid"))
 	code, out, errText := runIn([]string{"view", "ticket", "tkt-ts-gamma"})
@@ -321,12 +330,15 @@ func TestViewTicketHappyPath(t *testing.T) {
 		"Ticket",
 		"Ticket       eka-view-fixture/tkt:ts-gamma",
 		"Domain       Execution",
-		"Projected Status   in-progress",
-		"Work Item          eka-view-fixture/ts:gamma (in-progress)",
-		"Container          eka-view-fixture/ctr:wave-1",
-		"Derives From       ctr:wave-1, ts:gamma",
+		"Projected Status  → in-progress",
+		"┌",
+		"│ eka-view-fixture/tkt:ts-gamma",
+		"│ Work Item      eka-view-fixture/ts:gamma (in-progress)",
+		"│ Container      eka-view-fixture/ctr:wave-1",
+		"│ Derives From   ctr:wave-1, ts:gamma",
+		"└",
+		"Projected status: in-progress",
 		"Work item: eka-view-fixture/ts:gamma (in-progress)",
-		"Status: in-progress",
 	} {
 		if !strings.Contains(out, want) {
 			t.Errorf("output must contain %q:\n%s", want, out)
@@ -355,10 +367,12 @@ func TestViewTicketUnresolved(t *testing.T) {
 		t.Fatalf("exit = %d, want 0\n%s", code, out)
 	}
 	for _, want := range []string{
-		"Projected Status   unresolved",
-		"Work Item          unresolved",
-		"Container          eka-view-fixture/ctr:wave-1",
-		"Status: unresolved",
+		"Projected Status  • unresolved",
+		"│ Work Item      unresolved",
+		"│ Container      eka-view-fixture/ctr:wave-1",
+		"│ Derives From   ctr:wave-1",
+		"Projected status: unresolved",
+		"Work item: unresolved",
 	} {
 		if !strings.Contains(out, want) {
 			t.Errorf("output must contain %q:\n%s", want, out)
@@ -412,14 +426,20 @@ func TestViewInvalidRepoExitsOne(t *testing.T) {
 
 // TestViewEmptyProjectionExitsZero: an empty directory is trivially
 // conformant; the execution projection renders a calm "No active
-// container" line and still exits 0.
+// container" line, the empty board, and still exits 0.
 func TestViewEmptyProjectionExitsZero(t *testing.T) {
 	chdirInto(t, t.TempDir())
 	code, out, errText := runIn([]string{"view", "execution"})
 	if code != 0 {
 		t.Fatalf("exit = %d, want 0\nstdout: %s\nstderr: %s", code, out, errText)
 	}
-	for _, want := range []string{"No active container.", "Work items: 0", "Tickets: 0", "Status: no active container"} {
+	for _, want := range []string{
+		"No active container.",
+		"│ Planned (0)",
+		"—",
+		"Active Work: 0",
+		"Overall Progress: 0/0 (0%)",
+	} {
 		if !strings.Contains(out, want) {
 			t.Errorf("output must contain %q:\n%s", want, out)
 		}

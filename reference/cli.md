@@ -12,7 +12,7 @@
 - **`eka export`** — the first practical implementation of the Exchange Specification: exports engineering knowledge as an **Exchange Package** per the Reference Serialization Format (RSF).
 - **`eka import`** — the inverse of export: consumes an Exchange Package and integrates knowledge into an existing EKA repository — implementing the import semantics of Exchange Specification §11.
 - **`eka validate`** — the conformance validator: repository conformance must not rest on manual review alone — rules R0–R12 in `skeleton/docs/exchange/validation.md` are designed to be mechanical, and this validator is their canonical implementation (P16: enforcement mechanisms vary, invariants stay identical).
-- **`eka view`** — the Knowledge Projection Engine: read-only projections of the Engineering Knowledge Model (the five domain projections `discovery` / `architecture` / `planning` / `execution` / `operations` + the `ticket` projection) — the canonical executable form of the State Projection semantics (Core Specification §11), relationship-derived, never markdown-rendered.
+- **`eka view`** — the Knowledge Projection Engine: read-only projections of the Engineering Knowledge Model (the five domain projections `discovery` / `architecture` / `planning` / `execution` / `operations` + the `ticket` projection), rendered as per-domain visualizations — Kanban board (execution), roadmap (planning), dependency tree (architecture), information cards (discovery), release timeline (operations), detail card (ticket) — the canonical executable form of the State Projection semantics (Core Specification §11), relationship-derived, never markdown-rendered.
 
 New to EKA? Start with the [Engineering Operating Guide](../skeleton/docs/workflow-guide.md) — the primary onboarding document (mental model, lifecycle, domains, workflows).
 
@@ -43,7 +43,7 @@ All commands share one three-part hierarchy:
 2. **Workflow body** — the operation's stages (progressive tree) or, for single-operation commands, the report.
 3. **Summary** — the outcome as facts.
 
-`init`, `export` and `import` render a progressive tree; `validate` renders the report as the body; `view` renders the projection as the body. Every command ends with a summary block.
+`init`, `export` and `import` render a progressive tree; `validate` renders the report as the body; `view` renders the projection as the body — each projection is a per-domain visualization (board, roadmap, tree, cards, timeline, detail card). Every command ends with a summary block.
 
 ### Context header
 
@@ -106,6 +106,8 @@ A deliberately minimal Unicode set — no emojis:
 | `↓` | pipeline separator in the context header |
 
 All glyphs are valid UTF-8; icons decorate, text carries meaning.
+
+Projection renderers additionally use Unicode box-drawing characters (`┌ ─ ┬ ┐ ├ ┼ ┤ └ ┴ ┘`) for visualization frames — Kanban board, cards, tree. They carry layout, never meaning; they are plain UTF-8 text on non-TTY output, never ANSI.
 
 ### Summaries
 
@@ -442,8 +444,8 @@ run → validate → load → construct → render → exit
 
 1. **Validate** — the conformance gate (R0–R12) runs first; a non-conformant repository is refused (exit `1`).
 2. **Load** — one `conformance.Scan` of the repository.
-3. **Construct** — one Knowledge Graph, then one projection build.
-4. **Render** — the projection, deterministically.
+3. **Construct** — one Knowledge Graph, then one projection build (the builder).
+4. **Render** — the projection renderer applies the projection's visualization (board, roadmap, tree, cards, timeline, detail card), deterministically.
 5. **Exit** — mapped per the exit-code contract below.
 
 The engine is synchronous and stateless: a future loading state can wrap the whole call without restructuring.
@@ -462,14 +464,27 @@ Warnings never block a projection.
 
 The canonical projections — one per Engineering Domain, plus the ticket projection:
 
-| Command | Engineering Domain | Content |
+| Command | Engineering Domain | Content | Rendered as |
+|---|---|---|---|
+| `eka view discovery` | Discovery | `vis-` / `str-` / `req-` / `fnd-` artifacts — vision, strategy, requirements, research findings | Information cards |
+| `eka view architecture` | Architecture | `adr-` / `dec-` / `arc-` / `spec-` / `std-` / `gls-` artifacts — decisions, architecture descriptions, specifications, standards, vocabulary; per-node **Content State** (`draft` / `review` / `approved` / post-approval terminals, incl. the ADR/decision variants) shown on the node | Dependency tree |
+| `eka view planning` | Planning | `scp-` / `epc-` / `plan-` / `trc-` artifacts — scope definitions, epics, plans, traceability artifacts, sequenced by phase; per-entry **Planning State** (`draft` / `approved` / `immutable`) | Roadmap / timeline |
+| `eka view execution` | Execution | The **active Execution Container**'s work items on the fixed five-column board (`planned` / `todo` / `in-progress` / `in-review` / `done`; empty columns keep their heading). The ticket list is **not rendered as a block** — tickets project individually via `eka view ticket`. | Kanban board |
+| `eka view operations` | Operations | `run-` / `rel-` artifacts — runbooks, operational guides, release records | Release summary / activity timeline |
+| `eka view ticket <id>` | Execution | One ticket's detail: **projected status derived from the referenced work item's owner Execution State — never from the ticket's own text** — plus the container it derives from and its `derives-from` references | Detail card |
+
+**Visualization by domain.** Each projection renders as a purpose-built console for its domain's primary question:
+
+| Engineering Domain | Visualization style | Primary question it answers |
 |---|---|---|
-| `eka view discovery` | Discovery | `vis-` / `str-` / `req-` / `fnd-` artifacts — vision, strategy, requirements, research findings |
-| `eka view architecture` | Architecture | `adr-` / `dec-` / `arc-` / `spec-` / `std-` / `gls-` artifacts — decisions, architecture descriptions, specifications, standards, vocabulary, grouped by **Content State** (`draft` / `review` / `approved` / post-approval terminals, incl. the ADR/decision variants) |
-| `eka view planning` | Planning | `scp-` / `epc-` / `plan-` / `trc-` artifacts — scope definitions, epics, plans, traceability artifacts, grouped by **Planning State** (`draft` / `approved` / `immutable`) and phase |
-| `eka view execution` | Execution | The **active Execution Container**: its tickets (each with projected status) + work items grouped by Execution State columns (`planned`, `todo`, `in-progress`, `in-review`, `done` — the fixed five-column set, empty columns keep their heading) + progress counts + summary |
-| `eka view operations` | Operations | `run-` / `rel-` artifacts — runbooks, operational guides, release records |
-| `eka view ticket <id>` | Execution | One ticket's detail: **projected status derived from the referenced work item's owner Execution State — never from the ticket's own text** — plus the container it derives from and its `derives-from` references |
+| Discovery | Information cards | What are we building? |
+| Architecture | Dependency tree | How is the system structured? |
+| Planning | Roadmap / timeline | What are we planning next? |
+| Execution | Kanban board (five columns) | What is currently being worked on? |
+| Operations | Release summary / activity timeline | What has been delivered? |
+| Ticket (Execution) | Detail card | What is the state of this ticket? |
+
+The visualization is **read-only presentation of the model** — it never becomes new state (P6). Every shape renders deterministically and non-TTY-safe: plain text plus UTF-8 box drawing, no ANSI escapes.
 
 **Engineering Domain context header.** Every projection carries a `Domain: <domain>` row in its context header alongside `Knowledge` — the Engineering Domain the projection reads (Core v1.1 §8.1). Domain projections are named after the domain they select; `ticket` is an Execution-domain projection. The projections never write (P6); the Engineering Domain itself is derived from the token family and is never part of a projection's state.
 
@@ -486,16 +501,44 @@ The canonical projections — one per Engineering Domain, plus the ticket projec
 
 ### Projection architecture
 
+One pipeline, five stages, one dependency direction — the **Projection Renderer** is the presentation stage of the projection pipeline:
+
+```
+Repository
+    ↓
+Knowledge Loader       one conformance.Scan — the repository's artifacts
+    ↓
+Knowledge Graph        identity index, relationship resolution, membership helpers
+    ↓
+Projection Builder     INFORMATION — what the projection shows (artifacts, order, state groups)
+    ↓
+Projection Renderer    PRESENTATION — how the projection looks (board, roadmap, tree, cards, timeline)
+    ↓
+Terminal Output
+```
+
 Two layers, one dependency direction:
 
 | Layer | Location | Role |
 |---|---|---|
 | Projection engine | `view/` (public package) | Knowledge Graph (identity index, relationship resolution, membership helpers) + independent projection builders (one per projection: `discovery`, `architecture`, `planning`, `execution`, `operations`, `ticket`) + the projection registry. Pure data in, pure data out. |
-| Terminal rendering | `cmd/view.go` | Argument validation, the conformance gate, dispatch to `cmd/ui` rendering, exit-code mapping. No projection logic. |
+| Terminal rendering | `cmd/view.go` + `cmd/ui` | Argument validation, the conformance gate, dispatch to the per-domain projection renderer (`cmd/ui`), exit-code mapping. No projection logic. |
 
+- **Builder and renderer are independent responsibilities.** The builder defines the projection's **information** — which artifacts, in which order, grouped into which state sets; the renderer defines its **presentation** — the visual shape (Kanban board, roadmap, dependency tree, information cards, timeline, detail card) and the framing. A renderer can attach to any builder's output without touching the builder.
 - The **renderer does not know the repository layout**; the **builders do not know terminals**.
-- The registry is the closed set of named projections; a future projection is added by registering an independent builder — **no pipeline redesign**. The sprint/wave aliases are resolved at the command layer (they never enter the registry).
-- Determinism contract: all ordering is canonical — artifacts by canonical line identity form, state groups in the fixed value order of their domain (execution states, content-state variants, planning-state), tickets by canonical identity, references in file order.
+- The registry is the closed set of named projections; a future projection is added by registering an independent **builder + renderer** pair — new renderers attach without pipeline redesign. The sprint/wave aliases are resolved at the command layer (they never enter the registry).
+- Determinism contract: all ordering is canonical — artifacts by canonical line identity form, state groups in the fixed value order of their domain (execution states, content-state variants, planning-state), tickets by canonical identity, references in file order. The renderer preserves that ordering; it adds none of its own.
+
+### Visualization principles
+
+The renderers follow six principles:
+
+- **Information before metadata** — the artifact's substance leads; state and identity follow (cards open with content, tree nodes carry state as a tag, never as the headline).
+- **Visualization before serialization** — the view's shape is decided by the renderer, never by the repository's file layout; no markdown structure leaks into the projection.
+- **Hierarchy before verbosity** — nested structure (tree branches, board columns, timeline phases) over flat lists.
+- **Whitespace as design** — spacing groups and separates; it is layout, not wasted width.
+- **One focal point** — each projection answers one question (see the visualization table); supporting detail stays secondary.
+- **State understood in seconds** — a glance answers the projection's question: the board shows what is in progress, the roadmap shows what is next, the tree shows how the system is shaped.
 
 ### Validation
 
@@ -509,49 +552,65 @@ An automatic **pre-render conformance check**: `conformance.Validate` runs befor
   - **Content-state variants** (architecture, planning, discovery, operations) — `draft` dim, `review` / `proposed` warning, `approved` / `accepted` success, `superseded` / `amended` dim (terminal records).
   - **Planning state** — `draft` dim, `approved` info, `immutable` success (locked plan in force).
   Icons decorate (`✓` done/approved, `→` in progress, `•` everything else); the state word carries the meaning.
-- **Summary block** — every projection closes with a `Summary:` of outcome facts (container, counts, status).
+- **Summary block** — every projection closes with a `Summary:` of outcome facts (container, counts, status). The execution projection closes with engineering insights instead of raw counts: **Active Work** (not yet done), **Completed Work** (done), **Review Queue** (in review), **Overall Progress** (done / total).
 - **Calm tone** — no banners, no ALL-CAPS, color is never the sole carrier of meaning.
 - **Non-TTY deterministic** — piped/CI output is byte-identical plain text with UTF-8 icons, no ANSI escapes; color auto-disables on non-TTY, `NO_COLOR` or `TERM=dumb`.
 
 ### Examples
 
-Illustrative non-TTY output sketches (identities and counts vary per repository; the layout is fixed):
+Illustrative non-TTY output sketches — one per projection (identities and counts vary per repository; the layout is fixed). All shapes are deterministic plain text with UTF-8 box drawing; color is never part of the layout.
 
-`eka view execution` (the aliases `eka view sprint` and `eka view wave` produce identical output):
+`eka view discovery`:
 
 ```
-Execution
-Container   eka-cli/ctr:sprint-12
+Discovery
 Repository  .
 Knowledge   EKA v1
-Domain      Execution
+Domain      Discovery
 ↓ View
 
-Tickets (5)
-  → tkt-sto-delta (in-progress)
-  • tkt-sto-alpha (planned)
-  ✓ tkt-sto-zeta (done)
-
-planned (2)
-  • eka-cli/sto-alpha
-  • eka-cli/sto-beta
-todo (1)
-  • eka-cli/sto-gamma
-in-progress (1)
-  → eka-cli/sto-delta
-in-review (1)
-  • eka-cli/sto-epsilon
-done (3)
-  ✓ eka-cli/sto-zeta
-  ✓ eka-cli/sto-eta
-  ✓ eka-cli/sto-theta
+┌───────────────────────────────────────────────────┐
+│ The canonical executable form of the Conformance  │
+│ Rules.                                            │
+│ vis:eka-cli · approved                            │
+└───────────────────────────────────────────────────┘
+┌───────────────────────────────────────────────────┐
+│ Identities are permanent, canonical, and never    │
+│ location-bound.                                   │
+│ req:identity · approved                           │
+└───────────────────────────────────────────────────┘
+┌───────────────────────────────────────────────────┐
+│ Exchange must be lossless and round-trip-safe.    │
+│ req:exchange · draft                              │
+└───────────────────────────────────────────────────┘
 Summary:
-└── Container: eka-cli/ctr:sprint-12
-└── Work items: 8
-└── In progress: 1
-└── Done: 3
-└── Tickets: 5
-└── Status: active
+└── Artifacts: 3
+└── Approved: 2
+└── Draft: 1
+```
+
+`eka view architecture`:
+
+```
+Architecture
+Repository  .
+Knowledge   EKA v1
+Domain      Architecture
+↓ View
+
+arc:eka-cli (approved)
+├── adr:identity-serialization (accepted)
+│   └── req:identity (approved)
+├── adr:state-vector-encoding (accepted)
+├── dec:projection-model (accepted)
+├── spec:exchange-format (in review)
+├── std:terminology (approved)
+└── gls:eka-terms (approved)
+Summary:
+└── Artifacts: 7
+└── Accepted: 3
+└── In review: 1
+└── Approved: 3
 ```
 
 `eka view planning`:
@@ -563,18 +622,64 @@ Knowledge   EKA v1
 Domain      Planning
 ↓ View
 
-draft (2)
-  • eka-cli/scp-onboarding
-  • eka-cli/epc-login-ux
-approved (1)
-  • eka-cli/plan-release-1 (phase: release-1)
-immutable (1)
-  • eka-cli/plan-release-1-v2 (phase: release-1)
+Roadmap
+release-1                 in force (plan:release-1 approved)
+  • scp:onboarding        draft
+  • plan:release-1        approved
+  • plan:release-1-v2     immutable
+release-2                 planned
+  • epc:login-ux          draft
 Summary:
 └── Artifacts: 4
 └── Draft: 2
 └── Approved: 1
 └── Immutable: 1
+```
+
+`eka view execution` (the aliases `eka view sprint` and `eka view wave` produce identical output):
+
+```
+Execution
+Container   eka-cli/ctr:sprint-12
+Repository  .
+Knowledge   EKA v1
+Domain      Execution
+↓ View
+
+┌─────────────┬─────────────┬─────────────┬─────────────┬─────────────┐
+│ Planned     │ Todo        │ In Progress │ In Review   │ Done        │
+├─────────────┼─────────────┼─────────────┼─────────────┼─────────────┤
+│ • sto-alpha │ • sto-gamma │ → sto-delta │ • sto-      │ ✓ sto-zeta  │
+│ • sto-beta  │             │             │   epsilon   │ ✓ sto-eta   │
+│             │             │             │             │ ✓ sto-theta │
+└─────────────┴─────────────┴─────────────┴─────────────┴─────────────┘
+
+Summary:
+└── Container: eka-cli/ctr:sprint-12
+└── Active work: 5 (2 planned, 1 todo, 1 in-progress, 1 in-review)
+└── Completed work: 3
+└── Review queue: 1
+└── Overall progress: 3 of 8 work items done
+└── Status: active
+```
+
+`eka view operations`:
+
+```
+Operations
+Repository  .
+Knowledge   EKA v1
+Domain      Operations
+↓ View
+
+Release summary
+  rel:v090 (approved) — v0.9.0, publishing core from ctr:wave-6
+Activity
+  run:deploy-feather (approved)
+  run:backup-feather (approved)
+Summary:
+└── Releases: 1
+└── Runbooks: 2
 ```
 
 `eka view ticket sto-alpha`:
@@ -587,10 +692,11 @@ Knowledge   EKA v1
 Domain      Execution
 ↓ View
 
-Projected Status   planned
-Work Item          eka-cli/sto-alpha (planned)
-Container          eka-cli/ctr:sprint-12
-Derives From       eka-cli/sto-alpha, eka-cli/ctr:sprint-12
+┌─ tkt-sto-alpha ───────────────────── planned ─┐
+│ Work item   sto-alpha (planned)               │
+│ Container   ctr:sprint-12                     │
+│ Derives     sto-alpha, ctr:sprint-12          │
+└───────────────────────────────────────────────┘
 Summary:
 └── Ticket: tkt-sto-alpha
 └── Work item: eka-cli/sto-alpha (planned)
@@ -758,7 +864,7 @@ A new command is added without architectural refactoring:
 | `eka init` | **Implemented** | Repository Bootstrapper (5 stages, adaptive wizard, dry-run, idempotent, post-generation validation). |
 | `eka export` | **Implemented** | Exchange Package export (RSF v1.1): repo/line/instance/collection scope, automatic validation, deterministic, external reference declaration, attachments, SHA-256 digests. |
 | `eka import` | **Implemented** | Exchange Package import (RSF v1.1 + Exchange §11): package + integrity validation, identity/relationship resolution, conflict → abort, atomic staged commit, rollback, post-import revalidation. |
-| `eka view` | **Implemented** | Knowledge projections (execution / planning / architecture / discovery / operations / ticket; CLI aliases `sprint`, `wave` → execution): read-only views derived from the Engineering Knowledge Model — relationships + State, never markdown text. Conformance-gated, deterministic, exit codes 0/1/2. |
+| `eka view` | **Implemented** | Knowledge projections (execution / planning / architecture / discovery / operations / ticket; CLI aliases `sprint`, `wave` → execution): read-only views derived from the Engineering Knowledge Model — relationships + State, never markdown text — rendered as per-domain visualizations (Kanban board, roadmap, dependency tree, information cards, release timeline, detail card). Conformance-gated, deterministic, exit codes 0/1/2. |
 | `eka validate` | **Implemented** | Full conformance validator (R0–R12: R1–R9 + structural R0 + domain-aware R10–R12). |
 | `eka version` | **Implemented** | CLI build version + EKA standard version (currently `EKA standard 1.1`). |
 | `eka completion` | **Implemented** | bash/zsh/fish/powershell completion scripts (provided by Cobra). |

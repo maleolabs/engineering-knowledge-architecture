@@ -1,0 +1,130 @@
+package cmd
+
+import (
+	"fmt"
+	"strconv"
+
+	"github.com/maleolabs/engineering-knowledge-architecture/cmd/ui"
+	"github.com/maleolabs/engineering-knowledge-architecture/view"
+)
+
+// This file implements the Execution projection renderer: the active
+// execution container as a kanban board — the primary question "what
+// is currently being worked on?" answered in one glance. The board is
+// the visual focal point; tickets are deliberately not rendered as a
+// list (they duplicate the board state — tickets project the work
+// items) and become one dim footer line.
+
+// boardTitles maps the execution-state values to their kanban column
+// titles. The board order is the fixed StateColumns order.
+var boardTitles = map[string]string{
+	"planned":     "Planned",
+	"todo":        "Todo",
+	"in-progress": "In Progress",
+	"in-review":   "In Review",
+	"done":        "Done",
+}
+
+// shortWorkItemID builds the short-id renderer for a work item set:
+// the bare id ("draft-autosave"), or the "<type>:<id>" form when the
+// id is ambiguous across work item types.
+func shortWorkItemID(items []view.WorkItem) func(view.WorkItem) string {
+	counts := make(map[string]int, len(items))
+	for _, wi := range items {
+		counts[wi.ID]++
+	}
+	return func(wi view.WorkItem) string {
+		if counts[wi.ID] > 1 {
+			return wi.Type + ":" + wi.ID
+		}
+		return wi.ID
+	}
+}
+
+// boardTitle returns the display title of an execution-state column,
+// or the raw state for values without a title (impossible behind the
+// validation gate).
+func boardTitle(state string) string {
+	if t, ok := boardTitles[state]; ok {
+		return t
+	}
+	return state
+}
+
+// renderExecution renders the Execution projection: the context
+// header, the container line (with the multiple-active warning when
+// the repository is in that invalid state), the five-column kanban
+// board, one dim footer line tying the board to its tickets, and the
+// insight summary.
+func renderExecution(s *ui.Style, g *view.Graph, p *view.ExecutionProjection) {
+	container := "none"
+	if p.Container != nil {
+		container = p.Container.Identity
+	}
+	ui.NewHeader(s, "Execution").
+		Add("Container", container).
+		Add("Repository", g.Root()).
+		Add("Knowledge", "EKA v"+standardVersion).
+		Add("Domain", "Execution").
+		Pipeline("View").
+		Render()
+	fmt.Fprintln(s.W)
+	if p.MultipleActive {
+		fmt.Fprintf(s.W, "%s\n", s.Warning("Multiple active containers — showing "+p.Container.Identity))
+	}
+	if p.Container == nil {
+		// Empty projection: a calm line, still exit 0 with the summary.
+		fmt.Fprintf(s.W, "%s\n", s.Dim("No active container."))
+	} else {
+		fmt.Fprintf(s.W, "%s\n", stateMark(s, p.Container.State)+" "+p.Container.Identity+
+			"  "+s.Dim("("+p.Container.State+")"))
+	}
+	fmt.Fprintln(s.W)
+	renderBoard(s, p.Columns)
+	if p.Container != nil && len(p.Tickets) > 0 {
+		fmt.Fprintln(s.W)
+		fmt.Fprintf(s.W, "%s\n", s.Dim(plural(len(p.Tickets), "ticket", "tickets")+
+			" project these work items"))
+	}
+	renderExecutionInsights(s, p)
+}
+
+// renderBoard renders the work board: the fixed five execution-state
+// columns (always the full set; empty columns show "—") with the short
+// ids of their work items as cell labels.
+func renderBoard(s *ui.Style, cols view.StateColumns) {
+	board := ui.NewBoard(s)
+	var all []view.WorkItem
+	for _, col := range cols {
+		all = append(all, col.WorkItems...)
+	}
+	short := shortWorkItemID(all)
+	for _, col := range cols {
+		labels := make([]string, 0, len(col.WorkItems))
+		for _, wi := range col.WorkItems {
+			labels = append(labels, short(wi))
+		}
+		board.AddColumn(boardTitle(col.State), stateColor(s, col.State), labels)
+	}
+	board.Render()
+}
+
+// renderExecutionInsights renders the execution summary with meaningful
+// insights instead of raw per-state counts: active work (in progress +
+// in review), completed work, the review queue, and overall progress
+// (done/total with percent).
+func renderExecutionInsights(s *ui.Style, p *view.ExecutionProjection) {
+	inProgress := p.Columns.Count("in-progress")
+	inReview := p.Columns.Count("in-review")
+	done := p.Columns.Count("done")
+	percent := "0%"
+	if p.Total > 0 {
+		percent = strconv.Itoa(done*100/p.Total) + "%"
+	}
+	ui.NewSummary(s).
+		Add("Active Work", strconv.Itoa(inProgress+inReview)).
+		Add("Completed Work", strconv.Itoa(done)).
+		Add("Review Queue", strconv.Itoa(inReview)).
+		Add("Overall Progress", fmt.Sprintf("%d/%d (%s)", done, p.Total, percent)).
+		Render()
+}
