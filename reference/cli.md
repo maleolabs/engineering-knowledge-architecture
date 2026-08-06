@@ -17,8 +17,116 @@ Consequences of this philosophy:
 
 - The validator is the **single source of mechanical truth**; where rule text is ambiguous, interpretation decisions are documented (see `conformance-notes.md`) — no behavior is invented without a basis.
 - The EKA repository itself must pass its own validator (see [Repository conformance](#repository-conformance)) — a prerequisite for the validator to be trusted by other repositories.
-- Deterministic CLI behavior: running the same command twice on the same input produces byte-identical output.
+- Deterministic CLI behavior: identical input produces identical output; non-TTY output is byte-identical and free of ANSI control sequences (see [CLI UX](#cli-ux)).
 - The CLI is an **adapter** — business logic (bootstrap, validation) lives in reusable application packages, independent of the CLI framework (see [CLI architecture](#cli-architecture)).
+
+## CLI UX
+
+All command output is rendered by `cmd/ui` — a presentation subpackage of `cmd` with no business logic. Every renderer is a pure function of (data, style); the only time-dependent output is the TTY-only spinner animation, which always ends in a deterministic final state.
+
+### Communication philosophy
+
+Calm, professional, and unadorned:
+
+- No exclamation marks, no ALL-CAPS emphasis, no banners, no ASCII logos.
+- Meaning is carried by words and icons; color is decoration, never the message.
+- Trust through clarity: every line answers "what is happening" and "what was the outcome".
+
+### Interaction model
+
+All commands share one three-part hierarchy:
+
+1. **Context header** — identifies the object being processed.
+2. **Workflow body** — the operation's stages (progressive tree) or, for single-operation commands, the report.
+3. **Summary** — the outcome as facts.
+
+`init`, `export` and `import` render a progressive tree; `validate` renders the report as the body. Every command ends with a summary block.
+
+### Context header
+
+The first lines of every command orient the reader on the object, not the action:
+
+```
+Repository
+Name        myproj
+Namespace   eka-cli
+Knowledge   EKA v1
+↓ Bootstrap
+```
+
+- First line: object kind (`Repository`, `Knowledge Package`) — the dynamic identity anchor.
+- Identity rows: aligned label/value pairs; each command shows the rows that identify its object (`Name`, `Namespace`, `Path`, `Package`, `Scope`, `Output`, `Format`, `Knowledge`).
+- Pipeline separator: `↓ <pipeline>` — `↓ Bootstrap`, `↓ Export`, `↓ Import`, `↓ Validate`.
+
+### Object-centric execution
+
+Every workflow states the object it processes before the actions: `init` bootstraps a **Repository**, `export`/`import` move a **Knowledge Package**, `validate` checks a **Repository**. The object kind opens the output and is repeated as the tree root.
+
+### Progressive workflow tree
+
+Multi-step commands render stages as a tree with deterministic `[i/n]` prefixes (`[1/6] Discover repository`):
+
+- **TTY** — the tree redraws in place: completed steps show `✓`, the active step shows the spinner, pending steps stay dim; `Finish` leaves the cursor on a fresh line.
+- **Non-TTY** — steps emit deterministic sequential lines as they complete (`├── <label>`, `│   ✓ <detail>`); no redraw, no animation.
+- Failure renders `failed: <detail>` under the leaf — the word, never color alone.
+
+### Contextual loading
+
+Loading states always describe the work in progress ("Loading Engineering Knowledge...") — a bare spinner never appears. Export's load phase is the current example: the message prints once on non-TTY; on a TTY the animation ends in the deterministic line `✓ <message>`. Loading states are only shown for operations taking roughly a second or more.
+
+### Color semantics
+
+A soft, hand-rolled 256-color palette — the only colors the CLI may emit:
+
+| Role | ANSI SGR | Usage |
+|---|---|---|
+| Info | `38;5;75` | labels, headings (soft blue) |
+| Success | `38;5;114` | completed steps, `✓`, PASS (soft green) |
+| Warning | `38;5;214` | warnings (amber) |
+| Error | `38;5;167` | failures, FAIL (muted red) |
+| Progress | `38;5;80` | active spinner frame (soft cyan) |
+| Dim | `38;5;245` | secondary/detail lines (gray) |
+
+Color auto-disables when the writer is not a terminal, `NO_COLOR` is set, or `TERM=dumb`. Color is never the sole carrier of meaning: a failed step prints `failed: ...`, and PASS/FAIL are always printed as words.
+
+### Icon semantics
+
+A deliberately minimal Unicode set — no emojis:
+
+| Icon | Meaning |
+|---|---|
+| `✓` | completed step, finished loading |
+| `⠋ ⠙ ⠹ ⠸ ⠼ ⠴ ⠦ ⠧ ⠇ ⠏` | Braille spinner cycle (TTY only, progress color) |
+| `├──` / `└──` / `│` | tree connectors (non-TTY tree lines, summary items) |
+| `•` | detail-list bullet (verbose sections) |
+| `→` | relationship direction (verbose export external references) |
+| `↓` | pipeline separator in the context header |
+
+All glyphs are valid UTF-8; icons decorate, text carries meaning.
+
+### Summaries
+
+Every successful command ends with a `Summary:` block: a tree-style list of `└── label: value` outcome facts — project name, namespace, git status, validation verdict, counts, digests — never a log replay. On failure, diagnostics go to stderr and stdout stays empty (import contract).
+
+### Verbose mode
+
+`-v` / `--verbose` (persistent, presentation-only) adds detail sections between the tree and the summary: plan actions and per-unit lists for `init`, per-unit identities/attachments/external references for `export`, imported/skipped/warning lists for `import`. It never changes the interaction model, the exit codes, or determinism. Default output is concise.
+
+### Determinism
+
+The contract: **identical input → identical output**.
+
+- Non-TTY output (pipes, CI, tests) is byte-identical across runs: plain text plus UTF-8 icons, no ANSI escapes, no `\r`, no spinner frames.
+- TTY-only affordances — animation, in-place redraw, color — never leak into piped or redirected output.
+- The final rendered tree is deterministic on both TTY and non-TTY; the only time-dependent bytes are the intermediate TTY animation frames.
+
+### Accessibility
+
+The CLI is usable without color, over SSH, in CI, and in basic terminals: the plain non-TTY output is the complete output, not a degraded fallback. `NO_COLOR` and `TERM=dumb` disable color on a TTY without changing anything else.
+
+### Consistency
+
+One interaction model across `init` (5-stage tree), `export` (6-stage tree), `import` (7-stage tree) and `validate` (header + report + summary). Future commands must follow the same model (see [Contribution guide](#contribution-guide-adding-a-command)).
 
 ## Installation
 
@@ -314,27 +422,33 @@ eka validate [path]
 ### Example output (the EKA repository itself)
 
 ```
-EKA Conformance Validation
-==========================
-Root:      .
-.md files: 51
-Artifacts: 7
-Errors:    0
-Warnings:  0
+Repository
+Path       .
+Knowledge   EKA v1
+↓ Validate
+
+Repository validation
+Root: . — 51 .md files, 7 artifacts, 0 errors, 0 warnings
 
 Results (sorted by file, then rule):
   (no violations found)
 
-Execution: PASS (0 errors, 0 warnings)
+Verdict: PASS
+Summary:
+└── Artifacts: 7
+└── Errors: 0
+└── Warnings: 0
+└── Status: Repository conforms to EKA v1
 ```
 
 > Note: the `.md files` count is a snapshot — it grows with every new convention document added; the output format stays fixed. The artifact, error, and warning counts are the contract (7 artifacts; error > 0 ⇒ FAIL).
 
 Output structure:
 
-1. **Scan summary** — scanned root, number of `.md` files, number of artifacts, number of errors, number of warnings.
-2. **Results** — each violation on one line `[severity] rule file: message`; deterministically sorted by file, then rule (R0, R1–R9), then severity, then message. If no violations, `(no violations found)` is printed.
-3. **Execution summary** — `PASS` if no blocking errors, `FAIL` otherwise; followed by the error and warning counts.
+1. **Context header** — the object being validated (`Repository`), its identity rows (`Path`, `Knowledge`), and the `↓ Validate` pipeline.
+2. **Repository validation** — scanned root, number of `.md` files, number of artifacts, number of errors, number of warnings.
+3. **Results** — each violation on one line `[severity] rule file: message`; deterministically sorted by file, then rule (R0, R1–R9), then severity, then message. If no violations, `(no violations found)` is printed.
+4. **Verdict + summary** — `Verdict: PASS` if no blocking errors, `FAIL` otherwise; the summary block closes with Artifacts, Errors, Warnings and the conformance Status.
 
 ### Example output with violations
 
@@ -385,7 +499,7 @@ The CLI is organized as **two layers + one entry point**:
 
 | Layer | Location | Role |
 |---|---|---|
-| Command layer | `cmd/` (package `cmd`) | **Only** Cobra command definitions: registration, flags, help, argument validation, dispatch to services. No domain logic. |
+| Command layer | `cmd/` (package `cmd` + `cmd/ui`) | **Only** Cobra command definitions and presentation rendering: registration, flags, help, argument validation, dispatch to services, `cmd/ui` output. No domain logic. |
 | Application layer | `bootstrap/` (public package) | Repository Bootstrapper: discovery, planning, wizard, generation, validation — reusable without the CLI. |
 | Application layer | `exchange/` (public package) | Import/export engine (Exchange Spec + RSF): discovery, loading, model building, serialization, deserialization, identity/relationship resolver, conflict analyzer, integration engine (staged commit + rollback), package writer — reusable without the CLI. |
 | Application layer | `conformance/` (public package) | Validation engine: scanning, artifact classification, rules R1–R9, result model (`Report`); also provides `Scan` and `ParseReference` for other consumers. |
@@ -399,6 +513,15 @@ cmd/                package cmd — Cobra command definitions (command layer)
   export.go         export command
   import.go         import command
   execute_test.go   CLI tests (exit codes, help, completion, modes)
+cmd/ui/             package ui — presentation primitives (no business logic)
+  ui.go             Style: color/TTY/verbose context per execution
+  header.go         context header (object kind, identity rows, pipeline)
+  tree.go           progressive workflow tree (TTY redraw / plain lines)
+  spinner.go        contextual loading (message + Braille frame, TTY only)
+  summary.go        closing summary block + verbose bullet lists
+  color.go          soft 256-color palette (the only colors the CLI may emit)
+  icon.go           icon set (✓ • → ↓, tree connectors, spinner frames)
+  step.go           deterministic [i/n] step prefix
 cmd/eka/
   main.go           thin: os.Exit(cmd.Execute(...))
 bootstrap/          public package — eka init engine (application layer)
