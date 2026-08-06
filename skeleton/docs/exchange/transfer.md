@@ -1,7 +1,7 @@
 # Transfer — Import/Export Conventions
 
 > Anchor EKA: Exchange Layer — transfer (import/export). Convention document, not an artifact.
-> Standard: EKA v1.0, dated 2026-08-05.
+> Standard: EKA v1.1, dated 2026-08-05.
 
 This document governs the exchange of EKA artifacts between repositories (e.g. parent/component/archive repositories). All conventions apply in both directions (import = export reversed).
 

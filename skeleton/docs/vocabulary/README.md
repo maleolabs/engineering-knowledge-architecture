@@ -1,6 +1,7 @@
 # docs/vocabulary/ — Vocabulary Dimension
 
 > Anchor EKA: Knowledge Layer — **vocabulary** dimension (EKA 8).
+> Engineering Domain: **Architecture** (stratum 2).
 
 ## Purpose
 

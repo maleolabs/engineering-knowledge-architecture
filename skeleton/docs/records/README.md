@@ -1,6 +1,7 @@
 # docs/records/ — Records Dimension
 
 > Anchor EKA: Knowledge Layer — **records** dimension (EKA 8).
+> Engineering Domain: **Operations** (stratum 5).
 
 ## Purpose
 

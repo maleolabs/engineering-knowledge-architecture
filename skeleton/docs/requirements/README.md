@@ -1,6 +1,7 @@
 # docs/requirements/ — Requirements Dimension
 
 > Anchor EKA: Knowledge Layer — **requirements** dimension (EKA 8).
+> Engineering Domain: **Discovery** (stratum 1, highest authority).
 
 ## Purpose
 

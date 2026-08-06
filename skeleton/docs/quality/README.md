@@ -1,6 +1,7 @@
 # docs/quality/ — Quality Dimension
 
 > Anchor EKA: Knowledge Layer — **quality** dimension (EKA 8).
+> Engineering Domain: **Execution** (stratum 4).
 
 ## Purpose
 

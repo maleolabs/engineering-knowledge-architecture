@@ -1,6 +1,7 @@
 # docs/operations/ — Operations Dimension
 
 > Anchor EKA: Knowledge Layer — **operations** dimension (EKA 8).
+> Engineering Domain: **Operations** (stratum 5).
 
 ## Purpose
 

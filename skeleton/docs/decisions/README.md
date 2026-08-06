@@ -1,6 +1,7 @@
 # docs/decisions/ — Decisions Dimension
 
 > Anchor EKA: Knowledge Layer — **decisions** dimension (EKA 8).
+> Engineering Domain: **Architecture** (stratum 2).
 
 ## Purpose
 

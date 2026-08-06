@@ -1,7 +1,7 @@
 # Protocol — Operating Manual
 
 > Anchor EKA: Operating Layer (OS). Convention document — not an artifact (no `type`/`id` in frontmatter).
-> Standard: EKA v1.0, dated 2026-08-05.
+> Standard: EKA v1.1, dated 2026-08-05.
 
 This document is the operating manual of the EKA serialization: the ordering chain, State Domains, transition rules, and the obligations every state writer must obey.
 

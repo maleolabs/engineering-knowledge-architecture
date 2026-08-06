@@ -1,31 +1,50 @@
 # docs/ — Source of Truth for EKA Serialization
 
 > Anchor EKA: overall serialization — Knowledge Layer (content), Operating Layer (state), Exchange Layer (validation & transfer).
-> Standard: EKA v1.0, dated 2026-08-05.
+> Standard: EKA v1.1, dated 2026-08-05.
 
 ## Status of This Folder
 
-This folder is the **EKA v1.0 serialization** (EKA projected to Git + Markdown), **not EKA architecture itself**. The architecture — three layers (Knowledge/Operating/Exchange), five State Domains, and the Protocol — is conceptual; this folder is only its file representation. In other words: changing the folder does not change EKA, and EKA can be serialized to other media without losing meaning.
+This folder is the **EKA v1.1 serialization** (EKA projected to Git + Markdown), **not EKA architecture itself**. The architecture — three layers (Knowledge/Operating/Exchange), five State Domains, the Protocol, and the five Engineering Domains (Core v1.1 §8.1) — is conceptual; this folder is only its file representation. In other words: changing the folder does not change EKA, and EKA can be serialized to other media without losing meaning.
 
-## Navigation Map (15 Entries)
+## Navigation Map (16 Entries)
 
-| Entry | Anchor EKA | Content |
-|---|---|---|
-| [README.md](.) (this file) | serialization | source of truth + convention summary |
-| [intent/](intent/) | intent dimension | `vis-` Vision/Manifesto, `str-` Strategy |
-| [requirements/](requirements/) | requirements dimension | `req-` Requirement |
-| [architecture/](architecture/) | architecture dimension | `arc-` Architecture Description |
-| [decisions/](decisions/) | decisions dimension | `adr-` ADR, `dec-` Decision Record |
-| [specifications/](specifications/) | specifications dimension | `spec-` Specification |
-| [standards/](standards/) | standards dimension | `std-` Standard/Guideline |
-| [operations/](operations/) | operations dimension | `run-` Runbook |
-| [quality/](quality/) | quality dimension | `rvw-` Review |
-| [planning/](planning/) | planning dimension | `scp-`, `epc-`, `plan-`, `trc-` |
-| [records/](records/) | records dimension | `rel-` Release Record |
-| [research/](research/) | research dimension | `fnd-` Research Finding (EKA 14.1) |
-| [vocabulary/](vocabulary/) | vocabulary dimension | `gls-` Glossary/Term |
-| [operating/](operating/) | Operating Layer | state, protocol, work items, containers, sessions, projections |
-| [exchange/](exchange/) | Exchange Layer | validation, transfer |
+| Entry | Anchor EKA | Content | Engineering Domain |
+|---|---|---|---|
+| [README.md](.) (this file) | serialization | source of truth + convention summary | — |
+| [intent/](intent/) | intent dimension | `vis-` Vision/Manifesto, `str-` Strategy | Discovery |
+| [requirements/](requirements/) | requirements dimension | `req-` Requirement | Discovery |
+| [architecture/](architecture/) | architecture dimension | `arc-` Architecture Description | Architecture |
+| [decisions/](decisions/) | decisions dimension | `adr-` ADR, `dec-` Decision Record | Architecture |
+| [specifications/](specifications/) | specifications dimension | `spec-` Specification | Architecture |
+| [standards/](standards/) | standards dimension | `std-` Standard/Guideline | Architecture |
+| [operations/](operations/) | operations dimension | `run-` Runbook | Operations |
+| [quality/](quality/) | quality dimension | `rvw-` Review | Execution |
+| [planning/](planning/) | planning dimension | `scp-`, `epc-`, `plan-`, `trc-` | Planning |
+| [records/](records/) | records dimension | `rel-` Release Record | Operations |
+| [research/](research/) | research dimension | `fnd-` Research Finding (EKA 14.1) | Discovery |
+| [vocabulary/](vocabulary/) | vocabulary dimension | `gls-` Glossary/Term | Architecture |
+| [lifecycle.md](lifecycle.md) | lifecycle | Engineering Knowledge Lifecycle (produce → consume) | — |
+| [operating/](operating/) | Operating Layer | state, protocol, work items, containers, sessions, projections | Execution |
+| [exchange/](exchange/) | Exchange Layer | validation, transfer | — |
+
+## Engineering Domains
+
+Every folder (and every artifact type) belongs to exactly one of the five canonical **Engineering Domains** (Core v1.1 §8.1) — the stratum-aligned category of engineering knowledge it holds:
+
+| Engineering Domain | Stratum | Folders / dimensions | Token families |
+|---|---|---|---|
+| **Discovery** | 1 (highest authority) | intent, requirements, research | vis-, str-, req-, fnd- |
+| **Architecture** | 2 | architecture, decisions, specifications, standards, vocabulary | arc-, adr-, dec-, spec-, std-, gls- |
+| **Planning** | 3 | planning | scp-, epc-, plan-, trc- |
+| **Execution** | 4 | quality (+ operating/) | rvw-, ctr-, tkt-, sto-, ts-, bug-, td-, ch-, spk-, ses- |
+| **Operations** | 5 | operations, records | run-, rel- |
+
+The domains form a strict authority chain: **Discovery → Architecture → Planning → Execution → Operations**. **Stratum Authority Invariant:** knowledge in a lower stratum must not contradict knowledge in a higher stratum that is in force — resolve contradictions by changing the lower-stratum knowledge (new instance + relationship, forward-only), never by superseding or amending upward.
+
+Methodology note: **PRD**, **ADR/RFC**, **Epic**, **Initiative**, **Sprint/Iteration**, **Ticket**, **Release**, **Incident**, **Runbook** are **Representation Aliases** — methodology terms mapped onto a canonical token + Engineering Domain (e.g. PRD → `req-`, Sprint → `ctr-`). They are never frontmatter values and never artifact types of their own. Methodologies (Scrum, Kanban, Shape Up, …) are **convention layers over EKA**, not part of the Core standard.
+
+How knowledge flows through these domains: [lifecycle.md](lifecycle.md).
 
 ## Serialization Conventions Summary
 

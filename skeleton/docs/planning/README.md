@@ -1,6 +1,7 @@
 # docs/planning/ — Planning Dimension
 
 > Anchor EKA: Knowledge Layer — **planning** dimension (EKA 8) + State Domain **Planning State**.
+> Engineering Domain: **Planning** (stratum 3).
 
 ## Purpose
 

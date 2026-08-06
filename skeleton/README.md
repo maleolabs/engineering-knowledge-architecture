@@ -14,7 +14,7 @@
 
 ## EKA Serialization Conformance
 
-This project uses EKA v1.0 serialization (Git+Markdown).
+This project uses EKA v1.1 serialization (Git+Markdown).
 
 ## Source of Truth
 

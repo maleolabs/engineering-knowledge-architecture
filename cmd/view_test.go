@@ -102,6 +102,7 @@ func TestViewSprintHappyPath(t *testing.T) {
 		"Container    eka-view-fixture/ctr:wave-1",
 		"Repository   .",
 		"Knowledge    EKA v1",
+		"Domain       Execution",
 		"↓ View",
 		"planned (1)",
 		"todo (1)",
@@ -168,6 +169,7 @@ func TestViewWaveHappyPath(t *testing.T) {
 		"Tickets (8)",
 		"eka-view-fixture/tkt:ts-gamma (in-progress)",
 		"eka-view-fixture/tkt:unresolved (unresolved)",
+		"Domain       Execution",
 		"Progress",
 		"planned     1",
 		"in-progress 1",
@@ -192,6 +194,7 @@ func TestViewTicketHappyPath(t *testing.T) {
 	for _, want := range []string{
 		"Ticket",
 		"Ticket       eka-view-fixture/tkt:ts-gamma",
+		"Domain       Execution",
 		"Projected Status   in-progress",
 		"Work Item          eka-view-fixture/ts:gamma (in-progress)",
 		"Container          eka-view-fixture/ctr:wave-1",

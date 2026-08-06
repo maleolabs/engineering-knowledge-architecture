@@ -1,6 +1,7 @@
 # docs/research/ — Research Dimension
 
 > Anchor EKA: Knowledge Layer — **research** dimension (EKA 8), token extension `fnd-` (EKA 14.1).
+> Engineering Domain: **Discovery** (stratum 1, highest authority).
 
 ## Purpose
 

@@ -1,6 +1,7 @@
 # docs/intent/ — Intent Dimension
 
 > Anchor EKA: Knowledge Layer — **intent** dimension (EKA 8).
+> Engineering Domain: **Discovery** (stratum 1, highest authority).
 
 ## Purpose
 

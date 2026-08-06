@@ -50,12 +50,16 @@ Every Artifact carries an **Identity** `(Namespace, Type, ID, InstanceVersion)`,
 
 | Specification | Status | Contents |
 |---|---|---|
-| **EKA Core Specification** v1.0 | Ratified | The canonical conceptual model: principles (P1–P16), Identity Model, State Taxonomy, Knowledge/Execution/Artifact Taxonomies, Layer Contracts, Import/Export Model, Extension Model. |
-| **EKA Exchange Specification** v1.0 | Ratified | The canonical exchange protocol: Exchange Units, Exchange Package Object Model, identity/relationship/state representation, versioning, import/export/synchronization semantics, Conformance Rules (R1–R9), round-trip guarantees. Serialization-independent. |
-| **EKA Naming and Terminology Specification** v1.0 | Ratified | The official naming system of the ecosystem: product identity, specification families, reference components, tooling, repository naming, canonical terminology, deprecated terms. |
-| **EKA Reference Serialization Format (RSF)** v1.0 | Reference (not normative) | One canonical serialization projection of the Exchange Package Object Model — the format used by `eka export` and `eka import`. |
+| **EKA Core Specification** v1.1 | Ratified | The canonical conceptual model: principles (P1–P16), Identity Model, State Taxonomy, Knowledge/Execution/Artifact Taxonomies, Layer Contracts, Import/Export Model, Extension Model; v1.1 adds §8.1 Engineering Domains and Knowledge Stratification (five Engineering Domains, Stratum Authority Invariant, Representation Aliases). |
+| **EKA Exchange Specification** v1.1 | Ratified | The canonical exchange protocol: Exchange Units, Exchange Package Object Model, identity/relationship/state representation, versioning, import/export/synchronization semantics, Conformance Rules (R1–R9; v1.1 adds the Engineering Domain to unit classification and aligns the rule set to R0–R12), round-trip guarantees. Serialization-independent. |
+| **EKA Naming and Terminology Specification** v1.1 | Ratified | The official naming system of the ecosystem: product identity, specification families, reference components, tooling, repository naming, canonical terminology (incl. Engineering Domain, Knowledge Stratum, Representation Alias), Conformance Rules R0–R12, deprecated terms. |
+| **EKA Reference Serialization Format (RSF)** v1.1 | Reference (not normative) | One canonical serialization projection of the Exchange Package Object Model (incl. the Engineering Domain in unit classification) — the format used by `eka export` and `eka import`. |
 
 The standard is deliberately serialization-independent: Git+Markdown is one implementation, and relational databases, graph stores, or future platforms are equally valid as long as they honor the contracts.
+
+### Engineering Domains
+
+Every artifact belongs to exactly one of five **Engineering Domains** (Core v1.1 §8.1) — the stratum-aligned category of engineering knowledge it holds: **Discovery** (intent, requirements, research) → **Architecture** (architecture, decisions, specifications, standards, vocabulary) → **Planning** (planning) → **Execution** (quality + operating) → **Operations** (operations, records). The domains form a strict authority chain (stratum 1 highest → 5): lower-stratum knowledge must not contradict higher-stratum knowledge in force, and never supersedes or amends upward (Stratum Authority Invariant). PRD, ADR, Epic, Sprint, Ticket, Release, and similar terms are **Representation Aliases** onto canonical tokens — methodologies (Scrum, Kanban, …) are convention layers, independent of the Core standard. How knowledge flows through these domains: [Engineering Knowledge Lifecycle](skeleton/docs/lifecycle.md).
 
 ## Reference Implementation
 
@@ -73,10 +77,10 @@ The `eka` CLI is the official interface of the architecture (Cobra-based command
 | Command | Purpose |
 |---|---|
 | `eka init` | Repository Bootstrapper: analyzes the workspace, adaptively configures, generates an EKA repository from the Reference Skeleton, validates the result. Idempotent; `--dry-run` supported. |
-| `eka validate` | Conformance validator: runs Conformance Rules R0–R9 mechanically, with deterministic output and exit codes (0/1/2). |
+| `eka validate` | Conformance validator: runs Conformance Rules R0–R12 mechanically, with deterministic output and exit codes (0/1/2). |
 | `eka export` | Exports engineering knowledge into a canonical Exchange Package following the RSF — deterministic, validated before export, scopes: repository / line / instance / collection. |
 | `eka import` | Integrates an Exchange Package into an existing repository — atomic, conservative merge, conflict detection, rollback, post-import validation. |
-| `eka view` | Knowledge projections: `sprint`, `wave`, `ticket` — read-only, relationship-derived views over the Engineering Knowledge Model (never markdown text); conformance-gated, deterministic. |
+| `eka view` | Knowledge projections: `sprint`, `wave`, `ticket` — read-only, relationship-derived Execution projections over the Engineering Knowledge Model (never markdown text); conformance-gated, deterministic. |
 | `eka completion` | Shell completion (bash/zsh/fish/powershell). |
 | `eka version` | CLI build version and the EKA standard version implemented. |
 | `eka` | Product landing: a calm orientation with a compact command overview (help and version pointers). |
@@ -143,11 +147,11 @@ The application packages (`bootstrap/`, `exchange/`, `conformance/`, `view/`) ar
 
 | Milestone | Status |
 |---|---|
-| EKA Core Specification v1.0 | Ratified |
-| EKA Exchange Specification v1.0 | Ratified |
-| EKA Naming and Terminology Specification v1.0 | Ratified |
-| Reference Serialization Format v1.0 | Reference |
-| Reference Implementation + Validator | Active |
+| EKA Core Specification v1.1 (Engineering Domains + Knowledge Stratification, §8.1) | Ratified |
+| EKA Exchange Specification v1.1 | Ratified |
+| EKA Naming and Terminology Specification v1.1 | Ratified |
+| Reference Serialization Format v1.1 | Reference |
+| Reference Implementation + Validator (rules R0–R12) | Active |
 | `eka init`, `eka validate`, `eka export`, `eka import`, `eka view` | Implemented |
 | `eka diagnose`, `eka graph`, sync strategies (replace, forward-only reconciliation) | Future |
 

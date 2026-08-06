@@ -1,9 +1,9 @@
-# Validation — Conformance Checklist (9 Rules)
+# Validation — Conformance Checklist (R0–R12)
 
 > Anchor EKA: Exchange Layer — conformance validation. Convention document, not an artifact.
-> Standard: EKA v1.0, dated 2026-08-05.
+> Standard: EKA v1.1, dated 2026-08-05.
 
-> Term mapping (Naming and Terminology Specification v1.0 §9.3): the "Conformance Rules 1–9" below = **Conformance Rules R1–R9** (EKA Exchange Specification §14.2). R0 (structural artifact-rule) is defined by the Reference Validator (`conformance/`), not part of these nine rules.
+> Term mapping (Naming and Terminology Specification v1.1 §9.3): the "Conformance Rules 1–9" below = **Conformance Rules R1–R9** (EKA Exchange Specification §14.2). R0 (structural artifact-rule) is defined by the Reference Validator (`conformance/`), not part of these nine rules. **R10–R12** are the domain-aware rules of EKA Core Specification v1.1 §8.1 (Engineering Domains and Knowledge Stratification). The full rule set is **R0–R12** (thirteen rules): R0 structural, R1–R9 exchange (§14.2), R10–R12 domain-aware (Core v1.1 §8.1).
 
 The following mechanical checklist runs **before commit** for every new artifact or state change. All rules are mechanical (automatable). Format: 1 = pass, 0 = fail (blocking), W = warning.
 
@@ -101,8 +101,40 @@ Required content structure per type family:
 - [ ] All required sections present for the respective type.
 - [ ] ADR supersession: an `adr-` with `content-state: superseded` must be referenced by its successor (0 otherwise).
 
+## Conformance Rule 10 — Stratification Traceability (warning)
+
+Every artifact whose Engineering Domain is not **Discovery** (stratum 1) must have a resolvable reference chain — `derives-from`/`depends-on`, direct or transitive — reaching an artifact in a **strictly higher stratum** (Discovery → Architecture → Planning → Execution → Operations; stratum 1 = highest). The chain is satisfied when any reached artifact's home domain has a smaller stratum number; cycles and self-references are harmless (the walk is bounded).
+
+Exemptions:
+
+- `tkt-` and `ses-` tokens (pure projections / operating records).
+- Knowledge artifacts with `content-state: draft` (work-item tokens own no `content-state` and are never exempt via this clause — they require the chain like every other non-draft artifact).
+
+A missing chain is a **W** (warning): stratification is a structural quality signal — it never blocks a commit.
+
+- [ ] Non-Discovery artifact has a resolvable `derives-from`/`depends-on` chain (direct or transitive) reaching a strictly higher stratum (W if missing).
+- [ ] Exemptions applied only for `tkt-`/`ses-` and `content-state: draft` knowledge artifacts.
+
+## Conformance Rule 11 — Domain Coherence (blocking)
+
+The optional `domain` frontmatter field, **when present**, must:
+
+1. Be one of the five canonical Engineering Domains (`Discovery`, `Architecture`, `Planning`, `Execution`, `Operations`).
+2. Equal the artifact's **home domain** — the domain derived from its token family (e.g. `adr-` → `Architecture`).
+
+`domain` **absent** = OK (the domain is derived, never part of Identity or the State Vector). Any violation is a **0** (error, blocking).
+
+- [ ] `domain` present → value is canonical **and** matches the token's home domain (0 otherwise).
+- [ ] `domain` absent → no check.
+
+## Conformance Rule 12 — Cross-Stratum Supersession Prohibition (blocking)
+
+A `supersedes` or `amends` relationship may **never** target an artifact in a **strictly higher stratum** (smaller stratum number): durable content moves down the authority chain, never up (Stratum Authority Invariant, Core v1.1 §8.1). Same-stratum and lower-stratum targets pass. Unresolvable targets are left to R5 (dangling references) — R12 evaluates resolvable targets only. Any violation is a **0** (error, blocking).
+
+- [ ] No `supersedes`/`amends` target resolves to an artifact in a strictly higher stratum (0 otherwise).
+
 ## Result
 
-- [ ] All rules 1–9 pass → commit allowed.
-- [ ] Any **0** → fix first, do not commit.
-- [ ] Only **W** → commit allowed with the warnings noted.
+- [ ] All rules R1–R12 pass, with R0 clean → commit allowed.
+- [ ] Any **0** → fix first, do not commit (R11/R12 findings are blocking like R1–R9).
+- [ ] Only **W** → commit allowed with the warnings noted (R10 stratification warnings included).

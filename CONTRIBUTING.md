@@ -1,8 +1,8 @@
-# Contributing — EKA v1.0 Repository
+# Contributing — EKA v1.1 Repository
 
-Contribution guide and governance rules for the **EKA v1.0 Reference Implementation** repository (spec + Reference Implementation + validator + tooling).
+Contribution guide and governance rules for the **EKA v1.1 Reference Implementation** repository (spec + Reference Implementation + validator + tooling).
 
-> Convention document, not an artifact. Related: [`reference/conformance-traceability-matrix.md`](reference/conformance-traceability-matrix.md) (single source of truth for conformance coverage), [`reference/conformance-notes.md`](reference/conformance-notes.md) (interpretation decisions), [`skeleton/docs/exchange/validation.md`](skeleton/docs/exchange/validation.md) (Conformance Rules R1–R9), [`standard/eka-specification-v1.0.md`](standard/eka-specification-v1.0.md) (canonical standard).
+> Convention document, not an artifact. Related: [`reference/conformance-traceability-matrix.md`](reference/conformance-traceability-matrix.md) (single source of truth for conformance coverage), [`reference/conformance-notes.md`](reference/conformance-notes.md) (interpretation decisions), [`skeleton/docs/exchange/validation.md`](skeleton/docs/exchange/validation.md) (Conformance Rules R1–R9), [`standard/eka-specification-v1.1.md`](standard/eka-specification-v1.1.md) (canonical standard).
 
 ## Principles
 
@@ -43,15 +43,15 @@ A contribution is considered **incomplete** if it changes the spec, the Conforma
 
 - [`reference/conformance-traceability-matrix.md`](reference/conformance-traceability-matrix.md) is the **single source of truth** for conformance coverage: Engineering Requirement → Specification → Conformance Rule → Implementation → Automated Test → Coverage Status → Notes.
 - The matrix **MUST be updated in the same Pull Request** as spec/rule/implementation/test changes — and **conversely**: the matrix is never edited without a related change (no "matrix-only" PRs).
-- Rule IDs (R0–R9) and requirement IDs (REQ-nnn) are stable and never reused.
-- Validator behavior changes outside R0–R9 (new rules) are **not** proposed through direct implementation: new rules are a governance decision (see the known gaps in `reference/conformance-notes.md` and the follow-up recommendations in matrix Sections 5–6).
+- Rule IDs (R0–R12) and requirement IDs (REQ-nnn) are stable and never reused.
+- Validator behavior changes outside R0–R12 (new rules) are **not** proposed through direct implementation: new rules are a governance decision (see the known gaps in `reference/conformance-notes.md` and the follow-up recommendations in matrix Sections 5–6).
 
 ## Review checklist (for reviewers)
 
 Before approving a conformance-touching PR:
 
 - [ ] Matrix consistent with the changes: Section 2 (rule), Section 3 (requirement), Section 4 (test), Sections 5–6 (analysis & summary)?
-- [ ] No orphans: every rule R0–R9 appears exactly once in Section 2; every test function appears exactly once in Section 4?
+- [ ] No orphans: every rule R0–R12 appears exactly once in Section 2; every test function appears exactly once in Section 4?
 - [ ] No rule/requirement ID reused?
 - [ ] Summary numbers valid: test count in Section 6 == number of test rows in Section 4?
 - [ ] `go test ./...`, `go vet ./...`, `gofmt`, `go build`, and `go run ./cmd/eka validate .` pass?

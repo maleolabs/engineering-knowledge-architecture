@@ -1,6 +1,7 @@
 # docs/specifications/ — Specifications Dimension
 
 > Anchor EKA: Knowledge Layer — **specifications** dimension (EKA 8).
+> Engineering Domain: **Architecture** (stratum 2).
 
 ## Purpose
 
