@@ -31,3 +31,67 @@ jobs:
 
       - name: Run CI pipeline
         run: anvil pipeline ci
+
+  # Windows installer e2e: exercises install.ps1 against a locally
+  # served release structure (real binary, real SHA256SUMS.txt) — the
+  # only environment where the PowerShell installer can be validated.
+  windows-installer:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Build Windows binary
+        env:
+          GOOS: windows
+          GOARCH: amd64
+        run: |
+          go build -ldflags="-X github.com/maleolabs/engineering-knowledge-architecture/cmd.version=ci-test" -o eka-windows-amd64.exe ./cmd/eka
+
+      - name: Stage fake release
+        shell: bash
+        run: |
+          mkdir -p "$RUNNER_TEMP/fakerelease/latest/download"
+          cp eka-windows-amd64.exe "$RUNNER_TEMP/fakerelease/latest/download/"
+          cp install.ps1 "$RUNNER_TEMP/fakerelease/latest/download/"
+          cd "$RUNNER_TEMP/fakerelease/latest/download"
+          sha256sum eka-windows-amd64.exe | sed 's|  eka-windows-amd64.exe|  binaries/eka-windows-amd64.exe|' > SHA256SUMS.txt
+
+      - name: Start fake release server
+        shell: bash
+        run: |
+          python -m http.server 8899 --directory "$RUNNER_TEMP/fakerelease" &
+          sleep 3
+
+      - name: Test installer (happy path + fail-closed)
+        shell: pwsh
+        run: |
+          $content = Get-Content -Raw install.ps1
+          $content = $content.Replace('https://github.com/$Repo/releases/latest/download', 'http://127.0.0.1:8899/latest/download')
+          $content = $content.Replace('https://github.com/$Repo/releases/download/$Version', 'http://127.0.0.1:8899/download/$Version')
+          Set-Content -Path "$env:RUNNER_TEMP/install-test.ps1" -Value $content
+
+          # Happy path: install + version stamp
+          & pwsh -File "$env:RUNNER_TEMP/install-test.ps1" -To "$env:RUNNER_TEMP/eka-install"
+          if ($LASTEXITCODE -ne 0) { throw "installer failed on happy path" }
+          $v = & "$env:RUNNER_TEMP/eka-install/eka.exe" version
+          if ($LASTEXITCODE -ne 0) { throw "installed eka.exe failed to run" }
+          Write-Host "installed eka output: $v"
+          if (-not $v.Contains('ci-test')) { throw "version stamp missing: $v" }
+
+          # Fail-closed: corrupt checksum must abort with non-zero exit
+          Set-Content -Path "$env:RUNNER_TEMP/fakerelease/latest/download/SHA256SUMS.txt" -Value ("deadbeef" * 8 + "  binaries/eka-windows-amd64.exe")
+          & pwsh -File "$env:RUNNER_TEMP/install-test.ps1" -To "$env:RUNNER_TEMP/eka-install-bad"
+          if ($LASTEXITCODE -eq 0) { throw "corrupt checksum install should have failed" }
+          Write-Host "fail-closed verified"

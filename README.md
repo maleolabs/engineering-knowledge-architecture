@@ -128,6 +128,22 @@ curl -fsSL https://github.com/maleolabs/engineering-knowledge-architecture/relea
 
 The installer downloads `eka-<os>-<arch>` (Linux/macOS × amd64/arm64) from the release assets, verifies it against `SHA256SUMS.txt` (fail-closed: no unverified installs), and installs it to `/usr/local/bin` (or `--to`).
 
+**Windows** (PowerShell 5.1+ or 7+) — install the prebuilt binary from the GitHub Release asset registry (checksum-verified):
+
+```powershell
+irm https://github.com/maleolabs/engineering-knowledge-architecture/releases/latest/download/install.ps1 | iex
+```
+
+Specific version or custom directory:
+
+```powershell
+$s = irm https://github.com/maleolabs/engineering-knowledge-architecture/releases/latest/download/install.ps1
+iex "$s -Version v0.1.0"
+iex "$s -To 'C:\tools\bin'"
+```
+
+The installer downloads `eka-windows-<arch>.exe` (amd64/arm64) from the release assets, verifies it against `SHA256SUMS.txt` (fail-closed), and installs it to `%LOCALAPPDATA%\Programs\eka` (or `-To`).
+
 **Requires Go 1.24+** to build from source:
 
 ```sh

@@ -21,6 +21,17 @@ pipeline:
               args:
                 - vet
                 - ./...
+            # Windows cross-compile gate: the release pipeline builds
+            # windows binaries only at tag time; this check keeps the
+            # windows asset set (build.yaml) compiling on every push/PR.
+            - name: windows-cross-compile
+              command: go
+              args:
+                - build
+                - ./cmd/eka
+              env:
+                GOOS: windows
+                GOARCH: amd64
         - name: test
           tasks:
             - name: unit-tests

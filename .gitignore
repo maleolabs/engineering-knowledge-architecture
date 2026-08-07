@@ -1,5 +1,6 @@
 # Built EKA CLI binary
 /eka
+/eka.exe
 
 # Anvil build output
 /dist/

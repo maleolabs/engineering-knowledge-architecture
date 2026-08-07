@@ -5,6 +5,7 @@ artifact:
         - .anvil/**
         - dist/**
         - install.sh
+        - install.ps1
         - eka
     include: []
 project:
