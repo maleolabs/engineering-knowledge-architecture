@@ -83,7 +83,7 @@ func TestExitCodeUsage(t *testing.T) {
 	}
 	// Cobra sorts command lists alphabetically (EnableCommandSorting);
 	// the message must list exactly the registered commands.
-	if !strings.Contains(errText, "available commands: export, import, init, validate, version, view") {
+	if !strings.Contains(errText, "available commands: export, import, init, validate, version, view, watch") {
 		t.Errorf("unknown command message must list the available commands, got %q", errText)
 	}
 	code, _, _ = runIn([]string{"validate", "a", "b"})
@@ -121,7 +121,7 @@ func TestHelpExitsZero(t *testing.T) {
 		if !strings.Contains(text, "Usage:") {
 			t.Errorf("args %v: root help must contain Usage:", args)
 		}
-		for _, cmdName := range []string{"validate", "init", "export", "import"} {
+		for _, cmdName := range []string{"validate", "init", "export", "import", "view", "watch"} {
 			if !strings.Contains(text, cmdName) {
 				t.Errorf("args %v: root help must mention the %s command", args, cmdName)
 			}

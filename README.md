@@ -82,6 +82,7 @@ The `eka` CLI is the official interface of the architecture (Cobra-based command
 | `eka export` | Exports engineering knowledge into a canonical Exchange Package following the RSF — deterministic, validated before export, scopes: repository / line / instance / collection. |
 | `eka import` | Integrates an Exchange Package into an existing repository — atomic, conservative merge, conflict detection, rollback, post-import validation. |
 | `eka view` | Knowledge projections: `execution`, `planning`, `architecture`, `discovery`, `operations`, `ticket` — read-only, relationship-derived projections over the Engineering Knowledge Model (never markdown text); `sprint` / `wave` are CLI aliases of `execution`; conformance-gated, deterministic. |
+| `eka watch` | Realtime projection viewer: the same projections as `eka view`, refreshed in place by polling (`--interval`, default 2s, min 1s); TTY-only; live validation failure frames with auto-recovery; Ctrl-C to stop. |
 | `eka completion` | Shell completion (bash/zsh/fish/powershell). |
 | `eka version` | CLI build version and the EKA standard version implemented. |
 | `eka` | Product landing: a calm orientation with a compact command overview (help and version pointers). |
@@ -129,7 +130,7 @@ standard/          Canonical specification texts (Core, Exchange, Naming, Glossa
 skeleton/          Copyable project serialization (docs structure, conventions)
 reference/         Reference Implementation meta-documentation: architecture,
                    ADRs, CLI docs, ratification notes, traceability matrices
-cmd/               CLI command layer (Cobra): root, init, validate, export, import, view
+cmd/               CLI command layer (Cobra): root, init, validate, export, import, view, watch
 bootstrap/         Application layer: eka init engine (public package)
 exchange/          Application layer: export/import engine (public package)
 conformance/       Application layer: validation engine (public package)
@@ -155,7 +156,7 @@ The application packages (`bootstrap/`, `exchange/`, `conformance/`, `view/`) ar
 | EKA Naming and Terminology Specification v1.1 | Ratified |
 | Reference Serialization Format v1.1 | Reference |
 | Reference Implementation + Validator (rules R0–R12) | Active |
-| `eka init`, `eka validate`, `eka export`, `eka import`, `eka view` | Implemented |
+| `eka init`, `eka validate`, `eka export`, `eka import`, `eka view`, `eka watch` | Implemented |
 | `eka diagnose`, `eka graph`, sync strategies (replace, forward-only reconciliation) | Future |
 
 ## Contributing

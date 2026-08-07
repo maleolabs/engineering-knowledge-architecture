@@ -88,17 +88,9 @@ Exit codes:
 				printViewLanding(styleFor(cmd))
 				return nil
 			}
-			name := args[0]
-			if !view.IsProjection(name) {
-				return fmt.Errorf("unknown projection %q — available projections: %s",
-					name, view.HelpList())
-			}
-			target := ""
-			if len(args) == 2 {
-				target = args[1]
-			}
-			if name == "ticket" && target == "" {
-				return fmt.Errorf("the ticket projection requires a target: eka view ticket <tkt-id>")
+			name, target, err := parseProjectionArgs(args)
+			if err != nil {
+				return err
 			}
 			s := styleFor(cmd)
 			// Validation gate FIRST: only conformant repositories may be
@@ -133,6 +125,27 @@ Exit codes:
 			return nil
 		},
 	}
+}
+
+// parseProjectionArgs validates the projection+target argument pair
+// shared by view and watch: the projection must be registered
+// (canonical or alias) and the ticket projection requires its target.
+// Errors are usage-class (exit 2) with the same helpful messages in
+// both commands. It assumes args is non-empty (both commands guard
+// the no-argument case before calling).
+func parseProjectionArgs(args []string) (name, target string, err error) {
+	name = args[0]
+	if !view.IsProjection(name) {
+		return "", "", fmt.Errorf("unknown projection %q — available projections: %s",
+			name, view.HelpList())
+	}
+	if len(args) == 2 {
+		target = args[1]
+	}
+	if name == "ticket" && target == "" {
+		return "", "", fmt.Errorf("the ticket projection requires a target: eka view ticket <tkt-id>")
+	}
+	return name, target, nil
 }
 
 // viewDescriptions are the one-line projection descriptions used by the

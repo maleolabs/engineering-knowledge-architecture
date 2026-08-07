@@ -110,8 +110,9 @@ eka validate checks a repository against the EKA conformance rules,
 eka init bootstraps a new EKA repository from the embedded skeleton
 (validating the result afterwards), eka export projects a repository
 to a deterministic package in the EKA Reference Serialization Format
-(RSF) v1.0, eka import consumes such a package, and eka view projects
-the Engineering Knowledge Model (sprint/wave/ticket views).
+(RSF) v1.0, eka import consumes such a package, eka view projects
+the Engineering Knowledge Model (sprint/wave/ticket views), and eka
+watch re-renders a projection live as the repository changes.
 
 Command output is deterministic: the same input always produces the
 same bytes. On a terminal the output is colored and progress is shown
@@ -144,7 +145,7 @@ Exit codes:
 	}
 	root.PersistentFlags().BoolP(flagVerbose, "v", false,
 		"verbose output: additional detail lines (per-unit lists, plan actions)")
-	root.AddCommand(newValidateCommand(), newInitCommand(), newExportCommand(), newImportCommand(), newViewCommand(), newVersionCommand())
+	root.AddCommand(newValidateCommand(), newInitCommand(), newExportCommand(), newImportCommand(), newViewCommand(), newWatchCommand(), newVersionCommand())
 	return root
 }
 

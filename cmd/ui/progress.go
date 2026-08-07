@@ -9,9 +9,9 @@ import "strings"
 // environment; the percentage text still carries the meaning, color is
 // never the sole carrier.
 const (
-	progressWidth    = 10
-	progressDanger   = 34  // percent below which the bar is danger-colored
-	progressSuccess  = 67  // percent at which the bar becomes success-colored
+	progressWidth     = 10
+	progressDanger    = 34 // percent below which the bar is danger-colored
+	progressSuccess   = 67 // percent at which the bar becomes success-colored
 	progressBarFilled = "█"
 	progressBarEmpty  = "░"
 )

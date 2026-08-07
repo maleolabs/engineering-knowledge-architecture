@@ -13,6 +13,7 @@
 - **`eka import`** — the inverse of export: consumes an Exchange Package and integrates knowledge into an existing EKA repository — implementing the import semantics of Exchange Specification §11.
 - **`eka validate`** — the conformance validator: repository conformance must not rest on manual review alone — rules R0–R12 in `skeleton/docs/exchange/validation.md` are designed to be mechanical, and this validator is their canonical implementation (P16: enforcement mechanisms vary, invariants stay identical).
 - **`eka view`** — the Knowledge Projection Engine: read-only projections of the Engineering Knowledge Model (the five domain projections `discovery` / `architecture` / `planning` / `execution` / `operations` + the `ticket` projection), rendered as per-domain visualizations — Kanban board (execution), roadmap (planning), dependency tree (architecture), information cards (discovery), release timeline (operations), detail card (ticket) — the canonical executable form of the State Projection semantics (Core Specification §11), relationship-derived, never markdown-rendered.
+- **`eka watch`** — the realtime projection viewer: the same Knowledge Projections as `eka view`, refreshed in place by polling — TTY-only, read-only, live validation failure frames, Ctrl-C to stop.
 
 New to EKA? Start with the [Engineering Operating Guide](../skeleton/docs/workflow-guide.md) — the primary onboarding document (mental model, lifecycle, domains, workflows).
 
@@ -43,7 +44,7 @@ All commands share one three-part hierarchy:
 2. **Workflow body** — the operation's stages (progressive tree) or, for single-operation commands, the report.
 3. **Summary** — the outcome as facts.
 
-`init`, `export` and `import` render a progressive tree; `validate` renders the report as the body; `view` renders the projection as the body — each projection is a per-domain visualization (board, roadmap, tree, cards, timeline, detail card). Every command ends with a summary block.
+`init`, `export` and `import` render a progressive tree; `validate` renders the report as the body; `view` renders the projection as the body — each projection is a per-domain visualization (board, roadmap, tree, cards, timeline, detail card); `watch` renders the same per-domain visualizations as `view`, refreshed in place. Every command ends with a summary block; `watch` is the interactive exception — it runs until Ctrl-C, then clears the screen and exits `0`.
 
 ### Context header
 
@@ -163,6 +164,7 @@ eka init [project-name] [--dry-run]
 eka export [target...] [-o|--output path]
 eka import <package-path>
 eka view [projection] [target]
+eka watch <projection> [target] [--interval N]
 eka validate [path]
 eka completion [bash|zsh|fish|powershell]
 eka help [command]
@@ -705,6 +707,52 @@ Summary:
 └── Status: planned
 ```
 
+## `eka watch` — Realtime Projections
+
+```
+eka watch <projection> [target] [--interval N]
+```
+
+`eka watch` is the **realtime projection viewer**: it renders the same projections as `eka view` — `discovery`, `architecture`, `planning`, `execution`, `operations`, `ticket`, plus the `sprint` / `wave` CLI aliases of `execution` — and refreshes them in place while the repository changes. Like `eka view`, it is read-only: a projection has no State of its own and never becomes a writer (P6, Core Specification §11). The [projections table](#projections) above defines what each projection shows; the ticket target argument behaves exactly as in `eka view`.
+
+### Interaction model
+
+- **No keyboard navigation** — the viewer refreshes by polling; Ctrl-C (SIGINT) stops it. No paging, no cursor movement, no editing.
+- **Polling refresh, no filesystem watchers** — the repository is re-scanned at a fixed interval.
+- **TTY-only** — a terminal is required. On a non-TTY (pipe, redirect, CI) the command exits `2` with the deterministic error `requires a terminal` — the non-TTY determinism contract (byte-identical, no ANSI) applies to this error path.
+
+### Refresh model
+
+| Aspect | Behavior |
+|---|---|
+| `--interval N` | refresh period in seconds — default `2`, minimum `1` |
+| Redraw | only when the frame changed — identical frames are not redrawn |
+| Clear screen | on open and on exit |
+
+### Live validation error handling
+
+The conformance gate (R0–R12) — the same gate as `eka validate` and `eka view` — runs before every refresh. If the repository is invalid:
+
+- the projection is replaced by a **validation failure frame** — the report and its findings — instead of the projection;
+- watching **keeps running** and **auto-recovers**: the first refresh that finds the repository valid again renders the projection.
+
+### Frame footer
+
+Every frame closes with the footer line `watching — Ctrl-C to stop (interval Ns)` — e.g. `watching — Ctrl-C to stop (interval 2s)`.
+
+### Exit codes
+
+| Code | Meaning |
+|---|---|
+| `0` | clean stop — Ctrl-C (SIGINT): screen cleared, exit |
+| `2` | usage or internal error — unknown projection, missing/unknown ticket target, non-TTY invocation |
+
+Validation failures are rendered as frames, never as exit codes: a repository in violation does not stop the viewer, and `eka watch` never exits `1`.
+
+### Determinism
+
+`eka watch` is TTY-only by design, so the non-TTY determinism contract applies to its error path: non-TTY output is exactly one deterministic error line, exit `2`, no ANSI. On a TTY, each frame is deterministic for its snapshot — identical repository state produces an identical frame, which is why unchanged frames are not redrawn; the only time-dependent behavior is the refresh cadence itself.
+
 ## `eka validate` — Conformance Validator
 
 ```
@@ -866,6 +914,7 @@ A new command is added without architectural refactoring:
 | `eka export` | **Implemented** | Exchange Package export (RSF v1.1): repo/line/instance/collection scope, automatic validation, deterministic, external reference declaration, attachments, SHA-256 digests. |
 | `eka import` | **Implemented** | Exchange Package import (RSF v1.1 + Exchange §11): package + integrity validation, identity/relationship resolution, conflict → abort, atomic staged commit, rollback, post-import revalidation. |
 | `eka view` | **Implemented** | Knowledge projections (execution / planning / architecture / discovery / operations / ticket; CLI aliases `sprint`, `wave` → execution): read-only views derived from the Engineering Knowledge Model — relationships + State, never markdown text — rendered as per-domain visualizations (Kanban board, roadmap, dependency tree, information cards, release timeline, detail card). Conformance-gated, deterministic, exit codes 0/1/2. |
+| `eka watch` | **Implemented** | Realtime projection viewer: same projections as `eka view` (incl. `sprint` / `wave` aliases); TTY-only, polling refresh (`--interval`, default 2s, min 1s), redraw on change only, live validation failure frames with auto-recovery, Ctrl-C to stop (exit `0`). |
 | `eka validate` | **Implemented** | Full conformance validator (R0–R12: R1–R9 + structural R0 + domain-aware R10–R12). |
 | `eka version` | **Implemented** | CLI build version + EKA standard version (currently `EKA standard 1.1`). |
 | `eka completion` | **Implemented** | bash/zsh/fish/powershell completion scripts (provided by Cobra). |
