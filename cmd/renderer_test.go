@@ -62,7 +62,7 @@ func TestRenderExecutionBoard(t *testing.T) {
 		"Active Work: 1",
 		"Completed Work: 1",
 		"Review Queue: 0",
-		"Overall Progress: 1/3 (33%)",
+		"Overall Progress: ███░░░░░░░ 1/3 (33%)",
 	} {
 		if !strings.Contains(out, want) {
 			t.Errorf("execution board output must contain %q:\n%s", want, out)

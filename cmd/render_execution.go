@@ -112,7 +112,7 @@ func renderBoard(s *ui.Style, cols view.StateColumns) {
 // renderExecutionInsights renders the execution summary with meaningful
 // insights instead of raw per-state counts: active work (in progress +
 // in review), completed work, the review queue, and overall progress
-// (done/total with percent).
+// (bar + done/total with percent).
 func renderExecutionInsights(s *ui.Style, p *view.ExecutionProjection) {
 	inProgress := p.Columns.Count("in-progress")
 	inReview := p.Columns.Count("in-review")
@@ -121,10 +121,11 @@ func renderExecutionInsights(s *ui.Style, p *view.ExecutionProjection) {
 	if p.Total > 0 {
 		percent = strconv.Itoa(done*100/p.Total) + "%"
 	}
+	progress := ui.ProgressBar(s, done, p.Total) + " " + fmt.Sprintf("%d/%d (%s)", done, p.Total, percent)
 	ui.NewSummary(s).
 		Add("Active Work", strconv.Itoa(inProgress+inReview)).
 		Add("Completed Work", strconv.Itoa(done)).
 		Add("Review Queue", strconv.Itoa(inReview)).
-		Add("Overall Progress", fmt.Sprintf("%d/%d (%s)", done, p.Total, percent)).
+		Add("Overall Progress", progress).
 		Render()
 }

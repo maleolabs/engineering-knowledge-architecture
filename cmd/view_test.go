@@ -134,7 +134,7 @@ func TestViewExecutionHappyPath(t *testing.T) {
 		"Active Work: 2",
 		"Completed Work: 1",
 		"Review Queue: 1",
-		"Overall Progress: 1/5 (20%)",
+		"Overall Progress: ██░░░░░░░░ 1/5 (20%)",
 	} {
 		if !strings.Contains(out, want) {
 			t.Errorf("output must contain %q:\n%s", want, out)
@@ -178,7 +178,7 @@ func TestViewMultipleActiveWarning(t *testing.T) {
 		"│ Done (0)",
 		"—",
 		"Active Work: 0",
-		"Overall Progress: 0/0 (0%)",
+		"Overall Progress: ░░░░░░░░░░ 0/0 (0%)",
 	} {
 		if !strings.Contains(out, want) {
 			t.Errorf("output must contain %q:\n%s", want, out)
@@ -438,7 +438,7 @@ func TestViewEmptyProjectionExitsZero(t *testing.T) {
 		"│ Planned (0)",
 		"—",
 		"Active Work: 0",
-		"Overall Progress: 0/0 (0%)",
+		"Overall Progress: ░░░░░░░░░░ 0/0 (0%)",
 	} {
 		if !strings.Contains(out, want) {
 			t.Errorf("output must contain %q:\n%s", want, out)

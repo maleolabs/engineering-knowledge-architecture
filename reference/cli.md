@@ -660,7 +660,7 @@ Summary:
 └── Active Work: 2
 └── Completed Work: 3
 └── Review Queue: 1
-└── Overall Progress: 3/8 (38%)
+└── Overall Progress: ████░░░░░░ 3/8 (38%)
 └── Status: active
 ```
 
