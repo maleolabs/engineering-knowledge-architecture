@@ -115,6 +115,7 @@ Run every command from this repository root. All output is deterministic; highli
 | 8 | `eka export -o /tmp/feather-pkg` (run from `reference/project/`) | Six-stage tree (Discover → … → Validate); summary: package label `rsf-repo-feather-1`, scope repository, 37 artifacts, 0 attachments, SHA-256 digest; validation detail `0 errors, 0 warnings` |
 | 9 | `eka import /tmp/feather-pkg` (fresh copy of the project) | Seven-phase tree; `wrote 37 artifacts, skipped 0 no-op duplicates, no conflicts`; revalidate green. Re-running the same import: `wrote 0, skipped 37 no-op duplicates` — idempotency (P13) in one screenshot pair |
 | 10 | `eka init --dry-run` (in an empty temp dir) | Bootstrap plan tree without writing: planned actions (dirs, files, git), closing line `Dry-run: no changes were written.`, summary with `Validation: not run (dry-run)` |
+| 11 | `eka view board` | Header with `Domain: Execution` and `Container all`; **repository-wide five-column Kanban board** — 7 work items: planned (2), todo (1), in-progress (1), in-review (1), done (2); each item tagged with its container (`draft-autosave (wave-7)`, `publish-post (wave-7)`, …) — 3 items not referenced by any ticket container show `(unassigned)`; summary Total Work Items 7, Active Work 2, Completed Work 2, Review Queue 1, Unassigned 3, Overall Progress 2 of 7 |
 
 Scenario 9 round-trip, step by step:
 
@@ -152,6 +153,7 @@ All screenshots for the reference documentation must originate from **this** Ref
 | 10 | `eka import /tmp/feather-pkg` (first run) | Seven-phase tree, `wrote 37 artifacts`, revalidation green | `reference-project.md` (scenario 9); exchange docs |
 | 11 | `eka import /tmp/feather-pkg` (second run) | `wrote 0, skipped 37 no-op duplicates` — idempotency visible | `reference-project.md` (scenario 9); exchange docs (P13) |
 | 12 | `eka init --dry-run` | Bootstrap plan tree + `Dry-run: no changes were written.` line | `reference-project.md` (scenario 10); CLI init docs |
+| 13 | `eka view board` | Repository-wide Kanban: all 7 work items with per-item container tags, the 3 unassigned items visible | `reference-project.md` (scenario 11); board projection explanation |
 
 ## Integration Notes
 

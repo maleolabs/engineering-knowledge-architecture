@@ -56,6 +56,9 @@ Projections (domain-first):
                status projected from their work items, and its work
                items grouped by execution state
                (planned/todo/in-progress/in-review/done)
+  board        every work item in the repository across all execution
+               containers, grouped by execution state, each item tagged
+               with its container (unassigned when none)
   operations   the Operations domain: run-, rel- artifacts grouped by
                type with their content states
   ticket       one ticket's projected status, derived from the
@@ -155,6 +158,7 @@ var viewDescriptions = map[string]string{
 	"architecture": "Architecture domain artifacts (adr-, dec-, arc-, spec-, std-, gls-)",
 	"planning":     "Planning domain artifacts (scp-, epc-, plan-, trc-)",
 	"execution":    "active container: tickets and work items by execution state",
+	"board":        "all work items across every container, by execution state",
 	"operations":   "Operations domain artifacts (run-, rel-)",
 	"ticket":       "one ticket's projected status from its work item",
 }
@@ -202,6 +206,8 @@ func renderView(s *ui.Style, g *view.Graph, p view.Projection) {
 		renderDiscovery(s, g, p)
 	case *view.OperationsProjection:
 		renderOperations(s, g, p)
+	case *view.BoardProjection:
+		renderBoardProjection(s, g, p)
 	default:
 		fmt.Fprintln(s.W, s.Error("cannot render projection"))
 	}

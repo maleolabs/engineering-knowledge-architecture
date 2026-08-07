@@ -428,7 +428,7 @@ No partial integration: all analysis happens before a single file is written.
 eka view [projection] [target]
 ```
 
-`eka view` projects the **Engineering Knowledge Model** of the repository rooted at the current directory: read-only views over the repository's artifacts and their relationships. Projections are named by **Engineering Domain** — `discovery`, `architecture`, `planning`, `execution`, `operations` — plus the `ticket` projection. The `target` argument is required by the ticket projection only (a bare ticket id, `tkt-<id>` or `tkt:<id>`); domain projections ignore it. With no arguments, the available projections are listed and the command exits `0`.
+`eka view` projects the **Engineering Knowledge Model** of the repository rooted at the current directory: read-only views over the repository's artifacts and their relationships. Projections are named by **Engineering Domain** — `discovery`, `architecture`, `planning`, `execution`, `operations` — plus the `ticket` and `board` projections. The `target` argument is required by the ticket projection only (a bare ticket id, `tkt-<id>` or `tkt:<id>`); domain projections ignore it. With no arguments, the available projections are listed and the command exits `0`.
 
 ### Projection philosophy — Knowledge Projection
 
@@ -464,7 +464,7 @@ Warnings never block a projection.
 
 ### Projections
 
-The canonical projections — one per Engineering Domain, plus the ticket projection:
+The canonical projections — one per Engineering Domain, plus the ticket and board projections:
 
 | Command | Engineering Domain | Content | Rendered as |
 |---|---|---|---|
@@ -472,6 +472,7 @@ The canonical projections — one per Engineering Domain, plus the ticket projec
 | `eka view architecture` | Architecture | `adr-` / `dec-` / `arc-` / `spec-` / `std-` / `gls-` artifacts — decisions, architecture descriptions, specifications, standards, vocabulary; per-node **Content State** (`draft` / `review` / `approved` / post-approval terminals, incl. the ADR/decision variants) shown on the node | Dependency tree |
 | `eka view planning` | Planning | `scp-` / `epc-` / `plan-` / `trc-` artifacts — scope definitions, epics, plans, traceability artifacts, sequenced by phase; per-entry **Planning State** (`draft` / `approved` / `immutable`) | Roadmap / timeline |
 | `eka view execution` | Execution | The **active Execution Container**'s work items on the fixed five-column board (`planned` / `todo` / `in-progress` / `in-review` / `done`; empty columns keep their heading). The ticket list is **not rendered as a block** — tickets project individually via `eka view ticket`. | Kanban board |
+| `eka view board` | Execution | **Every work item in the repository** — across all execution containers (active and completed) and outside any container — on the fixed five-column board, each item tagged with its container (`wave-7`); items not referenced by any ticket container show `(unassigned)` | Kanban board |
 | `eka view operations` | Operations | `run-` / `rel-` artifacts — runbooks, operational guides, release records | Release summary / activity timeline |
 | `eka view ticket <id>` | Execution | One ticket's detail: **projected status derived from the referenced work item's owner Execution State — never from the ticket's own text** — plus the container it derives from and its `derives-from` references | Detail card |
 
@@ -483,21 +484,23 @@ The canonical projections — one per Engineering Domain, plus the ticket projec
 | Architecture | Dependency tree | How is the system structured? |
 | Planning | Roadmap / timeline | What are we planning next? |
 | Execution | Kanban board (five columns) | What is currently being worked on? |
+| Board (Execution) | Kanban board (five columns, per-item container tags) | What is the total work in the repository? |
 | Operations | Release summary / activity timeline | What has been delivered? |
 | Ticket (Execution) | Detail card | What is the state of this ticket? |
 
 The visualization is **read-only presentation of the model** — it never becomes new state (P6). Every shape renders deterministically and non-TTY-safe: plain text plus UTF-8 box drawing, no ANSI escapes.
 
-**Engineering Domain context header.** Every projection carries a `Domain: <domain>` row in its context header alongside `Knowledge` — the Engineering Domain the projection reads (Core v1.1 §8.1). Domain projections are named after the domain they select; `ticket` is an Execution-domain projection. The projections never write (P6); the Engineering Domain itself is derived from the token family and is never part of a projection's state.
+**Engineering Domain context header.** Every projection carries a `Domain: <domain>` row in its context header alongside `Knowledge` — the Engineering Domain the projection reads (Core v1.1 §8.1). Domain projections are named after the domain they select; `ticket` and `board` are Execution-domain projections. The projections never write (P6); the Engineering Domain itself is derived from the token family and is never part of a projection's state.
 
 **CLI-level aliases.** `eka view sprint` and `eka view wave` are accepted and resolve to the **`execution` projection** with **identical output** — they are CLI-surface aliases only, never projections of their own. This follows the Representation Alias Registry philosophy ([`standard/representation-alias-registry-v1.1.md`](../standard/representation-alias-registry-v1.1.md)): methodology terms are convention-layer names mapped onto canonical model objects; the CLI accepts them for familiarity while the projection model stays canonical and closed. Unlike artifact aliases, CLI aliases need **no registry row** — they are command-line conveniences, not knowledge-model vocabulary — but the registry's governance note documents the relationship (see Section 3 there).
 
 **Membership derivation rule** (relationships and the token mapping only — never file text):
 
 - **Execution membership** — a work item belongs to an execution container iff a ticket (`tkt-`) of that container derives from it. A ticket belongs to a container iff one of its `derives-from` references resolves to the container's identity line. Container `## Work Items` tables are **not** parsed; the ticket is never parsed beyond its frontmatter relationships.
+- **Board membership** — the board selects **every work item line** whose token family owns the Execution State domain, regardless of container membership: items of the active container, of completed containers, and items no ticket references (`unassigned`). Each item's container tag follows the execution membership rule above (the containers whose tickets reference it), so the board keeps container context per item — the board never merges containers into an anonymous aggregate.
 - **Domain projection membership** — `discovery`, `architecture`, `planning`, `execution`, and `operations` select every artifact whose token family is homed in that Engineering Domain (the token → domain mapping, Core v1.1 §8.1). Selection is relationship-only — no markdown parsing, no content inspection; grouping inside a projection uses the domain's own State (Content State, Planning State, Execution State).
 
-- No active container → the execution projection is a valid empty projection (`No active container.`), exit `0`; a domain projection on a repository with no artifacts in that domain projects empty, exit `0`.
+- No active container → the execution projection is a valid empty projection (`No active container.`), exit `0`; a domain projection on a repository with no artifacts in that domain projects empty, exit `0`; a board with no work items projects empty (`No work items.`), exit `0`.
 - Several active containers (invalid state) → the lexicographically smallest canonical identity is shown with a warning line.
 - Ticket target forms: `eka view ticket <id>`, `eka view ticket tkt-<id>`, `eka view ticket tkt:<id>` (the prefix is stripped; `tkt-` and `tkt:` are equivalent).
 
@@ -523,7 +526,7 @@ Two layers, one dependency direction:
 
 | Layer | Location | Role |
 |---|---|---|
-| Projection engine | `view/` (public package) | Knowledge Graph (identity index, relationship resolution, membership helpers) + independent projection builders (one per projection: `discovery`, `architecture`, `planning`, `execution`, `operations`, `ticket`) + the projection registry. Pure data in, pure data out. |
+| Projection engine | `view/` (public package) | Knowledge Graph (identity index, relationship resolution, membership helpers) + independent projection builders (one per projection: `discovery`, `architecture`, `planning`, `execution`, `operations`, `ticket`, `board`) + the projection registry. Pure data in, pure data out. |
 | Terminal rendering | `cmd/view.go` + `cmd/ui` | Argument validation, the conformance gate, dispatch to the per-domain projection renderer (`cmd/ui`), exit-code mapping. No projection logic. |
 
 - **Builder and renderer are independent responsibilities.** The builder defines the projection's **information** — which artifacts, in which order, grouped into which state sets; the renderer defines its **presentation** — the visual shape (Kanban board, roadmap, dependency tree, information cards, timeline, detail card) and the framing. A renderer can attach to any builder's output without touching the builder.

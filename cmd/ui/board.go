@@ -33,8 +33,15 @@ type boardColumn struct {
 // never exceed boardMaxWidth (longer content is truncated with "…").
 const (
 	boardMinWidth = 8
-	boardMaxWidth = 16
+	boardMaxWidth = 24
 )
+
+// BoardMaxItemWidth is the display budget a single item label may use
+// inside a board cell: the column width cap minus the "▸ " prefix
+// (two display cells). Renderers that compose item labels (e.g. a
+// label plus a context tag that must stay visible) truncate against
+// this budget.
+const BoardMaxItemWidth = boardMaxWidth - 2
 
 // itemPrefix marks each item label on the board so list membership is
 // readable at a glance; it is part of the cell content and counts

@@ -204,6 +204,46 @@ func (g *Graph) Containers() []Container {
 	return out
 }
 
+// WorkItems returns every work item line in the repository — all
+// artifact lines whose type owns the Execution State domain, in every
+// container and outside any container — deduplicated by identity line
+// and sorted by canonical identity. This is the membership source of
+// the board projection.
+func (g *Graph) WorkItems() []WorkItem {
+	var out []WorkItem
+	for _, a := range g.byForm {
+		if isWorkItemType(a.Type) {
+			out = append(out, *workItemFor(a))
+		}
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].Identity < out[j].Identity })
+	return out
+}
+
+// ContainersForWorkItem returns the canonical identities of the
+// containers whose tickets reference the work item line, deduplicated
+// and sorted. Membership follows the same relationship-only rule as
+// the execution projection: a container references a work item iff one
+// of its tickets derives from the work item's identity line. An empty
+// result means the work item is not referenced by any ticket container
+// (unassigned).
+func (g *Graph) ContainersForWorkItem(form string) []string {
+	seen := make(map[string]bool)
+	var out []string
+	for _, t := range g.byType["tkt"] {
+		container, workItem := g.ticketTargets(t)
+		if container == nil || workItem == nil || workItem.Identity != form {
+			continue
+		}
+		if !seen[container.Identity] {
+			seen[container.Identity] = true
+			out = append(out, container.Identity)
+		}
+	}
+	sort.Strings(out)
+	return out
+}
+
 // Ticket is one ticket (tkt-) line in the graph, with the status
 // projected from its referenced work item.
 type Ticket struct {

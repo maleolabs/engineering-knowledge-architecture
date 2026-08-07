@@ -26,6 +26,115 @@ func graphWith(arts ...conformance.Artifact) *view.Graph {
 	return view.NewGraph(".", arts)
 }
 
+// TestRenderBoardProjection: the board renders every work item with its
+// container tag; unassigned items carry the unassigned tag.
+func TestRenderBoardProjection(t *testing.T) {
+	s, buf, g := rendererTestContext(t)
+	p := &view.BoardProjection{
+		Columns: view.BoardColumns{
+			{State: "planned", WorkItems: []view.BoardItem{
+				{WorkItem: view.WorkItem{Identity: "feather/sto:alpha", Type: "sto", ID: "alpha", State: "planned"}, Containers: []string{"feather/ctr:wave-7"}},
+			}},
+			{State: "todo", WorkItems: []view.BoardItem{
+				{WorkItem: view.WorkItem{Identity: "feather/sto:orphan", Type: "sto", ID: "orphan", State: "todo"}},
+			}},
+			{State: "in-progress", WorkItems: []view.BoardItem{
+				{WorkItem: view.WorkItem{Identity: "feather/sto:beta", Type: "sto", ID: "beta", State: "in-progress"}, Containers: []string{"feather/ctr:wave-7"}},
+			}},
+			{State: "in-review", WorkItems: nil},
+			{State: "done", WorkItems: []view.BoardItem{
+				{WorkItem: view.WorkItem{Identity: "feather/ch:gamma", Type: "ch", ID: "gamma", State: "done"}, Containers: []string{"feather/ctr:wave-7"}},
+			}},
+		},
+		Total:          4,
+		Unassigned:     1,
+		ContainerCount: 1,
+	}
+	renderBoardProjection(s, g, p)
+	out := buf.String()
+	for _, want := range []string{
+		"Board",
+		"Container    all",
+		"Domain       Execution",
+		"4 work items across 1 container",
+		"│ Planned (1)",
+		"│ Todo (1)",
+		"│ In Progress (1)",
+		"│ In Review (0)",
+		"│ Done (1)",
+		"│ ▸ alpha (wave-7)",
+		"│ ▸ orphan (unassigned)",
+		"│ ▸ beta (wave-7)",
+		"│ ▸ gamma (wave-7)",
+		"—", // empty column
+		"1 work item not referenced by any ticket container",
+		"Total Work Items: 4",
+		"Active Work: 1",
+		"Completed Work: 1",
+		"Review Queue: 0",
+		"Unassigned: 1",
+		"Overall Progress: ██░░░░░░░░ 1/4 (25%)",
+	} {
+		if !strings.Contains(out, want) {
+			t.Errorf("board output must contain %q:\n%s", want, out)
+		}
+	}
+}
+
+// TestRenderBoardProjectionEmpty: no work items renders a calm empty
+// projection with the full five-column shape and a zero summary.
+func TestRenderBoardProjectionEmpty(t *testing.T) {
+	s, buf, g := rendererTestContext(t)
+	p := &view.BoardProjection{Columns: emptyBoardColumns()}
+	renderBoardProjection(s, g, p)
+	out := buf.String()
+	for _, want := range []string{
+		"No work items.",
+		"│ Planned (0)",
+		"│ Todo (0)",
+		"│ In Progress (0)",
+		"│ In Review (0)",
+		"│ Done (0)",
+		"Total Work Items: 0",
+		"Overall Progress: ░░░░░░░░░░ 0/0 (0%)",
+	} {
+		if !strings.Contains(out, want) {
+			t.Errorf("empty board output must contain %q:\n%s", want, out)
+		}
+	}
+}
+
+// emptyBoardColumns returns the fixed five empty board columns.
+func emptyBoardColumns() view.BoardColumns {
+	cols := make(view.BoardColumns, 0, 5)
+	for _, state := range []string{"planned", "todo", "in-progress", "in-review", "done"} {
+		cols = append(cols, view.BoardColumn{State: state})
+	}
+	return cols
+}
+
+// TestRenderBoardCellLabel: the composed label truncates the id, never
+// the container tag — the tag is the board's context and must always
+// stay visible.
+func TestRenderBoardCellLabel(t *testing.T) {
+	cases := []struct {
+		id, tag string
+		want    string
+	}{
+		// Fits: full id + tag.
+		{"alpha", "wave-7", "alpha (wave-7)"},
+		// Does not fit: id truncated, tag intact.
+		{"markdown-syntax-highlighting", "wave-7", "markdown-syn… (wave-7)"},
+		// Unassigned tag kept too.
+		{"markdown-syntax-highlighting", "unassigned", "markdown… (unassigned)"},
+	}
+	for _, c := range cases {
+		if got := boardCellLabel(c.id, c.tag); got != c.want {
+			t.Errorf("boardCellLabel(%q, %q) = %q, want %q", c.id, c.tag, got, c.want)
+		}
+	}
+}
+
 func TestRenderExecutionBoard(t *testing.T) {
 	s, buf, g := rendererTestContext(t)
 	p := &view.ExecutionProjection{
@@ -475,6 +584,14 @@ func TestRenderersDeterministic(t *testing.T) {
 		renderDiscovery(s, g, &view.DiscoveryProjection{Groups: nil})
 		renderOperations(s, g, &view.OperationsProjection{Groups: nil})
 		renderTicket(s, g, &view.TicketProjection{Ticket: view.Ticket{Identity: "x"}, Projected: "unresolved"})
+		renderBoardProjection(s, g, &view.BoardProjection{
+			Columns: view.BoardColumns{
+				{State: "done", WorkItems: []view.BoardItem{
+					{WorkItem: view.WorkItem{Identity: "feather/sto:alpha", Type: "sto", ID: "alpha", State: "done"}, Containers: []string{"feather/ctr:wave-7"}},
+				}},
+			},
+			Total: 1, ContainerCount: 1,
+		})
 		return buf.String()
 	}
 	if build() != build() {
@@ -516,6 +633,14 @@ func TestRenderersNoANSI(t *testing.T) {
 	}})
 	renderTicket(s, g, &view.TicketProjection{Ticket: view.Ticket{Identity: "feather/tkt:t", Projected: "done"},
 		WorkItem: &view.WorkItem{Identity: "feather/sto:w", Type: "sto", ID: "w", State: "done"}, Projected: "done"})
+	renderBoardProjection(s, g, &view.BoardProjection{
+		Columns: view.BoardColumns{
+			{State: "done", WorkItems: []view.BoardItem{
+				{WorkItem: view.WorkItem{Identity: "feather/sto:b", Type: "sto", ID: "b", State: "done"}, Containers: []string{"feather/ctr:wave-7"}},
+			}},
+		},
+		Total: 1, ContainerCount: 1,
+	})
 	if strings.Contains(buf.String(), "\x1b") {
 		t.Error("non-TTY renderer output must not contain ANSI escapes")
 	}

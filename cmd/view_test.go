@@ -71,7 +71,7 @@ func TestViewUnknownProjectionExitsTwo(t *testing.T) {
 	if !strings.Contains(errText, "unknown projection \"bogus\"") {
 		t.Errorf("stderr must name the projection, got %q", errText)
 	}
-	if !strings.Contains(errText, "available projections: architecture, discovery, execution, operations, planning, ticket (aliases: sprint, wave)") {
+	if !strings.Contains(errText, "available projections: architecture, board, discovery, execution, operations, planning, ticket (aliases: sprint, wave)") {
 		t.Errorf("stderr must list canonical projections and aliases, got %q", errText)
 	}
 }
@@ -194,6 +194,53 @@ func TestViewMultipleActiveWarning(t *testing.T) {
 // TestViewPlanningHappyPath: the planning projection — the roadmap
 // timeline (plan milestone, scope and epics rows, traceability footer)
 // and the insight summary.
+// TestViewBoardHappyPath: the board projection — every work item of the
+// fixture across both containers (wave-0 completed, wave-1 active), on
+// the fixed five-column board with container tags.
+func TestViewBoardHappyPath(t *testing.T) {
+	chdirInto(t, viewFixtureAbs(t, "valid"))
+	code, out, errText := runIn([]string{"view", "board"})
+	if code != 0 {
+		t.Fatalf("exit = %d, want 0\nstdout: %s\nstderr: %s", code, out, errText)
+	}
+	for _, want := range []string{
+		"Board",
+		"Container    all",
+		"Repository   .",
+		"Knowledge    EKA v1",
+		"Domain       Execution",
+		"↓ View",
+		"6 work items across 2 containers",
+		"┌",
+		"┐",
+		"│ Planned (1)",
+		"│ Todo (1)",
+		"│ In Progress (1)",
+		"│ In Review (1)",
+		"│ Done (2)",
+		"│ ▸ alpha (wave-1)",
+		"│ ▸ beta (wave-1)",
+		"│ ▸ gamma (wave-1)",
+		"│ ▸ delta (wave-1)",
+		"│ ▸ epsilon (wave-1)",
+		"│ ▸ legacy (wave-0)",
+		"Summary:",
+		"Total Work Items: 6",
+		"Active Work: 2",
+		"Completed Work: 2",
+		"Review Queue: 1",
+		"Unassigned: 0",
+		"Overall Progress: ███░░░░░░░ 2/6 (33%)",
+	} {
+		if !strings.Contains(out, want) {
+			t.Errorf("output must contain %q:\n%s", want, out)
+		}
+	}
+}
+
+// TestViewPlanningHappyPath: the planning projection — the roadmap by
+// phase (mvp, release) with the milestone line, the scope/epic/plan
+// timeline rows and the phase context, plus the plans-by-state summary.
 func TestViewPlanningHappyPath(t *testing.T) {
 	chdirInto(t, viewFixtureAbs(t, "valid"))
 	code, out, errText := runIn([]string{"view", "planning"})

@@ -46,12 +46,13 @@ Before commit, run the mechanical checklist in [exchange/validation.md](exchange
 
 ## Project
 
-`eka view` projects the repository without writing anything — one projection per Engineering Domain, plus the ticket projection:
+`eka view` projects the repository without writing anything — one projection per Engineering Domain, plus the ticket and board projections:
 
 - **`eka view discovery`** — Discovery artifacts (`vis-`, `str-`, `req-`, `fnd-`).
 - **`eka view architecture`** — Architecture artifacts (`adr-`, `dec-`, `arc-`, `spec-`, `std-`, `gls-`) — information cards.
 - **`eka view planning`** — Planning artifacts (`scp-`, `epc-`, `plan-`, `trc-`) — roadmap/timeline.
 - **`eka view execution`** — the active Execution Container rendered as a Kanban board.
+- **`eka view board`** — every work item in the repository across all containers (and outside any), each tagged with its container, on the same Kanban board.
 - **`eka view operations`** — Operations artifacts (`run-`, `rel-`).
 - **`eka view ticket <id>`** — one ticket's projected status, derived from owner state.
 

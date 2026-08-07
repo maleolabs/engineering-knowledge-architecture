@@ -14,7 +14,8 @@ import (
 //
 // The registry is domain-first: the canonical projections are the five
 // Engineering Domains (discovery, architecture, planning, execution,
-// operations) plus the ticket projection. The former sprint and wave
+// operations), the ticket projection, and the board projection (all
+// work items across every container). The former sprint and wave
 // projections are registered as aliases of execution: they resolve to
 // the same builder, so `eka view sprint` renders byte-identical output
 // to `eka view execution`.
@@ -69,6 +70,7 @@ var registry = map[string]builder{
 	"execution":    buildExecution,
 	"operations":   buildOperations,
 	"ticket":       buildTicket,
+	"board":        buildBoard,
 }
 
 // aliases maps alias names to their canonical projection. An alias is

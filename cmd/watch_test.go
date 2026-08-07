@@ -58,7 +58,7 @@ func TestWatchUnknownProjectionExitsTwo(t *testing.T) {
 	if !strings.Contains(errText, "unknown projection \"bogus\"") {
 		t.Errorf("stderr must name the projection, got %q", errText)
 	}
-	if !strings.Contains(errText, "available projections: architecture, discovery, execution, operations, planning, ticket (aliases: sprint, wave)") {
+	if !strings.Contains(errText, "available projections: architecture, board, discovery, execution, operations, planning, ticket (aliases: sprint, wave)") {
 		t.Errorf("stderr must list canonical projections and aliases, got %q", errText)
 	}
 }

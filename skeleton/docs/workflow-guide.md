@@ -364,7 +364,7 @@ The CLI (`eka`) is introduced here, after the model, because it is best understo
 |---|---|---|
 | `eka init` | Organize | Bootstraps a repository from the reference skeleton; idempotent, never overwrites your content |
 | `eka validate` | Validate | Runs the mechanical conformance gate (R0–R12) over the repository |
-| `eka view` | Project | Renders read-only projections per domain, plus the ticket view (Section 10) |
+| `eka view` | Project | Renders read-only projections per domain, plus the ticket and board views (Section 10) |
 | `eka export` | Exchange | Builds a Knowledge Package from the repository — validated first; a non-conformant repository exports nothing |
 | `eka import` | Exchange | Integrates a package atomically with a conservative merge — new artifacts written, duplicates skipped, conflicts abort |
 | `eka version` | — | Reports the CLI build and the EKA standard version implemented |
@@ -404,6 +404,7 @@ The canonical projections, one per Engineering Domain, plus the ticket view:
 | `eka view architecture` | Decisions, architecture descriptions, specifications, standards, vocabulary — a dependency tree; each node shows its content state (draft / review / approved) |
 | `eka view planning` | Scope, epics, plans, traceability — a roadmap by phase; each entry shows its planning state and phase |
 | `eka view execution` | The active container's work items on a five-column Kanban board (planned / todo / in-progress / in-review / done); tickets project individually as detail cards (`eka view ticket <id>`) |
+| `eka view board` | **Every work item in the repository** — across all containers (active and completed) and outside any container — on the same five-column Kanban board; each item is tagged with its container, and items no ticket references show `(unassigned)`. For "what is the total work?" instead of "what is being worked on right now?" |
 | `eka view operations` | Runbooks and release records |
 | `eka view ticket <id>` | One ticket's projected status — derived from its owner work item, never from ticket text |
 

@@ -11,7 +11,7 @@ import (
 // canonical names sorted (aliases excluded), aliases listed separately,
 // and IsProjection accepting both.
 func TestProjectionsListsRegisteredNames(t *testing.T) {
-	want := []string{"architecture", "discovery", "execution", "operations", "planning", "ticket"}
+	want := []string{"architecture", "board", "discovery", "execution", "operations", "planning", "ticket"}
 	if got := Projections(); !reflect.DeepEqual(got, want) {
 		t.Errorf("Projections() = %v, want %v", got, want)
 	}
@@ -47,7 +47,7 @@ func TestAliasTarget(t *testing.T) {
 // TestHelpList verifies the deterministic diagnostic listing canonical
 // projections plus aliases.
 func TestHelpList(t *testing.T) {
-	want := "architecture, discovery, execution, operations, planning, ticket (aliases: sprint, wave)"
+	want := "architecture, board, discovery, execution, operations, planning, ticket (aliases: sprint, wave)"
 	if got := HelpList(); got != want {
 		t.Errorf("HelpList() = %q, want %q", got, want)
 	}
