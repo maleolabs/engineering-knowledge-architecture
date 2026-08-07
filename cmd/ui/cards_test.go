@@ -96,6 +96,11 @@ func TestCardsGridColorsOnTTY(t *testing.T) {
 	if !strings.Contains(out, "\x1b[") {
 		t.Errorf("color-enabled cards must emit ANSI:\n%q", out)
 	}
+	// Every border element (top, bottom, and the side bars) is dim —
+	// the grid must not mix plain white bars with dim borders.
+	if !strings.Contains(out, "\x1b[38;5;245m│ \x1b[0m") {
+		t.Errorf("side bars must be dim like the borders:\n%q", out)
+	}
 	// Separate boxes side by side with a single-space gap, top-aligned:
 	// "┌…┐ ┌…┐" on the border line. The gap check runs on the
 	// ANSI-stripped text — the borders are dim-wrapped on a color TTY.

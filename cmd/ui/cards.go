@@ -174,7 +174,7 @@ func (c *Cards) renderGrid() {
 		} else {
 			padded = s.paint(ColorDim, padded)
 		}
-		return "│ " + padded + " │"
+		return s.paint(ColorDim, "│ ") + padded + s.paint(ColorDim, " │")
 	}
 
 	for start := 0; start < len(c.cards); start += cols {
