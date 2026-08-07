@@ -11,4 +11,4 @@ artifact:
 project:
     description: Engineering Knowledge Architecture — standard, reference implementation, and eka validator CLI
     name: eka
-    version: 0.1.1
+    version: 0.1.2
