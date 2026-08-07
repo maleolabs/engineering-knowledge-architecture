@@ -13,14 +13,19 @@ func TestTimelineRows(t *testing.T) {
 		Add("▸", "activity", s.Info).
 		Render()
 	out := buf.String()
+	// The connector rail starts at the first row — no dangling "│"
+	// above the first node; following rows and the separator carry it.
 	for _, want := range []string{
-		"│ ● milestone",
+		"● milestone",
 		"│ ▸ activity",
 		"│ ──",
 	} {
 		if !strings.Contains(out, want) {
 			t.Errorf("timeline output must contain %q:\n%s", want, out)
 		}
+	}
+	if strings.Contains(out, "│ ● milestone") {
+		t.Errorf("first row must not carry a dangling rail:\n%s", out)
 	}
 	if !strings.Contains(out, "───") {
 		t.Errorf("separator must be a dashed milestone line:\n%s", out)

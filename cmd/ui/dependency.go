@@ -75,14 +75,16 @@ func (t *DependencyTree) Render() {
 
 // renderNode prints one node line and recurses into its children. The
 // last child of a level uses └──, the others ├──; child prefixes keep
-// the │ vertical connector for non-last branches.
+// the │ vertical connector for non-last branches. Connectors are dim
+// (structural, like the board and card borders); the node text keeps
+// its semantic color.
 func (t *DependencyTree) renderNode(n *DepNode, prefix string, last bool) {
 	s := t.s
 	conn := TreeBranch
 	if last {
 		conn = TreeLast
 	}
-	fmt.Fprintln(s.W, prefix+conn+" "+n.line())
+	fmt.Fprintln(s.W, s.paint(ColorDim, prefix+conn+" ")+n.line())
 	childPrefix := prefix + TreeVert + "  "
 	if last {
 		childPrefix = prefix + TreeSpace

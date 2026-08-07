@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"strconv"
-	"strings"
 
 	"github.com/maleolabs/engineering-knowledge-architecture/cmd/ui"
 	"github.com/maleolabs/engineering-knowledge-architecture/view"
@@ -45,14 +44,14 @@ func renderPlanning(s *ui.Style, g *view.Graph, p *view.PlanningProjection) {
 	for _, epc := range epics {
 		tl.Add("▸", epc.Identity+artifactStateText(epc), contentStateColor(s, epc.ContentState))
 	}
-	tl.Render()
-	if len(traces) > 0 {
-		parts := make([]string, 0, len(traces))
-		for _, tr := range traces {
-			parts = append(parts, tr.Identity+" ("+tr.ContentState+")")
-		}
-		fmtDim(s, "traceability: "+strings.Join(parts, ", "))
+	for _, tr := range traces {
+		// Traceability is a Planning artifact like any other: it gets a
+		// normal timeline row (connected to the structure), with the
+		// "traceability:" label for context.
+		tl.Add("▸", "traceability: "+tr.Identity+" ("+tr.ContentState+")",
+			contentStateColor(s, tr.ContentState))
 	}
+	tl.Render()
 	renderPlanningInsights(s, p)
 }
 

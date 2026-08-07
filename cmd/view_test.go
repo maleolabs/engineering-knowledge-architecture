@@ -203,11 +203,11 @@ func TestViewPlanningHappyPath(t *testing.T) {
 	for _, want := range []string{
 		"Planning",
 		"Domain       Planning",
-		"│ ✓ eka-view-fixture/plan:roadmap-2026  (approved, planning-state approved, phase release)",
+		"✓ eka-view-fixture/plan:roadmap-2026  (approved, planning-state approved, phase release)",
 		"──", // milestone separator
 		"│ ▸ eka-view-fixture/scp:wave-2  (approved, phase mvp)",
 		"│ ▸ eka-view-fixture/epc:auth  (review)",
-		"traceability: eka-view-fixture/trc:spec-trace (draft)",
+		"│ ▸ traceability: eka-view-fixture/trc:spec-trace (draft)",
 		"Summary:",
 		"Committed: 1",
 		"Exploring: 0",
@@ -306,7 +306,7 @@ func TestViewOperationsHappyPath(t *testing.T) {
 		"│ • eka-view-fixture/rel:release-1 │",
 		"│ review",
 		"Runbooks",
-		"│ ▸ eka-view-fixture/run:deploy  (approved)",
+		"▸ eka-view-fixture/run:deploy  (approved)",
 		"Summary:",
 		"Releases delivered: 0",
 		"Runbooks maintained: 1",

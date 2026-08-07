@@ -5,16 +5,17 @@ import (
 	"strings"
 )
 
-// Timeline is the vertical activity/milestone primitive: rows prefixed
-// with a │ connector, each row carrying a marker glyph (▸ / • / ●)
-// and text colored as one span, plus optional milestone separator
-// lines (─────). Rendering is a pure function of the added rows, so
-// output is deterministic on TTY and non-TTY alike.
+// Timeline is the vertical activity/milestone primitive: rows carrying
+// a marker glyph (▸ / • / ●) and text colored as one span, with a │
+// connector rail on every row after the first (the rail starts at the
+// first node — no dangling connector above it), plus optional
+// milestone separator lines (─────). Rendering is a pure function of
+// the added rows, so output is deterministic on TTY and non-TTY alike.
 //
 // The primitive knows nothing about domain data: it renders marker and
-// text exactly as given. The connector is plain in every environment;
-// colors apply to the "marker text" span only (dim separators on a
-// TTY), and non-TTY output is plain UTF-8.
+// text exactly as given. The connector rail and separators are dim
+// (structural, like the board and card borders); colors apply to the
+// "marker text" span only, and non-TTY output is plain UTF-8.
 type Timeline struct {
 	s    *Style
 	rows []timelineRow
@@ -48,15 +49,21 @@ func (t *Timeline) Separator() *Timeline {
 // nothing.
 func (t *Timeline) Render() {
 	s := t.s
-	for _, r := range t.rows {
+	for i, r := range t.rows {
+		// The connector rail starts at the first row: no dangling "│"
+		// above the first node.
+		rail := ""
+		if i > 0 {
+			rail = s.paint(ColorDim, "│ ")
+		}
 		if r.sep {
-			fmt.Fprintln(s.W, s.Dim("│ "+strings.Repeat("─", 24)))
+			fmt.Fprintln(s.W, s.paint(ColorDim, "│ "+strings.Repeat("─", 24)))
 			continue
 		}
 		line := r.marker + " " + r.text
 		if r.color != nil {
 			line = r.color(line)
 		}
-		fmt.Fprintln(s.W, "│ "+line)
+		fmt.Fprintln(s.W, rail+line)
 	}
 }

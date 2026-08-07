@@ -135,12 +135,12 @@ func TestRenderPlanningRoadmap(t *testing.T) {
 	out := buf.String()
 	for _, want := range []string{
 		"Planning",
-		"│ ✓ feather/plan:roadmap-v1  (approved, planning-state approved, phase mvp)",
+		"✓ feather/plan:roadmap-v1  (approved, planning-state approved, phase mvp)",
 		"────",
 		"│ ▸ feather/scp:mvp-v1  (approved, phase mvp)",
 		"│ ▸ feather/epc:authoring  (review)",
 		"│ ▸ feather/epc:distribution  (draft)",
-		"traceability: feather/trc:feather-trace (approved)",
+		"│ ▸ traceability: feather/trc:feather-trace (approved)",
 		"Committed: 1",
 		"Exploring: 1",
 		"Next milestone: mvp",
@@ -323,7 +323,7 @@ func TestRenderOperationsRelease(t *testing.T) {
 		"│ approved",
 		"│ derives-from plan:roadmap-v1:1",
 		"Runbooks",
-		"│ ▸ feather/run:deploy-feather  (approved)",
+		"▸ feather/run:deploy-feather  (approved)",
 		"│ ▸ feather/run:backup-feather  (draft)",
 		"Releases delivered: 1",
 		"Runbooks maintained: 2",
