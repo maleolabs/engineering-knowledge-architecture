@@ -1,0 +1,61 @@
+pipeline:
+    name: build
+    stages:
+        - name: dependencies
+          tasks:
+            - name: download
+              command: go
+              args:
+                - mod
+                - download
+            - name: verify
+              command: go
+              args:
+                - mod
+                - verify
+        - name: compile
+          tasks:
+            # Release binaries follow the installer asset naming contract:
+            # eka-<os>-<arch>, version-stamped into cmd.version via ldflags.
+            # The asset set (linux/darwin × amd64/arm64) matches the
+            # supported platforms of install.sh.
+            - name: linux-amd64
+              command: sh
+              args:
+                - -c
+                - |
+                  VERSION=$(git describe --tags --always 2>/dev/null || echo "0.0.0-dev")
+                  go build -ldflags="-X github.com/maleolabs/engineering-knowledge-architecture/cmd.version=${VERSION}" -o ${ANVIL_OUTPUT_DIR}/eka-linux-amd64 ./cmd/eka
+              env:
+                GOOS: linux
+                GOARCH: amd64
+            - name: linux-arm64
+              command: sh
+              args:
+                - -c
+                - |
+                  VERSION=$(git describe --tags --always 2>/dev/null || echo "0.0.0-dev")
+                  go build -ldflags="-X github.com/maleolabs/engineering-knowledge-architecture/cmd.version=${VERSION}" -o ${ANVIL_OUTPUT_DIR}/eka-linux-arm64 ./cmd/eka
+              env:
+                GOOS: linux
+                GOARCH: arm64
+            - name: darwin-amd64
+              command: sh
+              args:
+                - -c
+                - |
+                  VERSION=$(git describe --tags --always 2>/dev/null || echo "0.0.0-dev")
+                  go build -ldflags="-X github.com/maleolabs/engineering-knowledge-architecture/cmd.version=${VERSION}" -o ${ANVIL_OUTPUT_DIR}/eka-darwin-amd64 ./cmd/eka
+              env:
+                GOOS: darwin
+                GOARCH: amd64
+            - name: darwin-arm64
+              command: sh
+              args:
+                - -c
+                - |
+                  VERSION=$(git describe --tags --always 2>/dev/null || echo "0.0.0-dev")
+                  go build -ldflags="-X github.com/maleolabs/engineering-knowledge-architecture/cmd.version=${VERSION}" -o ${ANVIL_OUTPUT_DIR}/eka-darwin-arm64 ./cmd/eka
+              env:
+                GOOS: darwin
+                GOARCH: arm64

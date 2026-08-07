@@ -1,2 +1,11 @@
 # Built EKA CLI binary
 /eka
+
+# Anvil build output
+/dist/
+
+# Anvil lifecycle runtime state (pipelines in .anvil/pipelines/ are
+# committed — the CI and Release workflows depend on them)
+/.anvil/artifacts/
+/.anvil/state/
+/.anvil/releases/

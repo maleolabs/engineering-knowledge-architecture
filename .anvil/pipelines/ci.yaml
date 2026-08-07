@@ -1,0 +1,42 @@
+pipeline:
+    name: ci
+    stages:
+        - name: quality
+          tasks:
+            # Canonical format gate: `gofmt -l .` must produce no output.
+            # Fail-closed: any unformatted file fails the pipeline.
+            - name: format
+              command: sh
+              args:
+                - -c
+                - |
+                  UNFORMATTED=$(gofmt -l .)
+                  if [ -n "$UNFORMATTED" ]; then
+                    echo "Unformatted files:"
+                    echo "$UNFORMATTED"
+                    exit 1
+                  fi
+            - name: vet
+              command: go
+              args:
+                - vet
+                - ./...
+        - name: test
+          tasks:
+            - name: unit-tests
+              command: go
+              args:
+                - test
+                - -race
+                - -count=1
+                - ./...
+            # Canonical self-validation gate (CONTRIBUTING.md §3): the
+            # reference repository itself must conform to the standard it
+            # implements — 0 errors, exit 0.
+            - name: self-validation
+              command: go
+              args:
+                - run
+                - ./cmd/eka
+                - validate
+                - .

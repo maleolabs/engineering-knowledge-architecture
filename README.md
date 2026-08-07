@@ -113,11 +113,26 @@ New to EKA? Read the [Engineering Operating Guide](skeleton/docs/workflow-guide.
 
 ## Installation
 
-Requires **Go 1.24+**.
+**Linux / macOS** — install the prebuilt binary from the GitHub Release asset registry (checksum-verified):
+
+```sh
+curl -fsSL https://github.com/maleolabs/engineering-knowledge-architecture/releases/latest/download/install.sh | sh
+```
+
+Install a specific version or custom directory:
+
+```sh
+curl -fsSL https://github.com/maleolabs/engineering-knowledge-architecture/releases/latest/download/install.sh | sh -s -- --version v0.1.0
+curl -fsSL https://github.com/maleolabs/engineering-knowledge-architecture/releases/latest/download/install.sh | sh -s -- --to ~/.local/bin
+```
+
+The installer downloads `eka-<os>-<arch>` (Linux/macOS × amd64/arm64) from the release assets, verifies it against `SHA256SUMS.txt` (fail-closed: no unverified installs), and installs it to `/usr/local/bin` (or `--to`).
+
+**Requires Go 1.24+** to build from source:
 
 ```sh
 go install github.com/maleolabs/engineering-knowledge-architecture/cmd/eka@latest
-# or build from source:
+# or:
 git clone <this-repository>
 cd <repo>
 go build -o eka ./cmd/eka

@@ -40,7 +40,7 @@ func TestProgressBarClamps(t *testing.T) {
 func TestProgressBarColors(t *testing.T) {
 	var buf bytes.Buffer
 	s := &Style{Color: true, W: &buf}
-	danger := ProgressBar(s, 1, 10) // 10%
+	danger := ProgressBar(s, 1, 10)  // 10%
 	warning := ProgressBar(s, 5, 10) // 50%
 	success := ProgressBar(s, 8, 10) // 80%
 	if !strings.Contains(danger, "\x1b[38;5;167m") {
