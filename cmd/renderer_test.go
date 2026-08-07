@@ -85,10 +85,14 @@ func TestRenderBoardProjection(t *testing.T) {
 		"│ In Progress (1)",
 		"│ In Review (0)",
 		"│ Done (1)",
-		"│ ▸ alpha (wave-7)",
-		"│ ▸ orphan (unassigned)",
-		"│ ▸ beta (wave-7)",
-		"│ ▸ gamma (wave-7)",
+		"│ ▸ alpha",
+		"│   sto · wave-7",
+		"│ ▸ orphan",
+		"│   sto · unassigned",
+		"│ ▸ beta",
+		"│   sto · wave-7",
+		"│ ▸ gamma",
+		"│   ch · wave-7",
 		"—", // empty column
 		"1 work item not referenced by any ticket container",
 		"Total Work Items: 4",
@@ -136,41 +140,42 @@ func emptyBoardColumns() view.BoardColumns {
 	return cols
 }
 
-// TestRenderBoardCellLabel: the composed label truncates the id, never
-// the container tag — the tag is the board's context and must always
-// stay visible. The budget mirrors the default non-TTY column width.
-func TestRenderBoardCellLabel(t *testing.T) {
+// TestBoardCard: the two-line card composes the name and the
+// type · container context; truncation prefers the name, and on narrow
+// budgets the type is dropped before the container tag.
+func TestBoardCard(t *testing.T) {
 	budget := ui.BoardItemBudget(0, 5)
 	cases := []struct {
-		id, tag string
-		want    string
+		id, typeToken, tag string
+		want               string
 	}{
-		// Fits: full id + tag.
-		{"alpha", "wave-7", "alpha (wave-7)"},
-		// Does not fit: id truncated, tag intact.
-		{"markdown-syntax-highlighting", "wave-7", "markdown-syntax-high… (wave-7)"},
-		// Unassigned tag kept too.
-		{"markdown-syntax-highlighting", "unassigned", "markdown-syntax-… (unassigned)"},
+		// Fits: full name + full context.
+		{"alpha", "sto", "wave-7", "alpha\nsto · wave-7"},
+		// Long name fits whole on its own line (the card's point);
+		// the context line stays intact.
+		{"markdown-syntax-highlighting", "sto", "wave-7", "markdown-syntax-highlighting\nsto · wave-7"},
+		// Unassigned context kept too.
+		{"markdown-syntax-highlighting", "sto", "unassigned", "markdown-syntax-highlighting\nsto · unassigned"},
 	}
 	for _, c := range cases {
-		if got := boardCellLabel(c.id, c.tag, budget); got != c.want {
-			t.Errorf("boardCellLabel(%q, %q, %d) = %q, want %q", c.id, c.tag, budget, got, c.want)
+		if got := boardCard(c.id, c.typeToken, c.tag, budget); got != c.want {
+			t.Errorf("boardCard(%q, %q, %q, %d) = %q, want %q", c.id, c.typeToken, c.tag, budget, got, c.want)
 		}
 	}
 }
 
-// TestRenderBoardAdaptiveBudget: on a narrower terminal the label
-// budget shrinks with the column width; the tag still survives.
-func TestRenderBoardAdaptiveBudget(t *testing.T) {
+// TestBoardCardNarrowBudget: on a narrower terminal the budget shrinks
+// with the column width; the type is dropped before the tag.
+func TestBoardCardNarrowBudget(t *testing.T) {
 	// 80-cell terminal: (80-16)/5 = 12 per column, budget 10.
 	budget := ui.BoardItemBudget(80, 5)
 	if budget != 10 {
 		t.Fatalf("BoardItemBudget(80, 5) = %d, want 10", budget)
 	}
-	got := boardCellLabel("markdown-syntax-highlighting", "wave-7", budget)
-	want := "… (wave-7)"
+	got := boardCard("markdown-syntax-highlighting", "sto", "wave-7", budget)
+	want := "markdown-…\nwave-7"
 	if got != want {
-		t.Errorf("boardCellLabel on 80-col = %q, want %q (tag intact)", got, want)
+		t.Errorf("boardCard on 80-col = %q, want %q (tag intact, type dropped)", got, want)
 	}
 }
 
@@ -205,9 +210,12 @@ func TestRenderExecutionBoard(t *testing.T) {
 		"│ In Progress (1)",
 		"│ In Review (0)",
 		"│ Done (1)",
-		"│ ▸ alpha (wave-7)",
-		"│ ▸ beta (wave-7)",
-		"│ ▸ gamma (wave-7)",
+		"│ ▸ alpha",
+		"│   sto · wave-7",
+		"│ ▸ beta",
+		"│   sto · wave-7",
+		"│ ▸ gamma",
+		"│   ch · wave-7",
 		"—", // empty columns
 		"2 tickets project these work items",
 		"Active Work: 1",
@@ -244,7 +252,8 @@ func TestRenderExecutionSharedContainerTag(t *testing.T) {
 	renderExecution(s, g, p)
 	out := buf.String()
 	for _, want := range []string{
-		"│ ▸ shared (wave-0, wave-7)",
+		"│ ▸ shared",
+		"│   sto · wave-0, wave-7",
 	} {
 		if !strings.Contains(out, want) {
 			t.Errorf("execution board output must contain %q:\n%s", want, out)

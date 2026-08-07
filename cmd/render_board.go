@@ -63,34 +63,39 @@ func renderBoardColumns(s *ui.Style, cols view.BoardColumns) {
 	for _, col := range cols {
 		labels := make([]string, 0, len(col.WorkItems))
 		for _, bi := range col.WorkItems {
-			labels = append(labels, boardCellLabel(short(bi.WorkItem), shortCtr(bi), budget))
+			labels = append(labels, boardCard(short(bi.WorkItem), bi.Type, shortCtr(bi), budget))
 		}
 		board.AddColumn(boardTitle(col.State), stateColor(s, col.State), labels)
 	}
 	board.Render()
 }
 
-// boardCellLabel composes an item label with its container tag and
-// truncates it to the given budget with the tag kept intact:
-// "markdown-s… (wave-7)" — the container context is the point of the
-// board and must never be truncated away. The ellipsis ends the id.
-func boardCellLabel(id, tag string, budget int) string {
-	label := id + " (" + tag + ")"
-	if utf8.RuneCountInString(label) <= budget {
-		return label
+// boardCard composes the two-line item card: the item name on the
+// first line, the type and container context on the second. Truncation
+// prefers the name; on narrow columns the type is dropped before the
+// container tag — the assignment context is the point of the card.
+func boardCard(id, typeToken, tag string, budget int) string {
+	name := truncateRunes(id, budget)
+	context := typeToken + " · " + tag
+	if utf8.RuneCountInString(context) > budget {
+		if utf8.RuneCountInString(tag) <= budget {
+			context = tag
+		} else {
+			context = truncateRunes(tag, budget)
+		}
 	}
-	tagPart := " (" + tag + ")"
-	remain := budget - utf8.RuneCountInString(tagPart) - 1 // ellipsis
-	if remain < 1 {
-		// No room for the id itself; keep the ellipsis as the marker
-		// that an id was truncated away.
-		return "…" + tagPart
+	return name + "\n" + context
+}
+
+// truncateRunes shortens text to the display budget, appending "…"
+// when it does not fit. Operates on runes (display cells), never on
+// bytes.
+func truncateRunes(text string, budget int) string {
+	if utf8.RuneCountInString(text) <= budget {
+		return text
 	}
-	runes := []rune(id)
-	if remain >= len(runes) {
-		return label
-	}
-	return string(runes[:remain]) + "…" + tagPart
+	runes := []rune(text)
+	return string(runes[:budget-1]) + "…"
 }
 
 // boardItemWorkItems extracts the embedded work items of a board item

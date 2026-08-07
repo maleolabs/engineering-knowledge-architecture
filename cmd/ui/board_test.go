@@ -88,6 +88,43 @@ func TestBoardAdaptiveWidth(t *testing.T) {
 	}
 }
 
+// TestBoardCardBlocks: multi-line item labels render as vertical
+// cards — the "▸ " marker on the first line, following lines indented
+// to the text column; a row is as tall as its tallest card, shorter
+// cards pad with blank lines.
+func TestBoardCardBlocks(t *testing.T) {
+	s, buf := testStyle()
+	NewBoard(s).
+		AddColumn("In Progress", nil, []string{"draft-autosave\nsto · wave-7"}).
+		AddColumn("Done", nil, []string{"publish-post\nsto · wave-7", "empty-title\nch · wave-7"}).
+		Render()
+	want := "" +
+		"┌──────────────────┬────────────────┐\n" +
+		"│ In Progress (1)  │ Done (2)       │\n" +
+		"├──────────────────┼────────────────┤\n" +
+		"│ ▸ draft-autosave │ ▸ publish-post │\n" +
+		"│   sto · wave-7   │   sto · wave-7 │\n" +
+		"│                  │ ▸ empty-title  │\n" +
+		"│                  │   ch · wave-7  │\n" +
+		"└──────────────────┴────────────────┘\n"
+	if got := buf.String(); got != want {
+		t.Errorf("card board layout mismatch:\n got: %q\nwant: %q", got, want)
+	}
+}
+
+// TestBoardCardShorterRowPads: a single-line card in a row with a
+// two-line card pads its second line blank, keeping the grid aligned.
+func TestBoardCardShorterRowPads(t *testing.T) {
+	s, buf := testStyle()
+	NewBoard(s).
+		AddColumn("Todo", nil, []string{"alpha\nsto · wave-7", "beta"}).
+		Render()
+	out := buf.String()
+	if !strings.Contains(out, "│ ▸ alpha        │\n│   sto · wave-7 │\n│ ▸ beta         │") {
+		t.Errorf("single-line card must not leak padding rows:\n%s", out)
+	}
+}
+
 func TestBoardEmptyColumnShowsDash(t *testing.T) {
 	s, buf := testStyle()
 	NewBoard(s).

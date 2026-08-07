@@ -111,7 +111,7 @@ func renderBoard(s *ui.Style, g *view.Graph, cols view.StateColumns) {
 	for _, col := range cols {
 		labels := make([]string, 0, len(col.WorkItems))
 		for _, wi := range col.WorkItems {
-			labels = append(labels, boardCellLabel(short(wi), tag(wi.Identity), budget))
+			labels = append(labels, boardCard(short(wi), wi.Type, tag(wi.Identity), budget))
 		}
 		board.AddColumn(boardTitle(col.State), stateColor(s, col.State), labels)
 	}

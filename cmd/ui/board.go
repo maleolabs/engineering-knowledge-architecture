@@ -9,10 +9,18 @@ import (
 // Board is the kanban presentation primitive: a fixed grid of box-drawn
 // columns (┌─┬─┐ / ├─┼─┤ / └─┴─┘ / │) rendered side by side with
 // aligned rows. Each column owns its width — max(header with count,
-// longest item, 8), capped at 16, overflow truncated with "…" — and
-// renders its item labels in order; an empty column shows "—" in its
-// first item row. Rendering is a pure function of the added columns,
-// so output is deterministic on TTY and non-TTY alike.
+// longest item line, 8), capped at the adaptive column width, overflow
+// truncated with "…" — and renders its item labels in order; an empty
+// column shows "—" in its first item row.
+//
+// An item label may be a card: several lines separated by "\n". A card
+// renders as a vertical block (the "▸ " marker on its first line, the
+// following lines indented to the text column), and a row's height is
+// the tallest card in that row — shorter cards and empty columns pad
+// with blank lines, so the grid stays aligned.
+//
+// Rendering is a pure function of the added columns, so output is
+// deterministic on TTY and non-TTY alike.
 //
 // The primitive knows nothing about domain data: it renders titles and
 // item labels exactly as given. Colors are applied to text spans only
@@ -81,10 +89,18 @@ func NewBoard(s *Style) *Board { return &Board{s: s} }
 
 // AddColumn appends one column: title, the color function applied to
 // the header text and item labels (nil = plain), and the item labels
-// in display order.
+// in display order. A label may be a multi-line card ("line1\nline2");
+// the first line carries the "▸ " marker, following lines render
+// indented to the text column.
 func (b *Board) AddColumn(title string, color func(string) string, items []string) *Board {
 	b.columns = append(b.columns, boardColumn{title: title, color: color, items: items})
 	return b
+}
+
+// cardLines splits an item label into its display lines ("" for a
+// single-line label is one empty line — the marker-only row).
+func cardLines(item string) []string {
+	return strings.Split(item, "\n")
 }
 
 // Render prints the board: top border, header row (title + count),
@@ -103,9 +119,11 @@ func (b *Board) Render() {
 		headers[i] = fmt.Sprintf("%s (%d)", c.title, len(c.items))
 		w := len(headers[i])
 		for _, it := range c.items {
-			// Each item carries the "▸ " prefix inside its cell.
-			if displayWidth(it)+displayWidth(itemPrefix) > w {
-				w = displayWidth(it) + displayWidth(itemPrefix)
+			for _, line := range cardLines(it) {
+				// The first line carries the "▸ " prefix inside its cell.
+				if displayWidth(line)+displayWidth(itemPrefix) > w {
+					w = displayWidth(line) + displayWidth(itemPrefix)
+				}
 			}
 		}
 		if w < boardMinWidth {
@@ -149,7 +167,8 @@ func (b *Board) Render() {
 	fmt.Fprintln(s.W, s.Dim(mid.String()))
 
 	// Item rows. At least one row renders, so an all-empty board still
-	// shows its "—" markers.
+	// shows its "—" markers. Each row is as tall as its tallest card;
+	// shorter cards pad with blank lines.
 	rows := 1
 	for _, c := range b.columns {
 		if len(c.items) > rows {
@@ -157,18 +176,38 @@ func (b *Board) Render() {
 		}
 	}
 	for r := 0; r < rows; r++ {
-		fmt.Fprintln(s.W, boardRow(s, widths, func(i int) (string, func(string) string) {
-			c := b.columns[i]
-			if r >= len(c.items) {
-				// An empty column signals its emptiness with "—" in the
-				// first item row; later rows stay blank.
-				if len(c.items) == 0 && r == 0 {
-					return "—", c.color
+		height := 1
+		for _, c := range b.columns {
+			if r < len(c.items) {
+				if n := len(cardLines(c.items[r])); n > height {
+					height = n
 				}
-				return "", nil
 			}
-			return itemPrefix + c.items[r], c.color
-		}))
+		}
+		for h := 0; h < height; h++ {
+			fmt.Fprintln(s.W, boardRow(s, widths, func(i int) (string, func(string) string) {
+				c := b.columns[i]
+				if r >= len(c.items) {
+					// An empty column signals its emptiness with "—" in
+					// the first item row; later rows stay blank.
+					if len(c.items) == 0 && r == 0 {
+						return "—", c.color
+					}
+					return "", nil
+				}
+				lines := cardLines(c.items[r])
+				if h >= len(lines) {
+					// A shorter card pads with a blank line.
+					return "", nil
+				}
+				// The "▸ " marker belongs to the card's first line; the
+				// following lines indent to the text column.
+				if h == 0 {
+					return itemPrefix + lines[h], c.color
+				}
+				return strings.Repeat(" ", displayWidth(itemPrefix)) + lines[h], c.color
+			}))
+		}
 	}
 
 	// Bottom border: └───┴───┘
