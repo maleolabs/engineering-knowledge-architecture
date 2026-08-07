@@ -3,9 +3,13 @@ package ui
 import (
 	"bytes"
 	"fmt"
+	"regexp"
 	"strings"
 	"testing"
 )
+
+// ansiRegex strips SGR escape sequences for plain-text assertions.
+var ansiRegex = regexp.MustCompile(`\x1b\[[0-9;]*m`)
 
 func TestCardsLayout(t *testing.T) {
 	s, buf := testStyle()
@@ -73,5 +77,30 @@ func TestCardsHeaderColored(t *testing.T) {
 	NewCards(s).Add("header", s.Success, nil).Render()
 	if !strings.Contains(buf.String(), "\x1b[38;5;114mheader\x1b[0m") {
 		t.Errorf("header must be colored by its color function:\n%q", buf.String())
+	}
+}
+
+// TestCardsGridColorsOnTTY: colored grid cells must not overflow —
+// padding is computed on the plain display width, never on the ANSI-
+// colored text (a colored-then-padded cell would panic with a negative
+// Repeat count).
+func TestCardsGridColorsOnTTY(t *testing.T) {
+	var buf bytes.Buffer
+	s := &Style{Color: true, W: &buf}
+	NewCards(s).
+		Add("✓ feather/req:comments-phase2", s.Warning, []string{"draft · revision 1"}).
+		Add("✓ feather/req:publishing-core", s.Success, []string{"approved · revision 1"}).
+		Grid().
+		Render()
+	out := buf.String()
+	if !strings.Contains(out, "\x1b[") {
+		t.Errorf("color-enabled cards must emit ANSI:\n%q", out)
+	}
+	// Separate boxes side by side with a single-space gap, top-aligned:
+	// "┌…┐ ┌…┐" on the border line. The gap check runs on the
+	// ANSI-stripped text — the borders are dim-wrapped on a color TTY.
+	plain := ansiRegex.ReplaceAllString(out, "")
+	if !strings.Contains(plain, "┐ ┌") {
+		t.Errorf("grid boxes must be separated by a gap:\n%q", out)
 	}
 }

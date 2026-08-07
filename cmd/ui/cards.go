@@ -123,87 +123,85 @@ func (c *Cards) cellWidth() int {
 	return width
 }
 
-// renderGrid prints the cards as horizontal grid rows. Each row is one
-// box containing up to columns cells; cells are the card stacks
-// (header line + body lines), padded and truncated to the uniform cell
-// width. The last row pads with blank cells so the box stays
-// rectangular.
+// renderGrid prints the cards as horizontal grid rows. Each card keeps
+// its own box (like the vertical layout) but boxes sit side by side
+// with a single-space gap, aligned top and bottom per row. All boxes of
+// one row share the same width and height, so the row reads as one
+// aligned band of cards. The last row pads with blank boxes so the
+// band stays rectangular.
 func (c *Cards) renderGrid() {
 	s := c.s
 	width := c.cellWidth()
-	cols := cardBudget / width
+	// Each box occupies width+2 border cells plus one gap cell.
+	cols := cardBudget / (width + 3)
 	if cols < 1 {
 		cols = 1
 	}
 	if cols > cardMaxCols {
 		cols = cardMaxCols
 	}
-	// Never pad a row with empty cells beyond the card count: a
-	// two-card group renders two cells, not three.
+	// Never pad a row with empty boxes beyond the card count.
 	if cols > len(c.cards) {
 		cols = len(c.cards)
 	}
-	height := 0
-	for _, cd := range c.cards {
-		if h := 1 + len(cd.body); h > height {
-			height = h
+
+	// box renders one card box for the given line index (0 = top
+	// border, 1..height = cell lines, height+1 = bottom border),
+	// padded to the shared width; blank boxes fill the last row.
+	box := func(cd *card, line, height int) string {
+		switch {
+		case line == 0:
+			return "┌" + strings.Repeat("─", width+2) + "┐"
+		case line == height+1:
+			return "└" + strings.Repeat("─", width+2) + "┘"
 		}
+		var text string
+		if cd != nil {
+			switch {
+			case line == 1:
+				text = cd.header
+			case line-2 < len(cd.body):
+				text = cd.body[line-2]
+			}
+		}
+		// Padding is computed on the PLAIN display width and color is
+		// applied to the padded string — coloring first would make
+		// displayWidth count the ANSI escapes and overflow the cell.
+		text = truncate(text, width)
+		padded := text + strings.Repeat(" ", width-displayWidth(text))
+		if cd != nil && line == 1 && cd.color != nil {
+			padded = cd.color(padded)
+		} else {
+			padded = s.paint(ColorDim, padded)
+		}
+		return "│ " + padded + " │"
 	}
+
 	for start := 0; start < len(c.cards); start += cols {
 		row := c.cards[start:min(start+cols, len(c.cards))]
-		// Top border: ┌───┬───┐
-		var top strings.Builder
-		for i := 0; i < cols; i++ {
-			if i == 0 {
-				top.WriteString("┌")
-			} else {
-				top.WriteString("┬")
+		height := 0
+		for _, cd := range row {
+			if h := 1 + len(cd.body); h > height {
+				height = h
 			}
-			top.WriteString(strings.Repeat("─", width+2))
 		}
-		top.WriteString("┐")
-		fmt.Fprintln(s.W, s.Dim(top.String()))
-
-		// Cell lines: header (colored) then body lines (dim); cells
-		// shorter than the row height pad with blank lines.
-		for line := 0; line < height; line++ {
+		for line := 0; line <= height+1; line++ {
 			var sb strings.Builder
 			for i := 0; i < cols; i++ {
-				sb.WriteString(s.paint(ColorDim, "│ "))
-				var text string
+				var cd *card
 				if i < len(row) {
-					cd := row[i]
-					switch {
-					case line == 0:
-						text = cd.header
-					case line-1 < len(cd.body):
-						text = cd.body[line-1]
-					}
+					cd = &row[i]
 				}
-				text = truncate(text, width)
-				if i < len(row) && line == 0 && row[i].color != nil {
-					text = row[i].color(text)
-				} else {
-					text = s.paint(ColorDim, text)
+				if i > 0 {
+					sb.WriteString(" ")
 				}
-				sb.WriteString(text + strings.Repeat(" ", width-displayWidth(text)))
-				sb.WriteString(s.paint(ColorDim, " "))
+				part := box(cd, line, height)
+				if line == 0 || line == height+1 {
+					part = s.paint(ColorDim, part)
+				}
+				sb.WriteString(part)
 			}
-			sb.WriteString(s.paint(ColorDim, "│"))
 			fmt.Fprintln(s.W, sb.String())
 		}
-
-		// Bottom border: └───┴───┘
-		var bottom strings.Builder
-		for i := 0; i < cols; i++ {
-			if i == 0 {
-				bottom.WriteString("└")
-			} else {
-				bottom.WriteString("┴")
-			}
-			bottom.WriteString(strings.Repeat("─", width+2))
-		}
-		bottom.WriteString("┘")
-		fmt.Fprintln(s.W, s.Dim(bottom.String()))
 	}
 }
