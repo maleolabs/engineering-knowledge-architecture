@@ -97,3 +97,7 @@ jobs:
           & pwsh -File "$env:RUNNER_TEMP/install-test.ps1" -To "$env:RUNNER_TEMP/eka-install-bad"
           if ($LASTEXITCODE -eq 0) { throw "corrupt checksum install should have failed" }
           Write-Host "fail-closed verified"
+
+          # pwsh -Command propagates the LAST native exit code (1 from the
+          # fail-closed test above) as the process exit code; end explicitly.
+          exit 0
