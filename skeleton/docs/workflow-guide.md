@@ -403,7 +403,7 @@ The canonical projections, one per Engineering Domain, plus the ticket view:
 | `eka view discovery` | Vision, strategy, requirements, research findings |
 | `eka view architecture` | Decisions, architecture descriptions, specifications, standards, vocabulary — a dependency tree; each node shows its content state (draft / review / approved) |
 | `eka view planning` | Scope, epics, plans, traceability — a roadmap by phase; each entry shows its planning state and phase |
-| `eka view execution` | The active container's work items on a five-column Kanban board (planned / todo / in-progress / in-review / done); tickets project individually as detail cards (`eka view ticket <id>`) |
+| `eka view execution` | The active container's work items on a five-column Kanban board (planned / todo / in-progress / in-review / done), each item tagged with its container; tickets project individually as detail cards (`eka view ticket <id>`) |
 | `eka view board` | **Every work item in the repository** — across all containers (active and completed) and outside any container — on the same five-column Kanban board; each item is tagged with its container, and items no ticket references show `(unassigned)`. For "what is the total work?" instead of "what is being worked on right now?" |
 | `eka view operations` | Runbooks and release records |
 | `eka view ticket <id>` | One ticket's projected status — derived from its owner work item, never from ticket text |

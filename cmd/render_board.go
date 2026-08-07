@@ -106,24 +106,41 @@ func boardItemWorkItems(items []view.BoardItem) []view.WorkItem {
 // container references the item. Multiple containers join
 // comma-separated.
 func shortContainerID(items []view.BoardItem) func(view.BoardItem) string {
-	// id → the distinct full identities sharing that id. A bare id is
-	// ambiguous only when TWO DIFFERENT containers share it — not when
-	// one container references many items (the tag frequency).
+	forms := make([]string, len(items))
+	byForm := make(map[string][]string, len(items))
+	for i, bi := range items {
+		forms[i] = bi.Identity
+		byForm[bi.Identity] = bi.Containers
+	}
+	tag := containerTagRenderer(forms, func(form string) []string { return byForm[form] })
+	return func(bi view.BoardItem) string { return tag(bi.Identity) }
+}
+
+// containerTagRenderer builds the container-tag renderer shared by the
+// board and execution projections. items are the canonical identity
+// forms of the rendered item set; containersOf resolves the containers
+// of one item (board: the item's own Containers; execution: the graph
+// membership helper). A bare container id is ambiguous only when TWO
+// DIFFERENT containers share it — not when one container references
+// many items (the tag frequency).
+func containerTagRenderer(items []string, containersOf func(string) []string) func(string) string {
+	// id → the distinct full identities sharing that id.
 	idToForms := make(map[string][]string)
-	for _, bi := range items {
-		for _, c := range bi.Containers {
+	for _, form := range items {
+		for _, c := range containersOf(form) {
 			id := shortID(c)
 			if !stringSliceContains(idToForms[id], c) {
 				idToForms[id] = append(idToForms[id], c)
 			}
 		}
 	}
-	return func(bi view.BoardItem) string {
-		if len(bi.Containers) == 0 {
+	return func(form string) string {
+		containers := containersOf(form)
+		if len(containers) == 0 {
 			return "unassigned"
 		}
-		parts := make([]string, 0, len(bi.Containers))
-		for _, c := range bi.Containers {
+		parts := make([]string, 0, len(containers))
+		for _, c := range containers {
 			id := shortID(c)
 			if len(idToForms[id]) > 1 {
 				parts = append(parts, c)

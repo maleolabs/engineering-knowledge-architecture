@@ -33,7 +33,7 @@ type boardColumn struct {
 // never exceed boardMaxWidth (longer content is truncated with "…").
 const (
 	boardMinWidth = 8
-	boardMaxWidth = 24
+	boardMaxWidth = 32
 )
 
 // BoardMaxItemWidth is the display budget a single item label may use

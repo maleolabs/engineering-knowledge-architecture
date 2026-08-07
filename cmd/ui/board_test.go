@@ -81,9 +81,9 @@ func TestBoardTruncationCappedAtMaxWidth(t *testing.T) {
 	if !strings.Contains(out, "…") {
 		t.Errorf("truncated item must carry the ellipsis:\n%s", out)
 	}
-	// Display width of the truncated cell: "▸ " + 21 x + ellipsis = 24.
-	if !strings.Contains(out, "▸ xxxxxxxxxxxxxxxxxxxxx…") {
-		t.Errorf("truncation must cap at 24 display cells:\n%s", out)
+	// Display width of the truncated cell: "▸ " + 29 x + ellipsis = 32.
+	if !strings.Contains(out, "▸ xxxxxxxxxxxxxxxxxxxxxxxxxxxxx…") {
+		t.Errorf("truncation must cap at 32 display cells:\n%s", out)
 	}
 }
 

@@ -80,7 +80,7 @@ func renderExecution(s *ui.Style, g *view.Graph, p *view.ExecutionProjection) {
 			"  "+s.Dim("("+p.Container.State+")"))
 	}
 	fmt.Fprintln(s.W)
-	renderBoard(s, p.Columns)
+	renderBoard(s, g, p.Columns)
 	if p.Container != nil && len(p.Tickets) > 0 {
 		fmt.Fprintln(s.W)
 		fmt.Fprintf(s.W, "%s\n", s.Dim(plural(len(p.Tickets), "ticket", "tickets")+
@@ -91,18 +91,26 @@ func renderExecution(s *ui.Style, g *view.Graph, p *view.ExecutionProjection) {
 
 // renderBoard renders the work board: the fixed five execution-state
 // columns (always the full set; empty columns show "—") with the short
-// ids of their work items as cell labels.
-func renderBoard(s *ui.Style, cols view.StateColumns) {
+// ids of their work items as cell labels, each tagged with its
+// container context — the same tag rule as the board projection, so an
+// item shared across containers is visible from the active container's
+// board too.
+func renderBoard(s *ui.Style, g *view.Graph, cols view.StateColumns) {
 	board := ui.NewBoard(s)
 	var all []view.WorkItem
 	for _, col := range cols {
 		all = append(all, col.WorkItems...)
 	}
 	short := shortWorkItemID(all)
+	forms := make([]string, len(all))
+	for i, wi := range all {
+		forms[i] = wi.Identity
+	}
+	tag := containerTagRenderer(forms, g.ContainersForWorkItem)
 	for _, col := range cols {
 		labels := make([]string, 0, len(col.WorkItems))
 		for _, wi := range col.WorkItems {
-			labels = append(labels, short(wi))
+			labels = append(labels, boardCellLabel(short(wi), tag(wi.Identity)))
 		}
 		board.AddColumn(boardTitle(col.State), stateColor(s, col.State), labels)
 	}

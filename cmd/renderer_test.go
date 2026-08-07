@@ -26,6 +26,29 @@ func graphWith(arts ...conformance.Artifact) *view.Graph {
 	return view.NewGraph(".", arts)
 }
 
+// graphWithContainer builds a graph where each of the given work item
+// forms is a member of container feather/ctr:wave-7 (one ticket per
+// item), so renderer tests resolve container tags to "wave-7".
+func graphWithContainer(forms ...string) *view.Graph {
+	arts := []conformance.Artifact{
+		{Namespace: "feather", Type: "ctr", ID: "wave-7",
+			States: map[string]string{conformance.DomainContainerState: "active"}},
+	}
+	for i, form := range forms {
+		parts := strings.SplitN(form, "/", 2)
+		ns, rest := parts[0], parts[1]
+		typeID := strings.SplitN(rest, ":", 2)
+		token, id := typeID[0], typeID[1]
+		arts = append(arts,
+			conformance.Artifact{Namespace: ns, Type: token, ID: id,
+				States: map[string]string{conformance.DomainExecutionState: "todo"}},
+			conformance.Artifact{Namespace: ns, Type: "tkt", ID: fmt.Sprintf("tkt-%d", i),
+				Relations: map[string][]string{"derives-from": {"ctr:wave-7", token + ":" + id}}},
+		)
+	}
+	return view.NewGraph(".", arts)
+}
+
 // TestRenderBoardProjection: the board renders every work item with its
 // container tag; unassigned items carry the unassigned tag.
 func TestRenderBoardProjection(t *testing.T) {
@@ -124,9 +147,9 @@ func TestRenderBoardCellLabel(t *testing.T) {
 		// Fits: full id + tag.
 		{"alpha", "wave-7", "alpha (wave-7)"},
 		// Does not fit: id truncated, tag intact.
-		{"markdown-syntax-highlighting", "wave-7", "markdown-syn… (wave-7)"},
+		{"markdown-syntax-highlighting", "wave-7", "markdown-syntax-high… (wave-7)"},
 		// Unassigned tag kept too.
-		{"markdown-syntax-highlighting", "unassigned", "markdown… (unassigned)"},
+		{"markdown-syntax-highlighting", "unassigned", "markdown-syntax-… (unassigned)"},
 	}
 	for _, c := range cases {
 		if got := boardCellLabel(c.id, c.tag); got != c.want {
@@ -152,6 +175,9 @@ func TestRenderExecutionBoard(t *testing.T) {
 		},
 		Total: 3,
 	}
+	// The items resolve to container wave-7 through the graph, so their
+	// labels carry the container tag — same rule as the board.
+	g = graphWithContainer("feather/sto:alpha", "feather/sto:beta", "feather/ch:gamma")
 	renderExecution(s, g, p)
 	out := buf.String()
 	for _, want := range []string{
@@ -163,15 +189,46 @@ func TestRenderExecutionBoard(t *testing.T) {
 		"│ In Progress (1)",
 		"│ In Review (0)",
 		"│ Done (1)",
-		"│ ▸ alpha",
-		"│ ▸ beta",
-		"│ ▸ gamma",
+		"│ ▸ alpha (wave-7)",
+		"│ ▸ beta (wave-7)",
+		"│ ▸ gamma (wave-7)",
 		"—", // empty columns
 		"2 tickets project these work items",
 		"Active Work: 1",
 		"Completed Work: 1",
 		"Review Queue: 0",
 		"Overall Progress: ███░░░░░░░ 1/3 (33%)",
+	} {
+		if !strings.Contains(out, want) {
+			t.Errorf("execution board output must contain %q:\n%s", want, out)
+		}
+	}
+}
+
+// TestRenderExecutionSharedContainerTag: an item referenced by tickets
+// of two containers shows both tags on the active container's board —
+// the same tag rule as the board projection.
+func TestRenderExecutionSharedContainerTag(t *testing.T) {
+	arts := []conformance.Artifact{
+		{Namespace: "feather", Type: "ctr", ID: "wave-7", States: map[string]string{conformance.DomainContainerState: "active"}},
+		{Namespace: "feather", Type: "ctr", ID: "wave-0", States: map[string]string{conformance.DomainContainerState: "completed"}},
+		{Namespace: "feather", Type: "sto", ID: "shared", States: map[string]string{conformance.DomainExecutionState: "in-progress"}},
+		{Namespace: "feather", Type: "tkt", ID: "one", Relations: map[string][]string{"derives-from": {"ctr:wave-7", "sto:shared"}}},
+		{Namespace: "feather", Type: "tkt", ID: "two", Relations: map[string][]string{"derives-from": {"ctr:wave-0", "sto:shared"}}},
+	}
+	s, buf, _ := rendererTestContext(t)
+	g := graphWith(arts...)
+	p := &view.ExecutionProjection{
+		Container: &view.Container{Identity: "feather/ctr:wave-7", State: "active"},
+		Columns: view.StateColumns{
+			{State: "in-progress", WorkItems: []view.WorkItem{{Identity: "feather/sto:shared", Type: "sto", ID: "shared", State: "in-progress"}}},
+		},
+		Total: 1,
+	}
+	renderExecution(s, g, p)
+	out := buf.String()
+	for _, want := range []string{
+		"│ ▸ shared (wave-0, wave-7)",
 	} {
 		if !strings.Contains(out, want) {
 			t.Errorf("execution board output must contain %q:\n%s", want, out)
@@ -571,7 +628,7 @@ func TestRenderersDeterministic(t *testing.T) {
 	build := func() string {
 		var buf bytes.Buffer
 		s := ui.NewStyle(&buf, false)
-		g := view.NewGraph(".", nil)
+		g := graphWithContainer("feather/sto:alpha")
 		renderExecution(s, g, &view.ExecutionProjection{
 			Container: &view.Container{Identity: "feather/ctr:wave-7", State: "active"},
 			Columns: view.StateColumns{
@@ -602,7 +659,7 @@ func TestRenderersDeterministic(t *testing.T) {
 func TestRenderersNoANSI(t *testing.T) {
 	var buf bytes.Buffer
 	s := ui.NewStyle(&buf, false)
-	g := view.NewGraph(".", nil)
+	g := graphWithContainer("feather/sto:alpha")
 	renderExecution(s, g, &view.ExecutionProjection{
 		Container: &view.Container{Identity: "feather/ctr:wave-7", State: "active"},
 		Columns: view.StateColumns{
