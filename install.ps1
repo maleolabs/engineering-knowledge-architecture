@@ -140,8 +140,10 @@ try {
     Write-Host ""
     Write-Host "  Binary: $(Join-Path $InstallDir 'eka.exe')"
     Write-Host ""
-    Write-Host "Add it to your PATH to use 'eka' from any terminal:"
-    Write-Host "  setx PATH \"$InstallDir;$env:PATH\""
+    # %PATH% stays literal: setx expands it at the cmd prompt, which
+    # preserves the existing PATH when the user runs the command.
+    Write-Host ("  Add it to your PATH to use 'eka' from any terminal:")
+    Write-Host ("  setx PATH `"{0};%PATH%`"" -f $InstallDir)
     Write-Host ""
     Write-Host "Run 'eka --help' to get started."
     Write-Host "Run 'eka init <name>' to create a new EKA repository."
