@@ -488,7 +488,7 @@ The canonical projections — one per Engineering Domain, plus the ticket and bo
 | Operations | Release summary / activity timeline | What has been delivered? |
 | Ticket (Execution) | Detail card | What is the state of this ticket? |
 
-The visualization is **read-only presentation of the model** — it never becomes new state (P6). Every shape renders deterministically and non-TTY-safe: plain text plus UTF-8 box drawing, no ANSI escapes.
+The visualization is **read-only presentation of the model** — it never becomes new state (P6). Every shape renders deterministically and non-TTY-safe: plain text plus UTF-8 box drawing, no ANSI escapes. The kanban boards are **width-adaptive on a TTY**: columns scale with the terminal width (capped, never below the minimum) so the grid fits the screen, and item labels truncate their ids while keeping the container tag visible. Non-TTY output (pipes, CI, tests) uses the fixed maximum column width and stays byte-identical.
 
 **Engineering Domain context header.** Every projection carries a `Domain: <domain>` row in its context header alongside `Knowledge` — the Engineering Domain the projection reads (Core v1.1 §8.1). Domain projections are named after the domain they select; `ticket` and `board` are Execution-domain projections. The projections never write (P6); the Engineering Domain itself is derived from the token family and is never part of a projection's state.
 

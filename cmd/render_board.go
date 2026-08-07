@@ -59,10 +59,11 @@ func renderBoardColumns(s *ui.Style, cols view.BoardColumns) {
 	}
 	short := shortWorkItemID(boardItemWorkItems(all))
 	shortCtr := shortContainerID(all)
+	budget := ui.BoardItemBudget(s.Width, len(cols))
 	for _, col := range cols {
 		labels := make([]string, 0, len(col.WorkItems))
 		for _, bi := range col.WorkItems {
-			labels = append(labels, boardCellLabel(short(bi.WorkItem), shortCtr(bi)))
+			labels = append(labels, boardCellLabel(short(bi.WorkItem), shortCtr(bi), budget))
 		}
 		board.AddColumn(boardTitle(col.State), stateColor(s, col.State), labels)
 	}
@@ -70,18 +71,20 @@ func renderBoardColumns(s *ui.Style, cols view.BoardColumns) {
 }
 
 // boardCellLabel composes an item label with its container tag and
-// truncates it to the board cell budget with the tag kept intact:
+// truncates it to the given budget with the tag kept intact:
 // "markdown-s… (wave-7)" — the container context is the point of the
 // board and must never be truncated away. The ellipsis ends the id.
-func boardCellLabel(id, tag string) string {
+func boardCellLabel(id, tag string, budget int) string {
 	label := id + " (" + tag + ")"
-	if utf8.RuneCountInString(label) <= ui.BoardMaxItemWidth {
+	if utf8.RuneCountInString(label) <= budget {
 		return label
 	}
 	tagPart := " (" + tag + ")"
-	remain := ui.BoardMaxItemWidth - utf8.RuneCountInString(tagPart) - 1 // ellipsis
+	remain := budget - utf8.RuneCountInString(tagPart) - 1 // ellipsis
 	if remain < 1 {
-		return tagPart
+		// No room for the id itself; keep the ellipsis as the marker
+		// that an id was truncated away.
+		return "…" + tagPart
 	}
 	runes := []rune(id)
 	if remain >= len(runes) {

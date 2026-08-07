@@ -31,17 +31,45 @@ type boardColumn struct {
 
 // Board width bounds: columns never narrow below boardMinWidth and
 // never exceed boardMaxWidth (longer content is truncated with "…").
+// On a TTY the columns adapt to the terminal width (BoardColumnWidth);
+// with an unknown width (pipes, CI, tests) every column renders at the
+// fixed maximum, keeping non-TTY output byte-identical.
 const (
 	boardMinWidth = 8
 	boardMaxWidth = 32
 )
 
-// BoardMaxItemWidth is the display budget a single item label may use
-// inside a board cell: the column width cap minus the "▸ " prefix
-// (two display cells). Renderers that compose item labels (e.g. a
-// label plus a context tag that must stay visible) truncate against
-// this budget.
-const BoardMaxItemWidth = boardMaxWidth - 2
+// BoardColumnWidth returns the column width the board renders for a
+// terminal of the given display width and column count. A termWidth of
+// 0 (unknown — pipes, CI, tests) falls back to the fixed maximum. The
+// result is clamped to [boardMinWidth, boardMaxWidth]: very narrow
+// terminals keep the minimum width (the grid overflows — unavoidable
+// without wrapping), wide terminals never exceed the cap.
+func BoardColumnWidth(termWidth, columns int) int {
+	if termWidth <= 0 || columns <= 0 {
+		return boardMaxWidth
+	}
+	// Grid overhead: one border cell per column boundary (columns+1)
+	// plus the two-cell padding of every column.
+	overhead := (columns + 1) + columns*2
+	w := (termWidth - overhead) / columns
+	if w < boardMinWidth {
+		w = boardMinWidth
+	}
+	if w > boardMaxWidth {
+		w = boardMaxWidth
+	}
+	return w
+}
+
+// BoardItemBudget returns the display budget a single item label may
+// use inside one board column: BoardColumnWidth minus the "▸ " prefix.
+// Renderers that compose item labels (e.g. a label plus a context tag
+// that must stay visible) truncate against this budget so the board
+// primitive never re-truncates their tag away.
+func BoardItemBudget(termWidth, columns int) int {
+	return BoardColumnWidth(termWidth, columns) - displayWidth(itemPrefix)
+}
 
 // itemPrefix marks each item label on the board so list membership is
 // readable at a glance; it is part of the cell content and counts
@@ -68,6 +96,7 @@ func (b *Board) Render() {
 		return
 	}
 	s := b.s
+	colWidth := BoardColumnWidth(s.Width, len(b.columns))
 	widths := make([]int, len(b.columns))
 	headers := make([]string, len(b.columns))
 	for i, c := range b.columns {
@@ -82,8 +111,8 @@ func (b *Board) Render() {
 		if w < boardMinWidth {
 			w = boardMinWidth
 		}
-		if w > boardMaxWidth {
-			w = boardMaxWidth
+		if w > colWidth {
+			w = colWidth
 		}
 		widths[i] = w
 	}

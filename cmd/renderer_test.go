@@ -138,8 +138,9 @@ func emptyBoardColumns() view.BoardColumns {
 
 // TestRenderBoardCellLabel: the composed label truncates the id, never
 // the container tag — the tag is the board's context and must always
-// stay visible.
+// stay visible. The budget mirrors the default non-TTY column width.
 func TestRenderBoardCellLabel(t *testing.T) {
+	budget := ui.BoardItemBudget(0, 5)
 	cases := []struct {
 		id, tag string
 		want    string
@@ -152,9 +153,24 @@ func TestRenderBoardCellLabel(t *testing.T) {
 		{"markdown-syntax-highlighting", "unassigned", "markdown-syntax-… (unassigned)"},
 	}
 	for _, c := range cases {
-		if got := boardCellLabel(c.id, c.tag); got != c.want {
-			t.Errorf("boardCellLabel(%q, %q) = %q, want %q", c.id, c.tag, got, c.want)
+		if got := boardCellLabel(c.id, c.tag, budget); got != c.want {
+			t.Errorf("boardCellLabel(%q, %q, %d) = %q, want %q", c.id, c.tag, budget, got, c.want)
 		}
+	}
+}
+
+// TestRenderBoardAdaptiveBudget: on a narrower terminal the label
+// budget shrinks with the column width; the tag still survives.
+func TestRenderBoardAdaptiveBudget(t *testing.T) {
+	// 80-cell terminal: (80-16)/5 = 12 per column, budget 10.
+	budget := ui.BoardItemBudget(80, 5)
+	if budget != 10 {
+		t.Fatalf("BoardItemBudget(80, 5) = %d, want 10", budget)
+	}
+	got := boardCellLabel("markdown-syntax-highlighting", "wave-7", budget)
+	want := "… (wave-7)"
+	if got != want {
+		t.Errorf("boardCellLabel on 80-col = %q, want %q (tag intact)", got, want)
 	}
 }
 

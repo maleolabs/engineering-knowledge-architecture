@@ -41,6 +41,11 @@ type Style struct {
 	Verbose bool
 	// W is the destination writer for all command output.
 	W io.Writer
+	// Width is the terminal display width in cells when W is a TTY and
+	// the size could be queried; 0 when unknown (pipes, CI, tests) —
+	// renderers then fall back to their fixed widths, keeping non-TTY
+	// output byte-identical.
+	Width int
 }
 
 // IsTTY reports whether w is a terminal: an *os.File whose underlying
@@ -52,6 +57,20 @@ func IsTTY(w io.Writer) bool {
 		return false
 	}
 	return term.IsTerminal(int(f.Fd()))
+}
+
+// terminalWidth returns the display width of w when it is a terminal,
+// or 0 when the size cannot be queried.
+func terminalWidth(w io.Writer) int {
+	f, ok := w.(*os.File)
+	if !ok {
+		return 0
+	}
+	width, _, err := term.GetSize(int(f.Fd()))
+	if err != nil {
+		return 0
+	}
+	return width
 }
 
 // colorEnabled reports whether colors should be emitted on w: the
@@ -79,5 +98,6 @@ func NewStyle(w io.Writer, verbose bool) *Style {
 		TTY:     IsTTY(w),
 		Verbose: verbose,
 		W:       w,
+		Width:   terminalWidth(w),
 	}
 }

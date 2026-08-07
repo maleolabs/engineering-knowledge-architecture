@@ -30,6 +30,64 @@ func TestBoardLayout(t *testing.T) {
 	}
 }
 
+// TestBoardColumnWidth: adaptive column width from the terminal width,
+// clamped to [boardMinWidth, boardMaxWidth]; unknown width falls back
+// to the fixed maximum (non-TTY determinism).
+func TestBoardColumnWidth(t *testing.T) {
+	cases := []struct {
+		term, columns, want int
+	}{
+		{0, 5, 32},   // unknown (non-TTY): fixed maximum
+		{200, 5, 32}, // wide terminal: capped at the maximum
+		{100, 5, 16}, // (100-16)/5
+		{80, 5, 12},  // (80-16)/5
+		{40, 5, 8},   // narrow: clamped to the minimum
+		{20, 5, 8},   // very narrow: minimum, grid overflows
+	}
+	for _, c := range cases {
+		if got := BoardColumnWidth(c.term, c.columns); got != c.want {
+			t.Errorf("BoardColumnWidth(%d, %d) = %d, want %d", c.term, c.columns, got, c.want)
+		}
+	}
+	if got := BoardItemBudget(0, 5); got != 30 {
+		t.Errorf("BoardItemBudget(0, 5) = %d, want 30", got)
+	}
+	if got := BoardItemBudget(80, 5); got != 10 {
+		t.Errorf("BoardItemBudget(80, 5) = %d, want 10", got)
+	}
+}
+
+// TestBoardAdaptiveWidth: on a styled TTY width the rendered grid fits
+// the terminal; the fixed-width rendering is unchanged on unknown
+// width.
+func TestBoardAdaptiveWidth(t *testing.T) {
+	// 80-cell terminal: columns of 12 → total grid 5*12 + 6 borders + 10 padding = 76.
+	var buf bytes.Buffer
+	s := NewStyle(&buf, false)
+	s.Width = 80
+	NewBoard(s).
+		AddColumn("Planned", nil, []string{"markdown-syntax-highlighting"}).
+		AddColumn("Todo", nil, nil).
+		AddColumn("In Progress", nil, nil).
+		AddColumn("In Review", nil, nil).
+		AddColumn("Done", nil, nil).
+		Render()
+	out := buf.String()
+	for _, want := range []string{
+		"│ Planned (1)  │ Todo (0) │",
+		"│ ▸ markdown-… │",
+	} {
+		if !strings.Contains(out, want) {
+			t.Errorf("adaptive board must contain %q:\n%s", want, out)
+		}
+	}
+	for _, line := range strings.Split(strings.TrimSuffix(out, "\n"), "\n") {
+		if len([]rune(line)) > 80 {
+			t.Errorf("board line exceeds the terminal width (%d > 80): %q", len([]rune(line)), line)
+		}
+	}
+}
+
 func TestBoardEmptyColumnShowsDash(t *testing.T) {
 	s, buf := testStyle()
 	NewBoard(s).

@@ -107,10 +107,11 @@ func renderBoard(s *ui.Style, g *view.Graph, cols view.StateColumns) {
 		forms[i] = wi.Identity
 	}
 	tag := containerTagRenderer(forms, g.ContainersForWorkItem)
+	budget := ui.BoardItemBudget(s.Width, len(cols))
 	for _, col := range cols {
 		labels := make([]string, 0, len(col.WorkItems))
 		for _, wi := range col.WorkItems {
-			labels = append(labels, boardCellLabel(short(wi), tag(wi.Identity)))
+			labels = append(labels, boardCellLabel(short(wi), tag(wi.Identity), budget))
 		}
 		board.AddColumn(boardTitle(col.State), stateColor(s, col.State), labels)
 	}
