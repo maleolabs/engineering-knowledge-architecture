@@ -142,11 +142,15 @@ func emptyBoardColumns() view.BoardColumns {
 
 // cardText flattens a card to its display text ("line1\nline2").
 func cardText(c ui.Card) string {
-	parts := make([]string, len(c))
-	for i, l := range c {
-		parts[i] = l.Text
+	lines := make([]string, len(c))
+	for i, line := range c {
+		parts := make([]string, len(line))
+		for j, seg := range line {
+			parts[j] = seg.Text
+		}
+		lines[i] = strings.Join(parts, "")
 	}
-	return strings.Join(parts, "\n")
+	return strings.Join(lines, "\n")
 }
 
 // TestBoardCard: the two-line card composes the name and the
@@ -167,7 +171,7 @@ func TestBoardCard(t *testing.T) {
 		{"markdown-syntax-highlighting", "sto", "unassigned", "markdown-syntax-highlighting\n[sto] · unassigned"},
 	}
 	for _, c := range cases {
-		got := boardCard(c.id, c.typeToken, c.tag, budget, typeBadgeColor(ui.NewStyle(&bytes.Buffer{}, false), c.typeToken))
+		got := boardCard(c.id, c.typeToken, c.tag, budget, nil, typeBadgeColor(ui.NewStyle(&bytes.Buffer{}, false), c.typeToken))
 		if cardText(got) != c.want {
 			t.Errorf("boardCard(%q, %q, %q, %d) = %q, want %q", c.id, c.typeToken, c.tag, budget, cardText(got), c.want)
 		}
@@ -182,10 +186,38 @@ func TestBoardCardNarrowBudget(t *testing.T) {
 	if budget != 10 {
 		t.Fatalf("BoardItemBudget(80, 5) = %d, want 10", budget)
 	}
-	got := boardCard("markdown-syntax-highlighting", "sto", "wave-7", budget, typeBadgeColor(ui.NewStyle(&bytes.Buffer{}, false), "sto"))
+	got := boardCard("markdown-syntax-highlighting", "sto", "wave-7", budget, nil, typeBadgeColor(ui.NewStyle(&bytes.Buffer{}, false), "sto"))
 	want := "markdown-…\nwave-7"
 	if cardText(got) != want {
 		t.Errorf("boardCard on 80-col = %q, want %q (tag intact, badge dropped)", cardText(got), want)
+	}
+}
+
+// TestBoardCardSegments: the badge and the container tag are separate
+// colored segments — the badge takes the type color, the tag takes the
+// execution-state color.
+func TestBoardCardSegments(t *testing.T) {
+	colored := &ui.Style{Color: true, W: &bytes.Buffer{}}
+	state := colored.Progress // in-progress presentation
+	badge := typeBadgeColor(colored, "bug")
+	card := boardCard("fix-login", "bug", "wave-7", ui.BoardItemBudget(0, 5), state, badge)
+	if len(card) != 2 {
+		t.Fatalf("card lines = %d, want 2", len(card))
+	}
+	line2 := card[1]
+	if len(line2) != 2 {
+		t.Fatalf("context segments = %d, want 2 (badge + tag)", len(line2))
+	}
+	if line2[0].Text != "[bug]" || line2[1].Text != " · wave-7" {
+		t.Errorf("context segments = %q | %q, want [bug] |  · wave-7", line2[0].Text, line2[1].Text)
+	}
+	badgeRendered := line2[0].Color("[bug]")
+	tagRendered := line2[1].Color(" · wave-7")
+	if badgeRendered == tagRendered {
+		t.Error("badge and tag must render in different colors")
+	}
+	if !strings.Contains(badgeRendered, "\x1b") || !strings.Contains(tagRendered, "\x1b") {
+		t.Error("colored segments must carry ANSI on a colored style")
 	}
 }
 

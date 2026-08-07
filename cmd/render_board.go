@@ -63,7 +63,8 @@ func renderBoardColumns(s *ui.Style, cols view.BoardColumns) {
 	for _, col := range cols {
 		labels := make([]ui.Card, 0, len(col.WorkItems))
 		for _, bi := range col.WorkItems {
-			labels = append(labels, boardCard(short(bi.WorkItem), bi.Type, shortCtr(bi), budget, typeBadgeColor(s, bi.Type)))
+			labels = append(labels, boardCard(short(bi.WorkItem), bi.Type, shortCtr(bi), budget,
+				stateColor(s, col.State), typeBadgeColor(s, bi.Type)))
 		}
 		board.AddCards(boardTitle(col.State), stateColor(s, col.State), labels)
 	}
@@ -94,26 +95,37 @@ func typeBadgeColor(s *ui.Style, token string) func(string) string {
 }
 
 // boardCard composes the two-line item card: the item name on the
-// first line, the type badge and container context on the second.
+// first line, the type badge and container context on the second. The
+// badge and the container tag are separate colored segments: the badge
+// takes the type color, the tag takes the execution-state color.
 // Truncation prefers the name; on narrow columns the badge is dropped
 // before the container tag — the assignment context is the point of
 // the card.
-func boardCard(id, typeToken, tag string, budget int, badgeColor func(string) string) ui.Card {
+func boardCard(id, typeToken, tag string, budget int, stateColor, badgeColor func(string) string) ui.Card {
 	name := truncateRunes(id, budget)
-	context := "[" + typeToken + "] · " + tag
-	contextColor := badgeColor
+	badge := "[" + typeToken + "]"
+	context := badge + " · " + tag
 	if utf8.RuneCountInString(context) > budget {
+		// Narrow column: drop the badge, keep the tag in the state
+		// color.
 		if utf8.RuneCountInString(tag) <= budget {
 			context = tag
-			contextColor = nil
+			badge = ""
 		} else {
 			context = truncateRunes(tag, budget)
-			contextColor = nil
+			badge = ""
+		}
+	}
+	line2 := ui.CardLine{{Text: context, Color: stateColor}}
+	if badge != "" {
+		line2 = ui.CardLine{
+			{Text: badge, Color: badgeColor},
+			{Text: " · " + tag, Color: stateColor},
 		}
 	}
 	return ui.Card{
-		{Text: name},
-		{Text: context, Color: contextColor},
+		{{Text: name, Color: stateColor}},
+		line2,
 	}
 }
 

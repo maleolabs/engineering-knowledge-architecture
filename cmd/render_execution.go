@@ -111,7 +111,8 @@ func renderBoard(s *ui.Style, g *view.Graph, cols view.StateColumns) {
 	for _, col := range cols {
 		labels := make([]ui.Card, 0, len(col.WorkItems))
 		for _, wi := range col.WorkItems {
-			labels = append(labels, boardCard(short(wi), wi.Type, tag(wi.Identity), budget, typeBadgeColor(s, wi.Type)))
+			labels = append(labels, boardCard(short(wi), wi.Type, tag(wi.Identity), budget,
+				stateColor(s, col.State), typeBadgeColor(s, wi.Type)))
 		}
 		board.AddCards(boardTitle(col.State), stateColor(s, col.State), labels)
 	}

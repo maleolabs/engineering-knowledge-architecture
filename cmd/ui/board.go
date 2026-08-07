@@ -31,13 +31,19 @@ type Board struct {
 	columns []boardColumn
 }
 
-// CardLine is one display line of a card: its text plus its own color
-// function (nil = the column's default color).
-type CardLine struct {
+// Segment is one colored span of a card line: its text plus its own
+// color function (nil = the column's default color).
+type Segment struct {
 	Text string
-	// Color colors this line only; nil falls back to the column color.
+	// Color colors this segment only; nil falls back to the column
+	// color.
 	Color func(string) string
 }
+
+// CardLine is one display line of a card: the colored segments that
+// make it up. Segment colors compose left to right, so a line can mix
+// e.g. a type badge and the container tag in different colors.
+type CardLine []Segment
 
 // Card is a multi-line item label. The first line carries the "▸ "
 // marker; following lines render indented to the text column.
@@ -110,7 +116,7 @@ func (b *Board) AddColumn(title string, color func(string) string, items []strin
 		lines := strings.Split(it, "\n")
 		card := make(Card, len(lines))
 		for j, line := range lines {
-			card[j] = CardLine{Text: line}
+			card[j] = CardLine{{Text: line}}
 		}
 		cards[i] = card
 	}
@@ -143,8 +149,8 @@ func (b *Board) Render() {
 		for _, card := range c.items {
 			for _, line := range card {
 				// The first line carries the "▸ " prefix inside its cell.
-				if displayWidth(line.Text)+displayWidth(itemPrefix) > w {
-					w = displayWidth(line.Text) + displayWidth(itemPrefix)
+				if lineWidth(line)+displayWidth(itemPrefix) > w {
+					w = lineWidth(line) + displayWidth(itemPrefix)
 				}
 			}
 		}
@@ -171,8 +177,8 @@ func (b *Board) Render() {
 	fmt.Fprintln(s.W, s.Dim(top.String()))
 
 	// Header row.
-	fmt.Fprintln(s.W, boardRow(s, widths, func(i int) (string, func(string) string) {
-		return headers[i], b.columns[i].color
+	fmt.Fprintln(s.W, boardRow(s, widths, func(i int) []Segment {
+		return []Segment{{Text: headers[i], Color: b.columns[i].color}}
 	}))
 
 	// Separator: ├───┼───┤
@@ -208,38 +214,45 @@ func (b *Board) Render() {
 			}
 		}
 		for h := 0; h < height; h++ {
-			fmt.Fprintln(s.W, boardRow(s, widths, func(i int) (string, func(string) string) {
+			fmt.Fprintln(s.W, boardRow(s, widths, func(i int) []Segment {
 				c := b.columns[i]
 				if r >= len(c.items) {
 					// An empty column signals its emptiness with "—" in
 					// the first item row; later rows stay blank.
 					if len(c.items) == 0 && r == 0 {
-						return "—", c.color
+						return []Segment{{Text: "—", Color: c.color}}
 					}
-					return "", nil
+					return nil
 				}
 				card := c.items[r]
 				if h >= len(card) {
 					// A shorter card pads with a blank line.
-					return "", nil
+					return nil
 				}
+				// Resolve segment colors: nil falls back to the column
+				// color (the execution-state presentation).
 				line := card[h]
-				lineColor := line.Color
-				if lineColor == nil {
-					lineColor = c.color
+				segs := make([]Segment, 0, len(line)+1)
+				for _, seg := range line {
+					segColor := seg.Color
+					if segColor == nil {
+						segColor = c.color
+					}
+					segs = append(segs, Segment{Text: seg.Text, Color: segColor})
 				}
-				// The "▸ " marker belongs to the card's first line; the
-				// following lines indent to the text column.
+				// The "▸ " marker belongs to the card's first line (it
+				// takes the first segment's color); following lines
+				// indent to the text column.
 				if h == 0 {
-					return itemPrefix + line.Text, lineColor
+					return append([]Segment{{Text: itemPrefix, Color: segs[0].Color}}, segs...)
 				}
-				return strings.Repeat(" ", displayWidth(itemPrefix)) + line.Text, lineColor
+				return append([]Segment{{Text: strings.Repeat(" ", displayWidth(itemPrefix))}}, segs...)
 			}))
 		}
 		if r < rows-1 {
 			// Row gap: a blank separator row across all columns.
-			fmt.Fprintln(s.W, boardRow(s, widths, func(int) (string, func(string) string) {
-				return "", nil
+			fmt.Fprintln(s.W, boardRow(s, widths, func(int) []Segment {
+				return nil
 			}))
 		}
 	}
@@ -259,9 +272,9 @@ func (b *Board) Render() {
 }
 
 // truncate shortens text to the display width, appending "…" when it
-// does not fit. Titles and ids are ASCII by the reference grammar; item
+// does not fit. Titles and ids are ASCII by the reference grammar;
 // cells may carry the "▸ " prefix and the "…" ellipsis — the only
-// multi-byte glyphs the board emits — so truncation operates on runes
+// multi-byte glyphs the UI emits — so truncation operates on runes
 // (display cells), never on bytes.
 func truncate(text string, width int) string {
 	if displayWidth(text) <= width {
@@ -269,6 +282,44 @@ func truncate(text string, width int) string {
 	}
 	runes := []rune(text)
 	return string(runes[:width-1]) + "…"
+}
+
+// truncateSegments shortens a card line to the display width, cutting
+// from the last segment and appending "…" when it does not fit. The
+// line's own segments are preserved: color composition survives
+// truncation. Operates on runes (display cells), never on bytes.
+func truncateSegments(segs []Segment, width int) []Segment {
+	total := 0
+	for _, s := range segs {
+		total += displayWidth(s.Text)
+	}
+	if total <= width {
+		return segs
+	}
+	out := make([]Segment, 0, len(segs))
+	remaining := width
+	for _, s := range segs {
+		sw := displayWidth(s.Text)
+		if sw < remaining {
+			out = append(out, s)
+			remaining -= sw
+			continue
+		}
+		if sw == remaining {
+			out = append(out, s)
+			return out
+		}
+		// This segment overflows: cut inside it, keep the ellipsis in
+		// the same color, drop everything after.
+		runes := []rune(s.Text)
+		if remaining > 1 {
+			out = append(out, Segment{Text: string(runes[:remaining-1]) + "…", Color: s.Color})
+		} else {
+			out = append(out, Segment{Text: "…", Color: s.Color})
+		}
+		return out
+	}
+	return out
 }
 
 // displayWidth returns the terminal display width of text. Every glyph
@@ -279,22 +330,36 @@ func displayWidth(text string) int {
 	return utf8.RuneCountInString(text)
 }
 
+// lineWidth returns the display width of a card line: the sum of its
+// segments (plain text — colors never affect layout).
+func lineWidth(line CardLine) int {
+	w := 0
+	for _, s := range line {
+		w += displayWidth(s.Text)
+	}
+	return w
+}
+
 // boardRow renders one grid row: "│ <cell> │ ... │" with each cell
-// padded to its column width. The cell content (already truncated) is
-// colored by its column's color function; the bars and padding are dim
-// on a TTY. Padding is computed on the plain display width, so colored
-// and truncated cells stay aligned.
-func boardRow(s *Style, widths []int, cell func(int) (string, func(string) string)) string {
+// padded to its column width. The cell content is a colored segment
+// list (already truncated); the bars and padding are dim on a TTY.
+// Padding is computed on the plain display width, so colored and
+// truncated cells stay aligned.
+func boardRow(s *Style, widths []int, cell func(int) []Segment) string {
 	var sb strings.Builder
 	for i, w := range widths {
-		text, color := cell(i)
+		segs := truncateSegments(cell(i), w)
 		sb.WriteString(s.paint(ColorDim, "│ "))
-		text = truncate(text, w)
-		padded := text + strings.Repeat(" ", w-displayWidth(text))
-		if color != nil {
-			padded = color(padded)
+		written := 0
+		for _, seg := range segs {
+			text := seg.Text
+			if seg.Color != nil {
+				text = seg.Color(text)
+			}
+			sb.WriteString(text)
+			written += displayWidth(seg.Text)
 		}
-		sb.WriteString(padded)
+		sb.WriteString(strings.Repeat(" ", w-written))
 		sb.WriteString(s.paint(ColorDim, " "))
 	}
 	sb.WriteString(s.paint(ColorDim, "│"))
