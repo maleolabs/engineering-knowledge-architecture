@@ -86,13 +86,13 @@ func TestRenderBoardProjection(t *testing.T) {
 		"│ In Review (0)",
 		"│ Done (1)",
 		"│ ▸ alpha",
-		"│   sto · wave-7",
+		"│   [sto] · wave-7",
 		"│ ▸ orphan",
-		"│   sto · unassigned",
+		"│   [sto] · unassigned",
 		"│ ▸ beta",
-		"│   sto · wave-7",
+		"│   [sto] · wave-7",
 		"│ ▸ gamma",
-		"│   ch · wave-7",
+		"│   [ch] · wave-7",
 		"—", // empty column
 		"1 work item not referenced by any ticket container",
 		"Total Work Items: 4",
@@ -140,9 +140,18 @@ func emptyBoardColumns() view.BoardColumns {
 	return cols
 }
 
+// cardText flattens a card to its display text ("line1\nline2").
+func cardText(c ui.Card) string {
+	parts := make([]string, len(c))
+	for i, l := range c {
+		parts[i] = l.Text
+	}
+	return strings.Join(parts, "\n")
+}
+
 // TestBoardCard: the two-line card composes the name and the
 // type · container context; truncation prefers the name, and on narrow
-// budgets the type is dropped before the container tag.
+// budgets the badge is dropped before the container tag.
 func TestBoardCard(t *testing.T) {
 	budget := ui.BoardItemBudget(0, 5)
 	cases := []struct {
@@ -150,32 +159,56 @@ func TestBoardCard(t *testing.T) {
 		want               string
 	}{
 		// Fits: full name + full context.
-		{"alpha", "sto", "wave-7", "alpha\nsto · wave-7"},
+		{"alpha", "sto", "wave-7", "alpha\n[sto] · wave-7"},
 		// Long name fits whole on its own line (the card's point);
 		// the context line stays intact.
-		{"markdown-syntax-highlighting", "sto", "wave-7", "markdown-syntax-highlighting\nsto · wave-7"},
+		{"markdown-syntax-highlighting", "sto", "wave-7", "markdown-syntax-highlighting\n[sto] · wave-7"},
 		// Unassigned context kept too.
-		{"markdown-syntax-highlighting", "sto", "unassigned", "markdown-syntax-highlighting\nsto · unassigned"},
+		{"markdown-syntax-highlighting", "sto", "unassigned", "markdown-syntax-highlighting\n[sto] · unassigned"},
 	}
 	for _, c := range cases {
-		if got := boardCard(c.id, c.typeToken, c.tag, budget); got != c.want {
-			t.Errorf("boardCard(%q, %q, %q, %d) = %q, want %q", c.id, c.typeToken, c.tag, budget, got, c.want)
+		got := boardCard(c.id, c.typeToken, c.tag, budget, typeBadgeColor(ui.NewStyle(&bytes.Buffer{}, false), c.typeToken))
+		if cardText(got) != c.want {
+			t.Errorf("boardCard(%q, %q, %q, %d) = %q, want %q", c.id, c.typeToken, c.tag, budget, cardText(got), c.want)
 		}
 	}
 }
 
 // TestBoardCardNarrowBudget: on a narrower terminal the budget shrinks
-// with the column width; the type is dropped before the tag.
+// with the column width; the badge is dropped before the tag.
 func TestBoardCardNarrowBudget(t *testing.T) {
 	// 80-cell terminal: (80-16)/5 = 12 per column, budget 10.
 	budget := ui.BoardItemBudget(80, 5)
 	if budget != 10 {
 		t.Fatalf("BoardItemBudget(80, 5) = %d, want 10", budget)
 	}
-	got := boardCard("markdown-syntax-highlighting", "sto", "wave-7", budget)
+	got := boardCard("markdown-syntax-highlighting", "sto", "wave-7", budget, typeBadgeColor(ui.NewStyle(&bytes.Buffer{}, false), "sto"))
 	want := "markdown-…\nwave-7"
-	if got != want {
-		t.Errorf("boardCard on 80-col = %q, want %q (tag intact, type dropped)", got, want)
+	if cardText(got) != want {
+		t.Errorf("boardCard on 80-col = %q, want %q (tag intact, badge dropped)", cardText(got), want)
+	}
+}
+
+// TestTypeBadgeColor: canonical tokens and aliases share a color, and
+// unknown tokens fall back to the neutral default.
+func TestTypeBadgeColor(t *testing.T) {
+	// Non-TTY: every color is identity — plain text, no escapes.
+	plain := ui.NewStyle(&bytes.Buffer{}, false)
+	if got := typeBadgeColor(plain, "unknown-type")("x"); got != "x" {
+		t.Errorf("unknown token badge = %q, want plain %q (never an error)", got, "x")
+	}
+	// TTY: colors differ per type; aliases share their canonical color.
+	colored := &ui.Style{Color: true, W: &bytes.Buffer{}}
+	sto := typeBadgeColor(colored, "sto")
+	story := typeBadgeColor(colored, "story")
+	if sto("x") != story("x") {
+		t.Error("sto and story must share the badge color")
+	}
+	if typeBadgeColor(colored, "bug")("x") == sto("x") {
+		t.Error("bug must differ from story")
+	}
+	if strings.Contains(sto("x"), "\x1b") == false {
+		t.Error("colored badge must carry ANSI on a colored style")
 	}
 }
 
@@ -211,11 +244,11 @@ func TestRenderExecutionBoard(t *testing.T) {
 		"│ In Review (0)",
 		"│ Done (1)",
 		"│ ▸ alpha",
-		"│   sto · wave-7",
+		"│   [sto] · wave-7",
 		"│ ▸ beta",
-		"│   sto · wave-7",
+		"│   [sto] · wave-7",
 		"│ ▸ gamma",
-		"│   ch · wave-7",
+		"│   [ch] · wave-7",
 		"—", // empty columns
 		"2 tickets project these work items",
 		"Active Work: 1",
@@ -253,7 +286,7 @@ func TestRenderExecutionSharedContainerTag(t *testing.T) {
 	out := buf.String()
 	for _, want := range []string{
 		"│ ▸ shared",
-		"│   sto · wave-0, wave-7",
+		"│   [sto] · wave-0, wave-7",
 	} {
 		if !strings.Contains(out, want) {
 			t.Errorf("execution board output must contain %q:\n%s", want, out)

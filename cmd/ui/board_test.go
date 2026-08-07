@@ -23,6 +23,7 @@ func TestBoardLayout(t *testing.T) {
 		"│ Todo (2) │ Done (1) │\n" +
 		"├──────────┼──────────┤\n" +
 		"│ ▸ alpha  │ ▸ gamma  │\n" +
+		"│          │          │\n" + // row gap
 		"│ ▸ beta   │          │\n" +
 		"└──────────┴──────────┘\n"
 	if got := buf.String(); got != want {
@@ -104,6 +105,7 @@ func TestBoardCardBlocks(t *testing.T) {
 		"├──────────────────┼────────────────┤\n" +
 		"│ ▸ draft-autosave │ ▸ publish-post │\n" +
 		"│   sto · wave-7   │   sto · wave-7 │\n" +
+		"│                  │                │\n" + // row gap
 		"│                  │ ▸ empty-title  │\n" +
 		"│                  │   ch · wave-7  │\n" +
 		"└──────────────────┴────────────────┘\n"
@@ -120,8 +122,8 @@ func TestBoardCardShorterRowPads(t *testing.T) {
 		AddColumn("Todo", nil, []string{"alpha\nsto · wave-7", "beta"}).
 		Render()
 	out := buf.String()
-	if !strings.Contains(out, "│ ▸ alpha        │\n│   sto · wave-7 │\n│ ▸ beta         │") {
-		t.Errorf("single-line card must not leak padding rows:\n%s", out)
+	if !strings.Contains(out, "│ ▸ alpha        │\n│   sto · wave-7 │\n│                │\n│ ▸ beta         │") {
+		t.Errorf("cards must be separated by a blank gap row:\n%s", out)
 	}
 }
 

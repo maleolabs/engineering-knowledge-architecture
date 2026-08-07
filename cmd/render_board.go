@@ -61,30 +61,60 @@ func renderBoardColumns(s *ui.Style, cols view.BoardColumns) {
 	shortCtr := shortContainerID(all)
 	budget := ui.BoardItemBudget(s.Width, len(cols))
 	for _, col := range cols {
-		labels := make([]string, 0, len(col.WorkItems))
+		labels := make([]ui.Card, 0, len(col.WorkItems))
 		for _, bi := range col.WorkItems {
-			labels = append(labels, boardCard(short(bi.WorkItem), bi.Type, shortCtr(bi), budget))
+			labels = append(labels, boardCard(short(bi.WorkItem), bi.Type, shortCtr(bi), budget, typeBadgeColor(s, bi.Type)))
 		}
-		board.AddColumn(boardTitle(col.State), stateColor(s, col.State), labels)
+		board.AddCards(boardTitle(col.State), stateColor(s, col.State), labels)
 	}
 	board.Render()
 }
 
+// typeBadgeColor returns the badge color function for a work item type
+// token. Canonical EKA tokens and their common aliases (story → sto)
+// share a color, so a repository using alternative tokens keeps the
+// same badge; unknown tokens fall back to the neutral default — a new
+// type never breaks the board. Extend by adding a case (or an alias to
+// an existing case).
+func typeBadgeColor(s *ui.Style, token string) func(string) string {
+	switch token {
+	case "sto", "story":
+		return s.Info // story — primary blue
+	case "ts", "tech-story":
+		return s.Progress // technical story — cyan
+	case "bug", "defect":
+		return s.Error // bug — danger red
+	case "td", "tech-debt":
+		return s.Warning // tech debt — amber
+	case "ch", "spk":
+		return s.Dim // chore, spike — gray
+	default:
+		return s.Dim // unknown token — neutral default
+	}
+}
+
 // boardCard composes the two-line item card: the item name on the
-// first line, the type and container context on the second. Truncation
-// prefers the name; on narrow columns the type is dropped before the
-// container tag — the assignment context is the point of the card.
-func boardCard(id, typeToken, tag string, budget int) string {
+// first line, the type badge and container context on the second.
+// Truncation prefers the name; on narrow columns the badge is dropped
+// before the container tag — the assignment context is the point of
+// the card.
+func boardCard(id, typeToken, tag string, budget int, badgeColor func(string) string) ui.Card {
 	name := truncateRunes(id, budget)
-	context := typeToken + " · " + tag
+	context := "[" + typeToken + "] · " + tag
+	contextColor := badgeColor
 	if utf8.RuneCountInString(context) > budget {
 		if utf8.RuneCountInString(tag) <= budget {
 			context = tag
+			contextColor = nil
 		} else {
 			context = truncateRunes(tag, budget)
+			contextColor = nil
 		}
 	}
-	return name + "\n" + context
+	return ui.Card{
+		{Text: name},
+		{Text: context, Color: contextColor},
+	}
 }
 
 // truncateRunes shortens text to the display budget, appending "…"
