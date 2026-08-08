@@ -9,8 +9,7 @@ import (
 	"testing"
 
 	"github.com/maleolabs/engineering-knowledge-architecture/cmd/ui"
-	"github.com/maleolabs/engineering-knowledge-architecture/sync"
-	"github.com/maleolabs/engineering-knowledge-architecture/workspace"
+	"github.com/maleolabs/engineering-knowledge-architecture/runtime"
 )
 
 // watch tests: the live projection command. Two layers:
@@ -155,8 +154,8 @@ func TestWatchHelpExitsZero(t *testing.T) {
 // plus the watching footer) — not the refusal frame.
 func TestWatchFrameProjection(t *testing.T) {
 	seedViewRepo(t, "valid")
-	ws := openWorkspace(t)
-	frame, err := renderWatchFrame(watchFrameStyle(), ws, "execution", "", 2)
+	r := openRuntime(t)
+	frame, err := renderWatchFrame(watchFrameStyle(), r, "execution", "", 2)
 	if err != nil {
 		t.Fatalf("renderWatchFrame: %v", err)
 	}
@@ -186,12 +185,12 @@ func TestWatchFrameProjection(t *testing.T) {
 // renderers, same style settings); the frame only appends the footer.
 func TestWatchFrameByteAgreementWithView(t *testing.T) {
 	seedViewRepo(t, "valid")
-	ws := openWorkspace(t)
+	r := openRuntime(t)
 	code, viewOut, errText := runIn([]string{"view", "execution"})
 	if code != 0 {
 		t.Fatalf("view execution: exit = %d\nstderr: %s", code, errText)
 	}
-	frame, err := renderWatchFrame(watchFrameStyle(), ws, "execution", "", 2)
+	frame, err := renderWatchFrame(watchFrameStyle(), r, "execution", "", 2)
 	if err != nil {
 		t.Fatalf("renderWatchFrame: %v", err)
 	}
@@ -208,12 +207,12 @@ func TestWatchFrameByteAgreementWithView(t *testing.T) {
 // frames (no clock, no timestamps in the frame content).
 func TestWatchFrameDeterministic(t *testing.T) {
 	seedViewRepo(t, "valid")
-	ws := openWorkspace(t)
-	a, err := renderWatchFrame(watchFrameStyle(), ws, "execution", "", 2)
+	r := openRuntime(t)
+	a, err := renderWatchFrame(watchFrameStyle(), r, "execution", "", 2)
 	if err != nil {
 		t.Fatal(err)
 	}
-	b, err := renderWatchFrame(watchFrameStyle(), ws, "execution", "", 2)
+	b, err := renderWatchFrame(watchFrameStyle(), r, "execution", "", 2)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -234,8 +233,8 @@ func TestWatchFrameDeterministic(t *testing.T) {
 func TestWatchFrameRefusal(t *testing.T) {
 	t.Setenv("EKA_HOME", t.TempDir())
 	chdirInto(t, t.TempDir())
-	ws := openWorkspace(t)
-	frame, err := renderWatchFrame(watchFrameStyle(), ws, "execution", "", 2)
+	r := openRuntime(t)
+	frame, err := renderWatchFrame(watchFrameStyle(), r, "execution", "", 2)
 	if err != nil {
 		t.Fatalf("renderWatchFrame: %v", err)
 	}
@@ -269,8 +268,8 @@ func TestWatchFrameRefusalRecovery(t *testing.T) {
 	dir := t.TempDir()
 	writeStory(t, filepath.Join(dir, "docs", "operating", "work-items", "stories", "sto-one.md"), "eka-watch", "one", "todo")
 	chdirInto(t, dir)
-	ws := openWorkspace(t)
-	refusal, err := renderWatchFrame(watchFrameStyle(), ws, "execution", "", 2)
+	r := openRuntime(t)
+	refusal, err := renderWatchFrame(watchFrameStyle(), r, "execution", "", 2)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -279,10 +278,10 @@ func TestWatchFrameRefusalRecovery(t *testing.T) {
 	}
 	// Register + seed the repository: the next cycle must flip back to
 	// the projection.
-	if _, err := sync.Run(ws, dir, sync.Options{Pull: true, Push: true}); err != nil {
+	if _, err := runtime.Authoring.Sync(r, dir, runtime.SyncOptions{Pull: true, Push: true}); err != nil {
 		t.Fatal(err)
 	}
-	recovered, err := renderWatchFrame(watchFrameStyle(), ws, "execution", "", 2)
+	recovered, err := renderWatchFrame(watchFrameStyle(), r, "execution", "", 2)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -317,16 +316,16 @@ func TestWatchFrameChanged(t *testing.T) {
 func TestWatchFrameChangeDetectionOnRepoState(t *testing.T) {
 	t.Setenv("EKA_HOME", t.TempDir())
 	repo := copyFixture(t, viewFixtureAbs(t, "valid"))
-	ws, err := workspace.Ensure()
+	r, err := runtime.Ensure()
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer ws.Close()
-	if _, err := sync.Run(ws, repo, sync.Options{Pull: true, Push: true}); err != nil {
+	defer r.Close()
+	if _, err := runtime.Authoring.Sync(r, repo, runtime.SyncOptions{Pull: true, Push: true}); err != nil {
 		t.Fatal(err)
 	}
 	chdirInto(t, repo)
-	before, err := renderWatchFrame(watchFrameStyle(), ws, "execution", "", 2)
+	before, err := renderWatchFrame(watchFrameStyle(), r, "execution", "", 2)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -347,10 +346,10 @@ func TestWatchFrameChangeDetectionOnRepoState(t *testing.T) {
 	}
 	// Re-seed from the docs tree: the snapshot is unchanged, so a
 	// snapshot-mode pull would skip the work (idempotent digest).
-	if _, err := sync.Run(ws, repo, sync.Options{Pull: true, FromDocs: true, Push: true}); err != nil {
+	if _, err := runtime.Authoring.Sync(r, repo, runtime.SyncOptions{Pull: true, FromDocs: true, Push: true}); err != nil {
 		t.Fatal(err)
 	}
-	after, err := renderWatchFrame(watchFrameStyle(), ws, "execution", "", 2)
+	after, err := renderWatchFrame(watchFrameStyle(), r, "execution", "", 2)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -390,8 +389,8 @@ func TestWatchClearScreenEmission(t *testing.T) {
 	}
 	// The open path: the clear sequence leads the first frame.
 	seedViewRepo(t, "valid")
-	ws := openWorkspace(t)
-	frame, err := renderWatchFrame(watchFrameStyle(), ws, "execution", "", 2)
+	r := openRuntime(t)
+	frame, err := renderWatchFrame(watchFrameStyle(), r, "execution", "", 2)
 	if err != nil {
 		t.Fatal(err)
 	}

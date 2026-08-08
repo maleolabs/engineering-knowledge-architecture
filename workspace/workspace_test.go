@@ -1,8 +1,6 @@
 package workspace
 
 import (
-	"github.com/maleolabs/engineering-knowledge-architecture/exchange"
-	"github.com/maleolabs/engineering-knowledge-architecture/store"
 	"os"
 	"path/filepath"
 	"strings"
@@ -228,40 +226,15 @@ func TestProjectsAndReposSorted(t *testing.T) {
 	}
 }
 
-func TestCounts(t *testing.T) {
+// TestStoreAccessor: Store exposes the canonical store handle for the
+// Runtime Kernel (packages workspace, sync, store, runtime).
+func TestStoreAccessor(t *testing.T) {
 	w := ensureTest(t)
-	if o, p, a, err := w.Counts(); err != nil || o != 0 || p != 0 || a != 0 {
-		t.Errorf("empty counts = %d/%d/%d, %v; want 0/0/0", o, p, a, err)
+	if w.Store() == nil {
+		t.Fatal("Store must return the opened canonical store")
 	}
-	// Seed one immutable payload + reference through the store.
-	u := &exchange.Unit{
-		Identity:              exchange.Identity{Namespace: "ns", Type: "sto", ID: "x", InstanceVersion: 1},
-		CanonicalIdentityForm: "ns/sto:x:1",
-		Revision:              1,
-		StateVector:           exchange.StateVector{},
-		ChangeLog:             []exchange.ChangeLogEntry{},
-		Relationships:         []exchange.Relationship{},
-		Classification:        exchange.Classification{},
-		Content:               exchange.ContentRef{Representation: "eka/structured-text/1", File: "content"},
-	}
-	unitJSON, err := exchange.MarshalUnit(u)
-	if err != nil {
-		t.Fatal(err)
-	}
-	ref := store.Ref{
-		Form: "ns/sto:x:1", ProjectID: "p", SourceRepo: "r",
-		Namespace: "ns", Type: "sto", ID: "x", InstanceVersion: 1, Revision: 1,
-		UpdatedAt: "2026-08-07T00:00:00Z",
-	}
-	if _, err := w.DB.PutUnit(unitJSON, []byte("body"), ref); err != nil {
-		t.Fatal(err)
-	}
-	o, p, a, err := w.Counts()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if o != 1 || p != 1 || a != 0 {
-		t.Errorf("counts = %d/%d/%d, want 1/1/0", o, p, a)
+	if v, err := w.Store().SchemaVersion(); err != nil || v < 1 {
+		t.Errorf("SchemaVersion = %d, %v; want the current schema", v, err)
 	}
 }
 

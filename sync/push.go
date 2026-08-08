@@ -63,7 +63,7 @@ type PushResult struct {
 // package at <repo>/exchange/snapshots and records the sync log. A
 // repository with no stored units is a no-op (no files written).
 func Push(w *workspace.Workspace, repo workspace.Repo) (PushResult, error) {
-	units, err := w.DB.Units(repo.ProjectID, repo.Name)
+	units, err := w.Store().Units(repo.ProjectID, repo.Name)
 	if err != nil {
 		return PushResult{}, fmt.Errorf("sync push failed: %w", err)
 	}
@@ -84,7 +84,7 @@ func Push(w *workspace.Workspace, repo workspace.Repo) (PushResult, error) {
 		unitSet[u.CanonicalIdentityForm] = true
 	}
 
-	storedAtts, err := w.DB.Attachments(repo.ProjectID, repo.Name)
+	storedAtts, err := w.Store().Attachments(repo.ProjectID, repo.Name)
 	if err != nil {
 		return PushResult{}, fmt.Errorf("sync push failed: %w", err)
 	}
@@ -176,7 +176,7 @@ func Push(w *workspace.Workspace, repo workspace.Repo) (PushResult, error) {
 		return PushResult{}, fmt.Errorf("sync push failed: cannot remove old snapshot copy: %w", err)
 	}
 
-	if err := w.DB.RecordSync(store.SyncEntry{
+	if err := w.Store().RecordSync(store.SyncEntry{
 		ProjectID: repo.ProjectID, Repo: repo.Name, Direction: "push",
 		SnapshotDigest: digest, Units: len(units), At: nowUTC(),
 	}); err != nil {

@@ -90,7 +90,7 @@ func pullSnapshot(w *workspace.Workspace, repo workspace.Repo, snapshotDir strin
 	}
 	digest := pkg.Integrity.PackageDigest
 
-	last, ok, err := w.DB.LastPullDigest(repo.ProjectID, repo.Name)
+	last, ok, err := w.Store().LastPullDigest(repo.ProjectID, repo.Name)
 	if err != nil {
 		return PullResult{}, err
 	}
@@ -104,7 +104,7 @@ func pullSnapshot(w *workspace.Workspace, repo workspace.Repo, snapshotDir strin
 		return PullResult{}, err
 	}
 
-	if err := w.DB.RecordSync(store.SyncEntry{
+	if err := w.Store().RecordSync(store.SyncEntry{
 		ProjectID: repo.ProjectID, Repo: repo.Name, Direction: "pull",
 		SnapshotDigest: digest, Units: len(pkg.Units), At: nowUTC(),
 	}); err != nil {
@@ -142,7 +142,7 @@ func pullDocs(w *workspace.Workspace, repo workspace.Repo) (PullResult, error) {
 		return PullResult{}, err
 	}
 
-	if err := w.DB.RecordSync(store.SyncEntry{
+	if err := w.Store().RecordSync(store.SyncEntry{
 		ProjectID: repo.ProjectID, Repo: repo.Name, Direction: "pull",
 		SnapshotDigest: digest, Units: len(pkg.Units), At: nowUTC(),
 	}); err != nil {
@@ -175,7 +175,7 @@ func upsertPackage(w *workspace.Workspace, repo workspace.Repo, pkg *exchange.Pa
 		// Cross-repository conflict detection: the identity already
 		// exists from a different provenance pair with different
 		// content — deterministic last-wins, recorded.
-		if existing, ok, err := w.DB.Ref(u.CanonicalIdentityForm); err != nil {
+		if existing, ok, err := w.Store().Ref(u.CanonicalIdentityForm); err != nil {
 			return nil, fmt.Errorf("sync pull failed: %w", err)
 		} else if ok &&
 			(existing.ProjectID != repo.ProjectID || existing.SourceRepo != repo.Name) &&
@@ -184,7 +184,7 @@ func upsertPackage(w *workspace.Workspace, repo workspace.Repo, pkg *exchange.Pa
 				"%s: overwrote from %s/%s", u.CanonicalIdentityForm, existing.ProjectID, existing.SourceRepo))
 		}
 
-		hash, err := w.DB.PutUnit(unitJSON, u.ContentPayload, refFromUnit(u, repo))
+		hash, err := w.Store().PutUnit(unitJSON, u.ContentPayload, refFromUnit(u, repo))
 		if err != nil {
 			return nil, fmt.Errorf("sync pull failed: %w", err)
 		}
@@ -197,7 +197,7 @@ func upsertPackage(w *workspace.Workspace, repo workspace.Repo, pkg *exchange.Pa
 	sort.Strings(overwrites)
 
 	for _, a := range pkg.Attachments {
-		if err := w.DB.UpsertAttachment(repo.ProjectID, repo.Name, a.ID, a.Digest, a.Data); err != nil {
+		if err := w.Store().UpsertAttachment(repo.ProjectID, repo.Name, a.ID, a.Digest, a.Data); err != nil {
 			return nil, fmt.Errorf("sync pull failed: %w", err)
 		}
 	}

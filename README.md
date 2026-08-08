@@ -6,7 +6,7 @@ EKA is not a documentation template, not a Markdown repository scheme, and not a
 
 ### Knowledge Runtime (v0.2)
 
-Milestone **EKA v0.2.0** adds the **Knowledge Runtime Architecture**: a local **EKA Workspace** (`~/.eka/` or `$EKA_HOME`; `workspace.json` + `eka.db`, an embedded SQLite canonical store) where canonical Engineering Knowledge lives, with repositories as **synchronization endpoints** carrying deterministic **Knowledge Snapshots** (`exchange/snapshots/`, RSF directory packages). `eka sync` (pull/push), `eka project register`/`list`, `eka status`, and `eka integrity check` operate the runtime; all pre-existing commands behave exactly as before. The runtime consumes **Canonical Knowledge Objects** — compiled from Markdown via the Knowledge Compiler (`compile/`); Markdown is the authoring format, not the runtime representation (ADR-012). Projections (`eka view` / `eka watch`) read those CKOs from the workspace canonical store — run `eka sync` first (the projection covers the whole project, the union of its registered repositories; unregistered → exit 1) (ADR-013). The store implements the **Immutable Engineering Knowledge Model** (ADR-011): knowledge objects are content-addressed (`object_hash` = SHA-256(unit.json ‖ content), insert-only, never updated) with mutable references only, and `eka integrity check` verifies the store by recomputing every content-derived hash (manual database modification is detected, not prevented). Git stays the VCS — synchronization is explicit, no hooks. Experimental: workspace/snapshot/sync terminology is not finalized. See [Knowledge Runtime Architecture](reference/runtime-architecture.md), the [Canonical Knowledge Object specification](reference/cko-specification.md), and [ADR-009](reference/decisions/adr-009-knowledge-runtime-architecture.md) / [ADR-010](reference/decisions/adr-010-synchronization-model.md) / [ADR-011](reference/decisions/adr-011-immutable-engineering-knowledge-model.md) / [ADR-012](reference/decisions/adr-012-canonical-knowledge-object-runtime.md) / [ADR-013](reference/decisions/adr-013-store-backed-projections.md).
+Milestone **EKA v0.2.0** adds the **Knowledge Runtime Architecture**: a local **EKA Workspace** (`~/.eka/` or `$EKA_HOME`; `workspace.json` + `eka.db`, an embedded SQLite canonical store) where canonical Engineering Knowledge lives, with repositories as **synchronization endpoints** carrying deterministic **Knowledge Snapshots** (`exchange/snapshots/`, RSF directory packages). `eka sync` (pull/push), `eka project register`/`list`, `eka status`, and `eka integrity check` operate the runtime; all pre-existing commands behave exactly as before. The runtime consumes **Canonical Knowledge Objects** — compiled from Markdown via the Knowledge Compiler (`compile/`); Markdown is the authoring format, not the runtime representation (ADR-012). Projections (`eka view` / `eka watch`) read those CKOs from the workspace canonical store — run `eka sync` first (the projection covers the whole project, the union of its registered repositories; unregistered → exit 1) (ADR-013). The store implements the **Immutable Engineering Knowledge Model** (ADR-011): knowledge objects are content-addressed (`object_hash` = SHA-256(unit.json ‖ content), insert-only, never updated) with mutable references only, and `eka integrity check` verifies the store by recomputing every content-derived hash (manual database modification is detected, not prevented). The runtime exposes internal **Runtime** and **Authoring APIs** (the `runtime/` package — the Runtime Kernel): the CLI is a client of those services, and SQLite is a private persistence detail behind them (ADR-014). Git stays the VCS — synchronization is explicit, no hooks. Experimental: workspace/snapshot/sync terminology is not finalized. See [Knowledge Runtime Architecture](reference/runtime-architecture.md), the [Runtime API](reference/runtime-api.md), the [Canonical Knowledge Object specification](reference/cko-specification.md), and [ADR-009](reference/decisions/adr-009-knowledge-runtime-architecture.md) / [ADR-010](reference/decisions/adr-010-synchronization-model.md) / [ADR-011](reference/decisions/adr-011-immutable-engineering-knowledge-model.md) / [ADR-012](reference/decisions/adr-012-canonical-knowledge-object-runtime.md) / [ADR-013](reference/decisions/adr-013-store-backed-projections.md) / [ADR-014](reference/decisions/adr-014-runtime-interface-architecture.md).
 
 ---
 
@@ -58,7 +58,7 @@ Since v0.2.0, three runtimes share the one knowledge model above:
 - **EKA Knowledge Runtime** — the local, indexed runtime of canonical Engineering Knowledge: the EKA Workspace (`~/.eka/` or `$EKA_HOME`) holds the canonical store (`eka.db`); repositories are synchronization endpoints carrying deterministic Knowledge Snapshots (`exchange/snapshots/`), moved by `eka sync`. Canonical storage lives in the workspace; the repository is the transport.
 - **Atrium** — the future unified project runtime: a consumer of the complete Engineering Knowledge of a multi-repository project (e.g. `api`/`web`/`mobile` under one project) from the runtime. Not implemented in v0.2; the architecture is shaped for it.
 
-The full runtime architecture, sync protocol, and known limitations: [Knowledge Runtime Architecture](reference/runtime-architecture.md) (ADR-009, ADR-010).
+The full runtime architecture, sync protocol, and known limitations: [Knowledge Runtime Architecture](reference/runtime-architecture.md) (ADR-009, ADR-010); the runtime service contracts: [Runtime API](reference/runtime-api.md) (ADR-014).
 
 ## Specifications
 
@@ -196,15 +196,16 @@ cmd/               CLI command layer (Cobra): root, init, validate, export, impo
 bootstrap/         Application layer: eka init engine (public package)
 exchange/          Application layer: export/import engine (public package)
 conformance/       Application layer: validation engine (public package)
-compile/           Application layer: the Knowledge Compiler — authoring → Canonical Knowledge Objects (public package)
+compile/           Application layer: the Knowledge Compiler — authoring → Canonical Knowledge Objects (kernel-internal since ADR-014)
 view/              Application layer: knowledge projection engine (public package)
-workspace/         Application layer: EKA workspace + project/repository registry (public package)
-store/             Application layer: canonical store (SQLite, schema v2 — immutable content-addressed payloads + mutable references) (public package)
-sync/              Application layer: synchronization engine (pull/push) (public package)
+runtime/           Application layer: the Runtime Kernel — internal Runtime API (Workspace, Knowledge, Resolver, Relations, Timeline, Snapshot, Integrity) + Authoring API (Validate/Compile/Sync); the one sanctioned entry point for consumers (public package)
+workspace/         Application layer: EKA workspace + project/repository registry (public package; kernel-internal since ADR-014)
+store/             Application layer: canonical store (SQLite, schema v2 — immutable content-addressed payloads + mutable references) (public package; kernel-internal since ADR-014)
+sync/              Application layer: synchronization engine (pull/push) (public package; kernel-internal since ADR-014)
 skeletonembed.go   Embedded Reference Skeleton (go:embed)
 ```
 
-The application packages (`bootstrap/`, `exchange/`, `conformance/`, `compile/`, `view/`, `workspace/`, `store/`, `sync/`) are public and reusable independently of the CLI — by SDKs, MCP integrations, or other tools.
+The application packages (`bootstrap/`, `exchange/`, `conformance/`, `view/`, `runtime/`) are public and reusable independently of the CLI — by SDKs, MCP integrations, or other tools; `compile/`, `workspace/`, `store/` and `sync/` are kernel-internal behind the runtime services since ADR-014 (consumers talk to the Runtime Kernel, never to storage internals).
 
 ## Example Workflow
 

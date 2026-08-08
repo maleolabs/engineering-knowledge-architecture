@@ -4,10 +4,25 @@
 // sync, project, status) is the only part of the codebase that knows
 // about argument parsing, flags, help text, output rendering and exit
 // codes. It contains no domain logic: validate delegates to the
-// conformance package, init delegates to the bootstrap engine, export
-// delegates to the exchange engine, and the runtime commands (sync,
-// project, status) delegate to the workspace/sync engines — all
-// public, reusable application packages.
+// Authoring API (runtime.Authoring), init delegates to the bootstrap
+// engine, export/import delegate to the exchange engine, and every
+// runtime command (sync, view, watch, project, status, integrity)
+// delegates to the Runtime Kernel services (the runtime package) —
+// the CLI is a CLIENT of the Runtime.
+//
+// Client-only boundary (milestone 5, documented): production code in
+// this package must NOT import the store, workspace, sync or compile
+// packages — SQLite and the workspace are private implementation
+// details of the Runtime Kernel, and all knowledge access goes
+// through the runtime services. The allowed production imports are
+// runtime (the kernel API), exchange (the CKO model + PackageError),
+// view (the projection engine), conformance (model types, e.g. Report
+// for render helpers, plus the representation-independent
+// reference-parsing helper ParseReference — authoring validation
+// itself runs through runtime.Authoring), bootstrap (init) and ui.
+// Tests MAY import store/workspace/sync for seeding and corruption
+// fixtures (test-only,
+// documented).
 //
 // Layout rationale: the reusable engines stay where they are
 // (bootstrap/, conformance/, skeletonembed.go at the module root). There

@@ -11,8 +11,8 @@ import (
 	"time"
 
 	"github.com/maleolabs/engineering-knowledge-architecture/cmd/ui"
+	"github.com/maleolabs/engineering-knowledge-architecture/runtime"
 	"github.com/maleolabs/engineering-knowledge-architecture/view"
-	"github.com/maleolabs/engineering-knowledge-architecture/workspace"
 	"github.com/spf13/cobra"
 )
 
@@ -150,18 +150,17 @@ func runWatch(s *ui.Style, projection, target string, interval int) error {
 	signal.Notify(interrupt, os.Interrupt)
 	defer signal.Stop(interrupt)
 
-	// The workspace canonical store is the projection source. The
-	// store is opened once; every cycle re-reads the project's units,
-	// so a 'eka sync' run (registration + seeding) is picked up
-	// without a restart.
-	ws, err := workspace.Ensure()
+	// The Runtime is the projection source. It is opened once; every
+	// cycle re-reads the project's units, so a 'eka sync' run
+	// (registration + seeding) is picked up without a restart.
+	r, err := runtime.Ensure()
 	if err != nil {
 		return err // Exit 2: workspace resolution.
 	}
-	defer ws.Close()
+	defer r.Close()
 
 	writeClearScreen(s)
-	prev, err := renderWatchFrame(s, ws, projection, target, interval)
+	prev, err := renderWatchFrame(s, r, projection, target, interval)
 	if err != nil {
 		return err
 	}
@@ -169,7 +168,7 @@ func runWatch(s *ui.Style, projection, target string, interval int) error {
 	flush(s.W)
 
 	render := func() error {
-		frame, err := renderWatchFrame(s, ws, projection, target, interval)
+		frame, err := renderWatchFrame(s, r, projection, target, interval)
 		if err != nil {
 			return err
 		}
@@ -199,19 +198,19 @@ func runWatch(s *ui.Style, projection, target string, interval int) error {
 }
 
 // renderWatchFrame runs one watch cycle into a fresh buffer: the
-// project's canonical units are re-read from the workspace store, then
-// either the projection frame — byte-identical to the one-shot view
-// output plus the watching footer — or the unregistered-repository
-// refusal frame. The frame is a pure function of (store state,
-// projection, target, interval): no clock, no timestamps, so identical
-// states produce identical frames and the loop skips redraws by byte
+// project's canonical units are re-read from the Runtime, then either
+// the projection frame — byte-identical to the one-shot view output
+// plus the watching footer — or the unregistered-repository refusal
+// frame. The frame is a pure function of (Runtime state, projection,
+// target, interval): no clock, no timestamps, so identical states
+// produce identical frames and the loop skips redraws by byte
 // comparison. A store/registry failure is an error (exit 2); an
 // unregistered repository is a rendered frame, never an exit.
 //
 // The base style is copied and its writer replaced with the buffer, so
 // the frame carries exactly the color/TTY settings of the live stdout
 // (a verified TTY for watch).
-func renderWatchFrame(s *ui.Style, ws *workspace.Workspace, projection, target string, interval int) ([]byte, error) {
+func renderWatchFrame(s *ui.Style, r *runtime.Runtime, projection, target string, interval int) ([]byte, error) {
 	frame := *s
 	var buf bytes.Buffer
 	frame.W = &buf
@@ -220,7 +219,7 @@ func renderWatchFrame(s *ui.Style, ws *workspace.Workspace, projection, target s
 	if err != nil {
 		return nil, fmt.Errorf("watch failed: %w", err)
 	}
-	repo, found, err := ws.FindRepo(abs)
+	repo, found, err := r.Workspace.FindRepo(abs)
 	if err != nil {
 		return nil, fmt.Errorf("watch failed: %w", err)
 	}
@@ -228,7 +227,7 @@ func renderWatchFrame(s *ui.Style, ws *workspace.Workspace, projection, target s
 		renderWatchRefusal(&frame, abs, interval)
 		return buf.Bytes(), nil
 	}
-	units, err := ws.DB.UnitsByProject(repo.ProjectID)
+	units, err := r.Knowledge.UnitsByProject(repo.ProjectID)
 	if err != nil {
 		return nil, fmt.Errorf("watch failed: %w", err)
 	}

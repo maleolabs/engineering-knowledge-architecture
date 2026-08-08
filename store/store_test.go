@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/hex"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -1125,5 +1126,136 @@ func TestUnitsFormMismatchErrors(t *testing.T) {
 	}
 	if _, err := s.Units("p", "r"); err == nil {
 		t.Error("Units must error when the reference form mismatches the payload identity")
+	}
+}
+
+// --- single-object resolution (Unit) and line resolution (UnitsByLine) ---
+
+// seedLineStore seeds one line (ns, sto, x) with the three instances
+// v1..v3 plus a foreign line, and returns the per-instance hashes.
+func seedLineStore(t *testing.T, s *Store) map[string]string {
+	t.Helper()
+	hashes := map[string]string{}
+	for _, v := range []int{1, 2, 3} {
+		r := ref("ns/sto:x:"+strconv.Itoa(v), "p", "r")
+		r.Namespace = "ns"
+		r.Type = "sto"
+		r.ID = "x"
+		r.InstanceVersion = v
+		r.Form = "ns/sto:x:" + strconv.Itoa(v)
+		h, err := s.PutUnit(unitJSON(t, "ns", "sto", "x", v, v), []byte("body x v"+strconv.Itoa(v)), r)
+		if err != nil {
+			t.Fatal(err)
+		}
+		hashes["ns/sto:x:"+strconv.Itoa(v)] = h
+	}
+	// A different line in the same namespace: must stay invisible.
+	seedUnitsStore(t, s, "ns", "sto", "y", "p", "r")
+	return hashes
+}
+
+// TestUnitResolve: Unit returns the decoded CKO of one canonical form
+// with the reference's object hash attached, and reports false for an
+// unknown form.
+func TestUnitResolve(t *testing.T) {
+	s := openTest(t)
+	h := seedUnitsStore(t, s, "acme", "sto", "a", "proj-a", "repo-a")
+
+	u, ok, err := s.Unit("acme/sto:a:1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !ok {
+		t.Fatal("Unit must resolve a stored form")
+	}
+	if u.CanonicalIdentityForm != "acme/sto:a:1" || u.Identity.ID != "a" {
+		t.Errorf("Unit = %+v, want the acme/sto:a:1 unit", u)
+	}
+	if u.Digest != h {
+		t.Errorf("Unit digest = %q, want the reference's object hash %q", u.Digest, h)
+	}
+	if string(u.ContentPayload) != "body a" {
+		t.Errorf("Unit content = %q, want %q", u.ContentPayload, "body a")
+	}
+
+	if _, ok, err := s.Unit("acme/sto:absent:1"); err != nil || ok {
+		t.Errorf("Unit(absent) = %v, %v; want false, nil", ok, err)
+	}
+}
+
+// TestUnitFormMismatchErrors: a reference whose form diverges from the
+// payload identity is store corruption — Unit errors loudly (mirror of
+// the unit projection).
+func TestUnitFormMismatchErrors(t *testing.T) {
+	s := openTest(t)
+	if _, err := s.PutUnit(unitJSON(t, "acme", "sto", "x", 1, 1), []byte("body"), ref("acme/sto:x:1", "p", "r")); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.db.Exec(`UPDATE object_refs SET form = 'acme/sto:y:1' WHERE form = 'acme/sto:x:1'`); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := s.Unit("acme/sto:y:1"); err == nil {
+		t.Error("Unit must error when the reference form mismatches the payload identity")
+	}
+}
+
+// TestUnitsByLine: every instance of one line across the workspace,
+// decoded and ordered by canonical form; lines of other (ns, type, id)
+// tuples stay invisible.
+func TestUnitsByLine(t *testing.T) {
+	s := openTest(t)
+	hashes := seedLineStore(t, s)
+
+	units, err := s.UnitsByLine("ns", "sto", "x")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(units) != 3 {
+		t.Fatalf("UnitsByLine = %d units, want 3", len(units))
+	}
+	want := []struct {
+		form    string
+		id      string
+		version int
+		hash    string
+	}{
+		{"ns/sto:x:1", "x", 1, hashes["ns/sto:x:1"]},
+		{"ns/sto:x:2", "x", 2, hashes["ns/sto:x:2"]},
+		{"ns/sto:x:3", "x", 3, hashes["ns/sto:x:3"]},
+	}
+	for i, w := range want {
+		u := units[i]
+		if u.CanonicalIdentityForm != w.form || u.Identity.InstanceVersion != w.version {
+			t.Errorf("unit %d = %s (v%d), want %s (v%d)", i, u.CanonicalIdentityForm, u.Identity.InstanceVersion, w.form, w.version)
+		}
+		if u.Digest != w.hash {
+			t.Errorf("unit %d digest = %q, want %q", i, u.Digest, w.hash)
+		}
+	}
+
+	// The other line (ns/sto:y) is invisible; an empty line returns an
+	// empty non-nil slice.
+	if units, err := s.UnitsByLine("ns", "sto", "y"); err != nil || len(units) != 1 {
+		t.Errorf("UnitsByLine(ns, sto, y) = %d, %v; want 1", len(units), err)
+	}
+	if units, err := s.UnitsByLine("ns", "sto", "nope"); err != nil || units == nil || len(units) != 0 {
+		t.Errorf("UnitsByLine(nope) = %v, %v; want empty non-nil slice", units, err)
+	}
+}
+
+// TestUnitsByLineMissingPayloadErrors: a line reference whose payload
+// is missing is store corruption — UnitsByLine errors loudly.
+func TestUnitsByLineMissingPayloadErrors(t *testing.T) {
+	s := openTest(t)
+	seedLineStore(t, s)
+	if _, err := s.db.Exec(`PRAGMA foreign_keys = OFF`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.db.Exec(`INSERT INTO object_refs (form, object_hash, project_id, source_repo, namespace, type, id, instance_version, revision, dimension, domain, phase, updated_at)
+		VALUES ('ns/sto:x:9', '` + strings.Repeat("0", 64) + `', 'p', 'r', 'ns', 'sto', 'x', 9, 1, '', '', '', '2026-08-07T00:00:00Z')`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.UnitsByLine("ns", "sto", "x"); err == nil {
+		t.Error("UnitsByLine must error on a missing payload (corrupt store)")
 	}
 }

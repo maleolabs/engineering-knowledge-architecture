@@ -128,8 +128,17 @@ func TestSyncFreshRepo(t *testing.T) {
 		t.Errorf("snapshot attachment entry missing: %v", err)
 	}
 
-	// DB seeded.
-	objects, payloads, attachments, err := w.Counts()
+	// DB seeded (counts through the store directly — the workspace
+	// Counts helper moved to the runtime Knowledge service).
+	objects, err := w.Store().RefCount()
+	if err != nil {
+		t.Fatal(err)
+	}
+	payloads, err := w.Store().PayloadCount()
+	if err != nil {
+		t.Fatal(err)
+	}
+	attachments, err := w.Store().AttachmentCount()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -142,7 +151,7 @@ func TestSyncFreshRepo(t *testing.T) {
 	// The stored reference carries its source repo, and the payload
 	// preserves the content and the relationships (serialized inside
 	// the immutable unit.json).
-	r, ok, err := w.DB.Ref("eka-sync-fixture/adr:001-runtime:1")
+	r, ok, err := w.Store().Ref("eka-sync-fixture/adr:001-runtime:1")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -152,7 +161,7 @@ func TestSyncFreshRepo(t *testing.T) {
 	if r.SourceRepo != filepath.Base(repoDir) {
 		t.Errorf("source repo = %q, want %q", r.SourceRepo, filepath.Base(repoDir))
 	}
-	unitJSON, content, err := w.DB.Payload(r.ObjectHash)
+	unitJSON, content, err := w.Store().Payload(r.ObjectHash)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -202,7 +211,14 @@ func TestSyncSecondRunIdempotent(t *testing.T) {
 	if !bytesEqualMaps(before, after) {
 		t.Error("re-push must produce byte-identical snapshot files")
 	}
-	objects, _, attachments, _ := w.Counts()
+	objects, err := w.Store().RefCount()
+	if err != nil {
+		t.Fatal(err)
+	}
+	attachments, err := w.Store().AttachmentCount()
+	if err != nil {
+		t.Fatal(err)
+	}
 	if objects != 4 || attachments != 1 {
 		t.Errorf("store changed by second sync: %d objects / %d attachments", objects, attachments)
 	}
@@ -265,18 +281,18 @@ func TestMultiRepoOneProject(t *testing.T) {
 	}
 
 	// Union in the DB: both repos' refs present, one payload each.
-	objects, _, _, err := w.Counts()
+	objects, err := w.Store().RefCount()
 	if err != nil {
 		t.Fatal(err)
 	}
 	if objects != 8 {
 		t.Errorf("union objects = %d, want 8", objects)
 	}
-	refsA, err := w.DB.Refs("myproject", filepath.Base(repoA))
+	refsA, err := w.Store().Refs("myproject", filepath.Base(repoA))
 	if err != nil {
 		t.Fatal(err)
 	}
-	refsB, err := w.DB.Refs("myproject", filepath.Base(repoB))
+	refsB, err := w.Store().Refs("myproject", filepath.Base(repoB))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -628,7 +644,7 @@ func TestPushFailsOnStoreReadError(t *testing.T) {
 		t.Fatal(err)
 	}
 	// Break the store behind the push's back.
-	if _, err := w.DB.DB().Exec(`DROP TABLE object_refs`); err != nil {
+	if _, err := w.Store().DB().Exec(`DROP TABLE object_refs`); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := Run(w, repoDir, Options{Push: true}); err == nil {
@@ -704,14 +720,14 @@ func TestPushReportsSnapshotChanged(t *testing.T) {
 	}
 
 	// Tamper one payload behind the store's back.
-	rows, err := w.DB.AllPayloads()
+	rows, err := w.Store().AllPayloads()
 	if err != nil {
 		t.Fatal(err)
 	}
 	if len(rows) == 0 {
 		t.Fatal("no payloads seeded")
 	}
-	if _, err := w.DB.DB().Exec(`UPDATE object_payloads SET content = ? WHERE object_hash = ?`,
+	if _, err := w.Store().DB().Exec(`UPDATE object_payloads SET content = ? WHERE object_hash = ?`,
 		[]byte("tampered"), rows[0].ObjectHash); err != nil {
 		t.Fatal(err)
 	}

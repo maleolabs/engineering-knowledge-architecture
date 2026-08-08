@@ -4,6 +4,8 @@ import (
 	"os"
 	"strings"
 	"testing"
+
+	"github.com/maleolabs/engineering-knowledge-architecture/runtime"
 )
 
 // TestStatusNoWorkspace: without a workspace.json, status prints an
@@ -57,5 +59,27 @@ func TestStatusWorkspaceUninitializedNeverCreates(t *testing.T) {
 	}
 	if len(entries) != 0 {
 		t.Errorf("status must not create workspace files, found: %v", entries)
+	}
+}
+
+// TestStatusInitializedNoProjects: an initialized workspace with no
+// registered projects shows the informational note and exits 0.
+func TestStatusInitializedNoProjects(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("EKA_HOME", home)
+	r, err := runtime.Ensure()
+	if err != nil {
+		t.Fatal(err)
+	}
+	r.Close()
+	code, text, _ := runIn([]string{"status"})
+	if code != 0 {
+		t.Fatalf("exit = %d, want 0", code)
+	}
+	if !strings.Contains(text, "No projects registered") {
+		t.Errorf("status must show the no-projects note, got:\n%s", text)
+	}
+	if !strings.Contains(text, "Objects: 0") {
+		t.Errorf("status must show zero counts, got:\n%s", text)
 	}
 }

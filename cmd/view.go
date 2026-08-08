@@ -6,8 +6,8 @@ import (
 	"path/filepath"
 
 	"github.com/maleolabs/engineering-knowledge-architecture/cmd/ui"
+	"github.com/maleolabs/engineering-knowledge-architecture/runtime"
 	"github.com/maleolabs/engineering-knowledge-architecture/view"
-	"github.com/maleolabs/engineering-knowledge-architecture/workspace"
 	"github.com/spf13/cobra"
 )
 
@@ -109,19 +109,19 @@ Exit codes:
 				return err
 			}
 			s := styleFor(cmd)
-			// The workspace canonical store is the projection source:
-			// the repository must be registered and synced first
-			// ('eka sync'); the projection never reads Markdown.
-			ws, err := workspace.Ensure()
+			// The Runtime is the projection source: the repository must
+			// be registered and synced first ('eka sync'); the
+			// projection never reads Markdown.
+			r, err := runtime.Ensure()
 			if err != nil {
 				return err // Exit 2: workspace resolution.
 			}
-			defer ws.Close()
+			defer r.Close()
 			abs, err := filepath.Abs(".")
 			if err != nil {
 				return fmt.Errorf("view failed: %w", err)
 			}
-			repo, found, err := ws.FindRepo(abs)
+			repo, found, err := r.Workspace.FindRepo(abs)
 			if err != nil {
 				return fmt.Errorf("view failed: %w", err) // Exit 2: registry failure.
 			}
@@ -134,7 +134,7 @@ Exit codes:
 			// The projection source is the complete Engineering
 			// Knowledge of the project: every registered repository's
 			// units, decoded from the immutable payloads.
-			units, err := ws.DB.UnitsByProject(repo.ProjectID)
+			units, err := r.Knowledge.UnitsByProject(repo.ProjectID)
 			if err != nil {
 				return fmt.Errorf("view failed: %w", err) // Exit 2: store failure.
 			}

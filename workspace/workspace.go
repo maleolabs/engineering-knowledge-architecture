@@ -46,12 +46,18 @@ type workspaceFile struct {
 type Workspace struct {
 	// Dir is the absolute workspace root.
 	Dir string
-	// DB is the opened canonical store (eka.db).
-	DB *store.Store
 
+	st      *store.Store
 	id      string
 	created string
 }
+
+// Store returns the persistence handle (the opened canonical store,
+// eka.db). It is internal to the Runtime Kernel — packages workspace,
+// sync, store, and the runtime package — and must not be used by
+// external consumers: they communicate with the workspace only through
+// the runtime services.
+func (w *Workspace) Store() *store.Store { return w.st }
 
 // HomeDir resolves the workspace root: $EKA_HOME when set (must be
 // absolute), else <user home>/.eka. It errors (exit code 2 class) when
@@ -96,7 +102,7 @@ func Ensure() (*Workspace, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Workspace{Dir: dir, DB: db, id: meta.ID, created: meta.Created}, nil
+	return &Workspace{Dir: dir, st: db, id: meta.ID, created: meta.Created}, nil
 }
 
 // Open is the read-style alias of Ensure: workspace initialization is
@@ -118,7 +124,7 @@ func (w *Workspace) Meta() (sv int, id, created string) {
 
 // Close closes the canonical store.
 func (w *Workspace) Close() error {
-	return w.DB.Close()
+	return w.st.Close()
 }
 
 // ensureMetaFile creates workspace.json when missing and reads it

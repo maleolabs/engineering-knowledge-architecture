@@ -13,6 +13,11 @@ import (
 
 // seedIntegrityWorkspace creates a workspace with one consistent
 // immutable unit and returns the store handle (for tampering).
+//
+// Test-only boundary (documented): this fixture crafts store state
+// directly — the corruption/tamper tests must write behind the
+// Runtime's back, so the test imports workspace/store by design. No
+// production code in this package does.
 func seedIntegrityWorkspace(t *testing.T) (*workspace.Workspace, *store.Store) {
 	t.Helper()
 	t.Setenv("EKA_HOME", t.TempDir())
@@ -40,10 +45,10 @@ func seedIntegrityWorkspace(t *testing.T) (*workspace.Workspace, *store.Store) {
 		Namespace: "ns", Type: "sto", ID: "x", InstanceVersion: 1, Revision: 1,
 		UpdatedAt: "2026-08-07T00:00:00Z",
 	}
-	if _, err := ws.DB.PutUnit(unitJSON, []byte("body"), ref); err != nil {
+	if _, err := ws.Store().PutUnit(unitJSON, []byte("body"), ref); err != nil {
 		t.Fatal(err)
 	}
-	return ws, ws.DB
+	return ws, ws.Store()
 }
 
 // TestIntegrityCheckClean: a clean workspace exits 0 with the

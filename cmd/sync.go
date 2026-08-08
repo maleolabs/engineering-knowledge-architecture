@@ -5,10 +5,8 @@ import (
 	"fmt"
 
 	"github.com/maleolabs/engineering-knowledge-architecture/cmd/ui"
-	"github.com/maleolabs/engineering-knowledge-architecture/compile"
 	"github.com/maleolabs/engineering-knowledge-architecture/exchange"
-	"github.com/maleolabs/engineering-knowledge-architecture/sync"
-	"github.com/maleolabs/engineering-knowledge-architecture/workspace"
+	"github.com/maleolabs/engineering-knowledge-architecture/runtime"
 	"github.com/spf13/cobra"
 )
 
@@ -65,7 +63,7 @@ Exit codes:
   eka sync push       push only`,
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runSync(cmd, args, sync.Options{Pull: true, Push: true})
+			return runSync(cmd, args, runtime.SyncOptions{Pull: true, Push: true})
 		},
 	}
 	cmd.AddCommand(newSyncPullCommand(), newSyncPushCommand())
@@ -109,7 +107,7 @@ Exit codes:
 			if err != nil {
 				return fmt.Errorf("sync pull failed: %w", err)
 			}
-			return runSync(cmd, args, sync.Options{Pull: true, FromDocs: fromDocs})
+			return runSync(cmd, args, runtime.SyncOptions{Pull: true, FromDocs: fromDocs})
 		},
 	}
 	cmd.Flags().Bool("from-docs", false,
@@ -140,33 +138,34 @@ Exit codes:
   eka sync push /path/to/repo`,
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runSync(cmd, args, sync.Options{Push: true})
+			return runSync(cmd, args, runtime.SyncOptions{Push: true})
 		},
 	}
 	return cmd
 }
 
 // runSync resolves the workspace and repository path, runs the sync
-// engine and renders the report, mapping errors to the exit code
-// contract.
-func runSync(cmd *cobra.Command, args []string, opts sync.Options) error {
+// runSync opens the Runtime (exit 2 on workspace resolution failure),
+// runs the sync engine through the Authoring API and renders the
+// report, mapping errors to the exit code contract.
+func runSync(cmd *cobra.Command, args []string, opts runtime.SyncOptions) error {
 	path := "."
 	if len(args) == 1 {
 		path = args[0]
 	}
 
-	ws, err := workspace.Ensure()
+	r, err := runtime.Ensure()
 	if err != nil {
 		return err // Exit 2: workspace resolution.
 	}
-	defer ws.Close()
+	defer r.Close()
 
 	s := styleFor(cmd)
 	spinner := ui.NewSpinner(s, "Synchronizing Engineering Knowledge...")
-	report, err := sync.Run(ws, path, opts)
+	report, err := runtime.Authoring.Sync(r, path, opts)
 	spinner.Stop()
 	if err != nil {
-		var ve *compile.ValidationError
+		var ve *runtime.ValidationError
 		if errors.As(err, &ve) {
 			printReport(s, ve.Report)
 			fmt.Fprintf(cmd.ErrOrStderr(), "eka: %s\n", ve.Error())
@@ -185,7 +184,7 @@ func runSync(cmd *cobra.Command, args []string, opts sync.Options) error {
 
 // renderSyncReport renders the sync outcome: the Runtime context
 // header and the closing summary.
-func renderSyncReport(s *ui.Style, r *sync.Report) {
+func renderSyncReport(s *ui.Style, r *runtime.SyncResult) {
 	ui.NewHeader(s, "Runtime").
 		Add("Workspace", r.Workspace).
 		Add("Project", r.Project).
@@ -214,7 +213,7 @@ func renderSyncReport(s *ui.Style, r *sync.Report) {
 // that left the snapshot digest untouched. A push that rewrote the
 // snapshot (store and snapshot were out of sync) is reported as a
 // change, never hidden behind "unchanged".
-func repoStatus(r *sync.Report) string {
+func repoStatus(r *runtime.SyncResult) string {
 	switch {
 	case r.NewRepo:
 		return "registered (new)"
@@ -228,7 +227,7 @@ func repoStatus(r *sync.Report) string {
 }
 
 // pullDetail renders the pull side of the report.
-func pullDetail(r *sync.Report) string {
+func pullDetail(r *runtime.SyncResult) string {
 	switch {
 	case r.PullSource == "":
 		return "not run"
@@ -243,7 +242,7 @@ func pullDetail(r *sync.Report) string {
 }
 
 // pushDetail renders the push side of the report.
-func pushDetail(r *sync.Report) string {
+func pushDetail(r *runtime.SyncResult) string {
 	if r.SnapshotLabel == "" {
 		return "no-op (no stored objects)"
 	}
@@ -253,7 +252,7 @@ func pushDetail(r *sync.Report) string {
 }
 
 // snapshotDetail renders the snapshot label/digest line.
-func snapshotDetail(r *sync.Report) string {
+func snapshotDetail(r *runtime.SyncResult) string {
 	if r.SnapshotLabel == "" && r.SnapshotDigest == "" {
 		return "none"
 	}

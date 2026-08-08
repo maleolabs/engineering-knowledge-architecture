@@ -84,7 +84,9 @@ func (s *Store) Close() error {
 	return s.db.Close()
 }
 
-// DB returns the underlying database handle. It is exposed for the
-// workspace registry (projects/repos tables, which are workspace-level
-// concerns); all queries against it must be parameterized.
+// DB returns the underlying database handle. Internal to the Runtime
+// Kernel (ADR-014): the workspace registry uses it for the
+// projects/repos tables (workspace-level concerns); consumers outside
+// the Kernel must use the runtime services, never the handle. All
+// queries against it must be parameterized.
 func (s *Store) DB() *sql.DB { return s.db }

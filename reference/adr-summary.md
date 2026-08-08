@@ -1,6 +1,6 @@
 # Implementation ADR Summary
 
-Index of the 13 Implementation ADRs of the EKA v1.1 Reference Implementation (8 serialization ADRs + ADR-009–ADR-013, the v0.2.0 Knowledge Runtime Architecture). All ADRs have status **accepted** (`content-state: accepted`) and carry `namespace: eka-ref-impl`, dimension `decisions`.
+Index of the 14 Implementation ADRs of the EKA v1.1 Reference Implementation (8 serialization ADRs + ADR-009–ADR-014, the v0.2.0 Knowledge Runtime Architecture). All ADRs have status **accepted** (`content-state: accepted`) and carry `namespace: eka-ref-impl`, dimension `decisions`.
 
 | ADR | Decision (one line) | Status | File |
 |---|---|---|---|
@@ -17,6 +17,7 @@ Index of the 13 Implementation ADRs of the EKA v1.1 Reference Implementation (8 
 | **ADR-011 — Immutable Engineering Knowledge Model** | Canonical store v2: immutable content-addressed `object_payloads` (object_hash = SHA-256(unit.json ‖ content), byte-identical to the RSF per-unit digest) + mutable `object_refs` resolver (form → current object); `change_log` removed — history derived from forward-only forms, `prev_hash` lineage, and retained payloads; `eka integrity check` verifies independent of the storage engine (0 clean / 1 violations / 2 internal); deterministic v1→v2 migration recomputes hashes; SQLite is persistence only, immutability belongs to the model. | accepted | [`adr-011-immutable-engineering-knowledge-model.md`](decisions/adr-011-immutable-engineering-knowledge-model.md) |
 | **ADR-012 — Canonical Knowledge Object Runtime** | Canonical Knowledge Object (CKO) = the `exchange.Unit` model (unit.json + representation payload); the `compile/` Knowledge Compiler is the one gateway for all authoring (Markdown = one adapter via conformance scan/analyze); the runtime consumes only CKO — projections read `exchange.Unit`, SQLite persists CKO (never a Markdown cache), two validators with distinct scopes (`eka validate` R0–R12 vs `eka integrity check`); authoring experience unchanged. | accepted | [`adr-012-canonical-knowledge-object-runtime.md`](decisions/adr-012-canonical-knowledge-object-runtime.md) |
 | **ADR-013 — Store-Backed Projections** | Projections are store-backed: `eka view`/`eka watch` read CKO from the workspace canonical store (`store.UnitsByProject` → `exchange.DecodeUnit`), never the docs tree — `compile` stays the authoring gateway for sync docs-mode/migration; projection scope = the project (multi-repo union, digest-tagged, ordered by canonical form); synchronization is a precondition (unregistered repository refused with a deterministic message + hint, exit 1; registered-but-unsynced renders an empty projection with a note, exit 0); one reader, one source (no fallback chain); watch polls the store, the refusal frame replacing the compile-failure frame. | accepted | [`adr-013-store-backed-projections.md`](decisions/adr-013-store-backed-projections.md) |
+| **ADR-014 — Runtime Interface Architecture** | The Runtime Kernel (`runtime/`) is the one sanctioned entry point: concrete-type service contracts — the internal Runtime API (Workspace, Knowledge, Resolver, Relations, Timeline, Snapshot, Integrity) + the Authoring API (AuthoringService Validate/Compile/Sync) — Engineering-Knowledge-shaped, never CRUD/storage-shaped, never Markdown-aware; SQLite (`store/`) becomes private persistence (the `workspace.Store()` handle is Kernel-internal; tests may seed/corrupt the store directly); the CLI becomes a runtime client (sync/view/watch/status/project/integrity/validate delegate, output + exit codes unchanged; init = bootstrap adapter, export/import = exchange transport); one-way dependency rule `runtime → {store, workspace, sync, compile, conformance, exchange}`, `cmd → {runtime, exchange, view, conformance, bootstrap, ui}` — structural isolation enforced by imports; alias re-exports (`SyncResult = sync.Report`) accepted as contract types; rejected: Go interface types now, HTTP/RPC/gRPC, documented-only discipline, one giant Runtime struct. | accepted | [`adr-014-runtime-interface-architecture.md`](decisions/adr-014-runtime-interface-architecture.md) |
 
 ## Shared frontmatter conventions
 
@@ -70,4 +71,5 @@ flowchart LR
   A10 --> A11
   A11 --> A12[ADR-012 canonical-knowledge-object-runtime]
   A12 --> A13[ADR-013 store-backed-projections]
+  A13 --> A14[ADR-014 runtime-interface-architecture]
 ```

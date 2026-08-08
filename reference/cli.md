@@ -12,7 +12,7 @@
 - **`eka export`** — the first practical implementation of the Exchange Specification: exports engineering knowledge as an **Exchange Package** per the Reference Serialization Format (RSF).
 - **`eka import`** — the inverse of export: consumes an Exchange Package and integrates knowledge into an existing EKA repository — implementing the import semantics of Exchange Specification §11.
 - **`eka validate`** — the conformance validator: repository conformance must not rest on manual review alone — rules R0–R12 in `skeleton/docs/exchange/validation.md` are designed to be mechanical, and this validator is their canonical implementation (P16: enforcement mechanisms vary, invariants stay identical).
-- **`eka view`** — the Knowledge Projection Engine: read-only projections of the Engineering Knowledge Model (the five domain projections `discovery` / `architecture` / `planning` / `execution` / `operations` + the `ticket` projection), rendered as per-domain visualizations — Kanban board (execution), roadmap (planning), dependency tree (architecture), information cards (discovery), release timeline (operations), detail card (ticket) — the canonical executable form of the State Projection semantics (Core Specification §11), relationship-derived, never markdown-rendered. Reads **Canonical Knowledge Objects from the EKA workspace canonical store** (`store.UnitsByProject` → `exchange.DecodeUnit`) and projects over `exchange.Unit` — the repository must be registered and synced first (`eka sync`); the projection covers the complete knowledge of the project, the union of its registered repositories (ADR-012, ADR-013).
+- **`eka view`** — the Knowledge Projection Engine: read-only projections of the Engineering Knowledge Model (the five domain projections `discovery` / `architecture` / `planning` / `execution` / `operations` + the `ticket` projection), rendered as per-domain visualizations — Kanban board (execution), roadmap (planning), dependency tree (architecture), information cards (discovery), release timeline (operations), detail card (ticket) — the canonical executable form of the State Projection semantics (Core Specification §11), relationship-derived, never markdown-rendered. Reads **Canonical Knowledge Objects from the EKA workspace canonical store via the runtime services** (`Knowledge.UnitsByProject` → `exchange.DecodeUnit`, the Runtime API — ADR-014) and projects over `exchange.Unit` — the repository must be registered and synced first (`eka sync`); the projection covers the complete knowledge of the project, the union of its registered repositories (ADR-012, ADR-013, ADR-014).
 - **`eka watch`** — the realtime projection viewer: the same Knowledge Projections as `eka view`, refreshed in place by polling the canonical store — TTY-only, read-only, live refusal frames (repository not registered in the workspace), Ctrl-C to stop.
 - **`eka sync`** — the Knowledge Runtime synchronization command: pull (verify the repository's Knowledge Snapshot and seed the EKA Workspace canonical store, or seed from the docs tree via the conformance gate when no snapshot exists) then push (assemble the repository's canonical objects into a deterministic snapshot at `exchange/snapshots/`). Idempotent; deletions never applied.
 - **`eka project`** — the project/repository registry of the EKA Workspace: `register` (bind a repository to a project; same `--name` = same project) and `list`.
@@ -633,7 +633,7 @@ eka view [projection] [target]
 
 `eka view` projects the **Engineering Knowledge Model** of the project owning the repository rooted at the current directory: read-only views over the **complete Engineering Knowledge of the project** — the union of every registered repository's units — and their relationships. Projections are named by **Engineering Domain** — `discovery`, `architecture`, `planning`, `execution`, `operations` — plus the `ticket` and `board` projections. The `target` argument is required by the ticket projection only (a bare ticket id, `tkt-<id>` or `tkt:<id>`); domain projections ignore it. With no arguments, the available projections are listed and the command exits `0`.
 
-The projection is built from **Canonical Knowledge Objects (CKO) read from the EKA workspace canonical store**: `store.UnitsByProject` resolves every reference of the project to its immutable payload (`object_payloads`), and `exchange.DecodeUnit` strict-decodes each into an `exchange.Unit`, ordered by canonical form (ADR-013; ADR-012; the CKO schema is [`cko-specification.md`](cko-specification.md)). The repository must be **registered and synced** first: `eka sync` compiles the authoring tree through the Knowledge Compiler (conformance-gated) and seeds the store. At projection time **no Markdown is read and no conformance gate runs** — the projection input is exactly the synced canonical state. Authoring UX: **write Markdown → `eka sync` → `eka view`**.
+The projection is built from **Canonical Knowledge Objects (CKO) read from the EKA workspace canonical store via the runtime services**: `Knowledge.UnitsByProject` (the Runtime API — ADR-014) resolves every reference of the project to its immutable payload (`object_payloads`), and `exchange.DecodeUnit` strict-decodes each into an `exchange.Unit`, ordered by canonical form (ADR-013; ADR-012; ADR-014; the CKO schema is [`cko-specification.md`](cko-specification.md)). The repository must be **registered and synced** first: `eka sync` compiles the authoring tree through the Knowledge Compiler (conformance-gated) and seeds the store. At projection time **no Markdown is read and no conformance gate runs** — the projection input is exactly the synced canonical state. Authoring UX: **write Markdown → `eka sync` → `eka view`**.
 
 ### Projection philosophy — Knowledge Projection
 
@@ -649,8 +649,8 @@ The projection is built from **Canonical Knowledge Objects (CKO) read from the E
 run → resolve → read → construct → render → exit
 ```
 
-1. **Resolve** — the EKA workspace is resolved and the current directory is resolved to a registered repository (`workspace.FindRepo`). A repository **not registered** in the workspace is **refused** (exit `1`) with the deterministic message: `eka: view refused: repository <abs> is not registered in the EKA workspace; run 'eka sync' (auto-registers) or 'eka project register' first`. No projection is produced.
-2. **Read** — the project's canonical units are read from the workspace canonical store: `store.UnitsByProject` resolves every reference to its immutable payload, `exchange.DecodeUnit` strict-decodes each (canonical-form order). No Markdown is read and no conformance gate runs at projection time — authoring validation ran inside `eka sync` (the compile gate). A registered project with **no synced knowledge** renders an empty projection with the informational note `no synced knowledge for project <id>; run 'eka sync' after editing docs`, exit `0`.
+1. **Resolve** — the EKA workspace is resolved and the current directory is resolved to a registered repository (`Workspace.FindRepo`, the Runtime API — ADR-014). A repository **not registered** in the workspace is **refused** (exit `1`) with the deterministic message: `eka: view refused: repository <abs> is not registered in the EKA workspace; run 'eka sync' (auto-registers) or 'eka project register' first`. No projection is produced.
+2. **Read** — the project's canonical units are read from the workspace canonical store via the runtime Knowledge service: `Knowledge.UnitsByProject` resolves every reference to its immutable payload, `exchange.DecodeUnit` strict-decodes each (canonical-form order). No Markdown is read and no conformance gate runs at projection time — authoring validation ran inside `eka sync` (the compile gate). A registered project with **no synced knowledge** renders an empty projection with the informational note `no synced knowledge for project <id>; run 'eka sync' after editing docs`, exit `0`.
 3. **Construct** — one Knowledge Graph over the decoded units (the `view` package), then one projection build (the builder).
 4. **Render** — the projection renderer applies the projection's visualization (board, roadmap, tree, cards, timeline, detail card), deterministically.
 5. **Exit** — mapped per the exit-code contract below.
@@ -716,7 +716,8 @@ One pipeline, five stages, one dependency direction — the **Projection Rendere
 ```
 Workspace canonical store (project units)
     ↓
-Store Read             store.UnitsByProject — object_refs → object_payloads → exchange.DecodeUnit
+Store Read             Knowledge.UnitsByProject (Runtime API; store.UnitsByProject behind the Kernel)
+                       — object_refs → object_payloads → exchange.DecodeUnit
                        (canonical-form order; seeded by eka sync)
     ↓
 Knowledge Graph        identity index, relationship resolution, membership helpers
@@ -733,7 +734,7 @@ Two layers, one dependency direction:
 | Layer | Location | Role |
 |---|---|---|
 | Projection engine | `view/` (public package) | Knowledge Graph over the store-decoded CKO set (identity index, relationship resolution, membership helpers) + independent projection builders (one per projection: `discovery`, `architecture`, `planning`, `execution`, `operations`, `ticket`, `board`) + the projection registry. Pure data in, pure data out. |
-| Terminal rendering | `cmd/view.go` + `cmd/ui` | Argument validation, the workspace/store read (repository resolution via `workspace.FindRepo`, project units via `store.UnitsByProject`), dispatch to the per-domain projection renderer (`cmd/ui`), exit-code mapping. No projection logic. |
+| Terminal rendering | `cmd/view.go` + `cmd/ui` | Argument validation, the runtime service reads (repository resolution via `Workspace.FindRepo`, project units via `Knowledge.UnitsByProject` — the Runtime API, ADR-014), dispatch to the per-domain projection renderer (`cmd/ui`), exit-code mapping. No projection logic. |
 
 - **Builder and renderer are independent responsibilities.** The builder defines the projection's **information** — which artifacts, in which order, grouped into which state sets; the renderer defines its **presentation** — the visual shape (Kanban board, roadmap, dependency tree, information cards, timeline, detail card) and the framing. A renderer can attach to any builder's output without touching the builder.
 - The **renderer does not know the repository layout**; the **builders do not know terminals**.
@@ -922,7 +923,7 @@ Summary:
 eka watch <projection> [target] [--interval N]
 ```
 
-`eka watch` is the **realtime projection viewer**: it renders the same projections as `eka view` — `discovery`, `architecture`, `planning`, `execution`, `operations`, `ticket`, plus the `sprint` / `wave` CLI aliases of `execution` — and refreshes them in place while the repository changes. Like `eka view`, it is read-only: a projection has no State of its own and never becomes a writer (P6, Core Specification §11). Like `eka view`, each refresh reads the project's **Canonical Knowledge Objects from the workspace canonical store** (`store.UnitsByProject` per cycle) and projects over `exchange.Unit` (ADR-013) — an `eka sync` run in another terminal is picked up on the next tick without a restart. The [projections table](#projections) above defines what each projection shows; the ticket target argument behaves exactly as in `eka view`.
+`eka watch` is the **realtime projection viewer**: it renders the same projections as `eka view` — `discovery`, `architecture`, `planning`, `execution`, `operations`, `ticket`, plus the `sprint` / `wave` CLI aliases of `execution` — and refreshes them in place while the repository changes. Like `eka view`, it is read-only: a projection has no State of its own and never becomes a writer (P6, Core Specification §11). Like `eka view`, each refresh reads the project's **Canonical Knowledge Objects from the workspace canonical store via the runtime services** (`Knowledge.UnitsByProject` per cycle, the Runtime API — ADR-014) and projects over `exchange.Unit` (ADR-013) — an `eka sync` run in another terminal is picked up on the next tick without a restart. The [projections table](#projections) above defines what each projection shows; the ticket target argument behaves exactly as in `eka view`.
 
 ### Interaction model
 
@@ -980,7 +981,7 @@ Knowledge   EKA v1.1
 ↓ Validate
 
 Repository validation
-Root: . — 139 .md files, 50 artifacts, 0 errors, 13 warnings
+Root: . — 141 .md files, 51 artifacts, 0 errors, 14 warnings
 
 Results (sorted by file, then rule):
   [warning] R10 reference/decisions/adr-001-identity-serialization.md: no resolvable derives-from/depends-on chain reaches a stratum above Architecture (stratum 2); stratification traceability is missing (chains must reach one of: Discovery)
@@ -996,16 +997,17 @@ Results (sorted by file, then rule):
   [warning] R10 reference/decisions/adr-011-immutable-engineering-knowledge-model.md: no resolvable derives-from/depends-on chain reaches a stratum above Architecture (stratum 2); stratification traceability is missing (chains must reach one of: Discovery)
   [warning] R10 reference/decisions/adr-012-canonical-knowledge-object-runtime.md: no resolvable derives-from/depends-on chain reaches a stratum above Architecture (stratum 2); stratification traceability is missing (chains must reach one of: Discovery)
   [warning] R10 reference/decisions/adr-013-store-backed-projections.md: no resolvable derives-from/depends-on chain reaches a stratum above Architecture (stratum 2); stratification traceability is missing (chains must reach one of: Discovery)
+  [warning] R10 reference/decisions/adr-014-runtime-interface-architecture.md: no resolvable derives-from/depends-on chain reaches a stratum above Architecture (stratum 2); stratification traceability is missing (chains must reach one of: Discovery)
 
 Verdict: PASS
 Summary:
-└── Artifacts: 50
+└── Artifacts: 51
 └── Errors: 0
-└── Warnings: 13
+└── Warnings: 14
 └── Status: Repository conforms to EKA v1.1
 ```
 
-> Note: the `.md files` count is a snapshot — it grows with every new convention document added; the output format stays fixed. The artifact, error, and warning counts are the contract (50 artifacts; error > 0 ⇒ FAIL). The 13 R10 warnings are the repository's own stratification traceability gap: the 13 Implementation ADRs (Architecture, stratum 2) carry no `derives-from`/`depends-on` chain reaching a higher stratum. The Reference Project (`reference/project/`) demonstrates the best practice: **37 artifacts, 0 errors, 0 warnings** (every artifact carries a stratification chain). R10 is a warning — it never blocks the verdict; the exit code stays `0`.
+> Note: the `.md files` count is a snapshot — it grows with every new convention document added; the output format stays fixed. The artifact, error, and warning counts are the contract (51 artifacts; error > 0 ⇒ FAIL). The 14 R10 warnings are the repository's own stratification traceability gap: the 14 Implementation ADRs (Architecture, stratum 2) carry no `derives-from`/`depends-on` chain reaching a higher stratum. The Reference Project (`reference/project/`) demonstrates the best practice: **37 artifacts, 0 errors, 0 warnings** (every artifact carries a stratification chain). R10 is a warning — it never blocks the verdict; the exit code stays `0`.
 
 Output structure:
 
@@ -1057,7 +1059,7 @@ source <(eka completion bash)
 
 ## Repository conformance
 
-The EKA repository **passes its own conformance suite**: all `.md` files scanned, 50 artifacts (37 in the Reference Project `reference/project/` + 13 Implementation ADRs), **0 errors, 13 warnings (R10 stratification traceability), exit 0** (see example output above). R10 warnings never block the verdict.
+The EKA repository **passes its own conformance suite**: all `.md` files scanned, 51 artifacts (37 in the Reference Project `reference/project/` + 14 Implementation ADRs), **0 errors, 14 warnings (R10 stratification traceability), exit 0** (see example output above). R10 warnings never block the verdict.
 
 This milestone is codified as the automated test `TestReferenceImplementationConforms` in `conformance/self_validation_test.go`: the test locates the repository root, runs `Validate` over the whole repository, and asserts 0 blocking errors. Any conformance regression (e.g., a new ADR violating a rule) therefore breaks the test suite before it can reach a commit.
 
@@ -1068,13 +1070,14 @@ The CLI is organized as **two layers + one entry point**:
 | Layer | Location | Role |
 |---|---|---|
 | Command layer | `cmd/` (package `cmd` + `cmd/ui`) | **Only** Cobra command definitions and presentation rendering: registration, flags, help, argument validation, dispatch to services, `cmd/ui` output. No domain logic. |
+| Application layer | `runtime/` (public package) | The **Runtime Kernel** (ADR-014): the internal **Runtime API** (Workspace, Knowledge, Resolver, Relations, Timeline, Snapshot, Integrity — concrete service types, no Go interfaces) + the **Authoring API** (`runtime.Authoring`: Validate/Compile/Sync); the one sanctioned entry point every consumer — the CLI, future Context Engine/MCP/Atrium — talks to. `store/`, `workspace/`, `sync/` and `compile/` are kernel-internal behind it; production `cmd/` imports only `runtime/`. |
 | Application layer | `bootstrap/` (public package) | Repository Bootstrapper: discovery, planning, wizard, generation, validation — reusable without the CLI. |
 | Application layer | `exchange/` (public package) | Import/export engine (Exchange Spec + RSF): discovery, loading, model building, serialization, deserialization, identity/relationship resolver, conflict analyzer, integration engine (staged commit + rollback), package writer — reusable without the CLI. |
 | Application layer | `conformance/` (public package) | Validation engine: scanning, artifact classification, rules R0–R12, result model (`Report`); also provides `Scan` and `ParseReference` for other consumers. |
 | Application layer | `view/` (public package) | Knowledge Projection Engine: Knowledge Graph (identity index, relationship resolution, membership helpers) + independent projection builders + projection registry — reusable without the CLI. |
-| Application layer | `workspace/` (public package) | EKA Workspace: workspace resolution (`EKA_HOME` / `~/.eka`), `workspace.json` metadata, project/repository registry, canonical store handle. |
-| Application layer | `store/` (public package) | Canonical store: SQLite schema v2 (`object_payloads` — immutable, content-addressed payloads, insert-only; `object_refs` — mutable references with derived index columns; `attachments`, `sync_log`, `meta`), in-place v1→v2 schema migration, payload insert, reference upserts, sync log, integrity verification (`VerifyIntegrity`). |
-| Application layer | `sync/` (public package) | Knowledge Runtime synchronization engine: pull (snapshot verification + upsert / docs-mode conformance gate + seed) and push (deterministic snapshot assembly + atomic swap). |
+| Application layer | `workspace/` (public package, kernel-internal since ADR-014) | EKA Workspace: workspace resolution (`EKA_HOME` / `~/.eka`), `workspace.json` metadata, project/repository registry, canonical store handle (`Store()` — kernel-internal accessor). Consumers reach it through the runtime services. |
+| Application layer | `store/` (public package, kernel-internal since ADR-014) | Canonical store: SQLite schema v2 (`object_payloads` — immutable, content-addressed payloads, insert-only; `object_refs` — mutable references with derived index columns; `attachments`, `sync_log`, `meta`), in-place v1→v2 schema migration, payload insert, reference upserts, sync log, integrity verification (`VerifyIntegrity`). Private persistence behind the Kernel. |
+| Application layer | `sync/` (public package, kernel-internal since ADR-014) | Knowledge Runtime synchronization engine: pull (snapshot verification + upsert / docs-mode conformance gate + seed) and push (deterministic snapshot assembly + atomic swap). Orchestration beneath the Authoring API (`Authoring.Sync`). |
 | Entry point | `cmd/eka/main.go` | Thin: `os.Exit(cmd.Execute(...))`. Executable name: `eka`. |
 
 ```
@@ -1102,21 +1105,29 @@ cmd/ui/             package ui — presentation primitives (no business logic)
   step.go           deterministic [i/n] step prefix
 cmd/eka/
   main.go           thin: os.Exit(cmd.Execute(...))
+runtime/            public package — the Runtime Kernel (ADR-014): internal
+                    Runtime API (Workspace, Knowledge, Resolver, Relations,
+                    Timeline, Snapshot, Integrity) + Authoring API
+                    (runtime.Authoring: Validate/Compile/Sync); the one
+                    sanctioned entry point for consumers
 bootstrap/          public package — eka init engine (application layer)
 exchange/           public package — import/export engine (application layer)
 conformance/        public package — validation engine (application layer)
 view/               public package — knowledge projection engine (application layer)
-workspace/          public package — EKA workspace + registry (application layer)
-store/              public package — canonical store, SQLite schema v2 (application layer)
-sync/               public package — synchronization engine (application layer)
+workspace/          public package — EKA workspace + registry (application layer;
+                    kernel-internal since ADR-014)
+store/              public package — canonical store, SQLite schema v2
+                    (application layer; kernel-internal since ADR-014)
+sync/               public package — synchronization engine (application layer;
+                    kernel-internal since ADR-014)
 skeletonembed.go    root package — //go:embed skeleton (canonical Reference Skeleton)
 ```
 
 Principles:
 
-- **Cobra is an adapter, not the architecture.** The framework (currently Cobra) is an implementation detail of the command interface. Business logic lives in `bootstrap/`, `exchange/`, `conformance/`, `view/`, `workspace/`, `store/` and `sync/` — public packages imported as `github.com/maleolabs/engineering-knowledge-architecture/bootstrap`, `.../conformance`, `.../workspace`, `.../sync`, etc., **with no dependency on `cmd/`**.
-- **The command layer calls services, not the other way around.** Future tooling (import/export, graph query, SDKs, Knowledge OS integration, MCP servers) can import the application packages without being tied to Cobra.
-- **No `internal/` or `pkg/`** — there is no second internal consumer; the application packages are already public API. Adding a directory without an immediate purpose is speculative abstraction (forbidden).
+- **Cobra is an adapter, not the architecture.** The framework (currently Cobra) is an implementation detail of the command interface. Business logic lives in `runtime/` (the Runtime Kernel — ADR-014), `bootstrap/`, `exchange/`, `conformance/` and `view/` — public packages imported as `github.com/maleolabs/engineering-knowledge-architecture/runtime`, `.../bootstrap`, `.../conformance`, etc., **with no dependency on `cmd/`**. The kernel-internal packages (`workspace/`, `store/`, `sync/`, `compile/`) sit behind the runtime services: production code outside `runtime/` must not import them — enforced structurally by the import graph.
+- **The command layer calls services, not the other way around.** Future tooling (import/export, graph query, SDKs, Knowledge OS integration, MCP servers) imports the runtime services (and the exchange/export packages) without being tied to Cobra — and without learning storage internals.
+- **No `internal/` or `pkg/`** — there is no second internal consumer; the application packages are already public API. The Kernel boundary is enforced by import discipline (ADR-014), not by a directory convention. Adding a directory without an immediate purpose is speculative abstraction (forbidden).
 - **Reference Skeleton embedded** (`skeletonembed.go`): `eka init` generates repositories from the canonical `skeleton/` source, not from a hardcoded directory. The standalone binary can still generate the structure without a repository checkout.
 - **Deterministic exit codes** (0/1/2) mapped in `cmd/root.go`; all errors go through a single output path `eka: <message>`.
 
@@ -1139,7 +1150,7 @@ A new command is added without architectural refactoring:
 | `eka init` | **Implemented** | Repository Bootstrapper (5 stages, adaptive wizard, dry-run, idempotent, post-generation validation). |
 | `eka export` | **Implemented** | Exchange Package export (RSF v1.1): repo/line/instance/collection scope, automatic validation, deterministic, external reference declaration, attachments, SHA-256 digests. |
 | `eka import` | **Implemented** | Exchange Package import (RSF v1.1 + Exchange §11): package + integrity validation, identity/relationship resolution, conflict → abort, atomic staged commit, rollback, post-import revalidation. |
-| `eka view` | **Implemented** | Knowledge projections (execution / planning / architecture / discovery / operations / ticket; CLI aliases `sprint`, `wave` → execution): read-only views derived from the Engineering Knowledge Model — relationships + State, never markdown text — over Canonical Knowledge Objects read from the workspace canonical store (`store.UnitsByProject` → `exchange.DecodeUnit`, project union; ADR-013); requires a registered + synced repository (`eka sync` first), unregistered refused (exit 1); rendered as per-domain visualizations (Kanban board, roadmap, dependency tree, information cards, release timeline, detail card). Deterministic, exit codes 0/1/2. |
+| `eka view` | **Implemented** | Knowledge projections (execution / planning / architecture / discovery / operations / ticket; CLI aliases `sprint`, `wave` → execution): read-only views derived from the Engineering Knowledge Model — relationships + State, never markdown text — over Canonical Knowledge Objects read from the workspace canonical store via the runtime services (`Knowledge.UnitsByProject` → `exchange.DecodeUnit`, project union; ADR-013, ADR-014); requires a registered + synced repository (`eka sync` first), unregistered refused (exit 1); rendered as per-domain visualizations (Kanban board, roadmap, dependency tree, information cards, release timeline, detail card). Deterministic, exit codes 0/1/2. |
 | `eka watch` | **Implemented** | Realtime projection viewer: same projections as `eka view` (incl. `sprint` / `wave` aliases); TTY-only, polling refresh of the canonical store (`--interval`, default 2s, min 1s), redraw on change only, live refusal frames (repository not registered) with auto-recovery, Ctrl-C to stop (exit `0`). |
 | `eka validate` | **Implemented** | Full conformance validator (R0–R12: R1–R9 + structural R0 + domain-aware R10–R12). |
 | `eka sync` | **Implemented** | Knowledge Runtime synchronization (v0.2.0): pull (snapshot mode: verify + idempotent upsert; docs mode: conformance-gated seed) + push (deterministic snapshot, atomic swap); auto-registration; deletions never applied; exit codes 0/1/2. |

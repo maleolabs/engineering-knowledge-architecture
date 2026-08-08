@@ -2,12 +2,10 @@ package cmd
 
 import (
 	"fmt"
-	"os"
-	"path/filepath"
 	"strconv"
 
 	"github.com/maleolabs/engineering-knowledge-architecture/cmd/ui"
-	"github.com/maleolabs/engineering-knowledge-architecture/workspace"
+	"github.com/maleolabs/engineering-knowledge-architecture/runtime"
 	"github.com/spf13/cobra"
 )
 
@@ -34,29 +32,29 @@ Exit codes:
   2  usage or internal error`,
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			home, err := workspace.HomeDir()
+			home, err := runtime.HomeDir()
 			if err != nil {
 				return err
 			}
 			s := styleFor(cmd)
-			if _, err := os.Stat(filepath.Join(home, "workspace.json")); err != nil {
-				if os.IsNotExist(err) {
-					fmt.Fprintf(s.W, "%s\n", s.Accent("Runtime"))
-					fmt.Fprintf(s.W, "  %s\n", s.Info("No EKA workspace at "+home+" yet. Run 'eka project register' to create it."))
-					return nil
-				}
-				return fmt.Errorf("status failed: cannot access %s: %w", home, err)
-			}
-
-			ws, err := workspace.Ensure()
+			// The read-only entry: Open never initializes the
+			// workspace — a missing workspace.json is reported through
+			// Exists, not created.
+			r, err := runtime.Open()
 			if err != nil {
 				return err
 			}
-			defer ws.Close()
-			if err := renderStatus(s, ws); err != nil {
-				return err
+			defer r.Close()
+			if !r.Exists() {
+				fmt.Fprintf(s.W, "%s\n", s.Accent("Runtime"))
+				fmt.Fprintf(s.W, "  %s\n", s.Info("No EKA workspace at "+home+" yet. Run 'eka project register' to create it."))
+				return nil
 			}
-			return nil
+			st, err := r.Workspace.Status()
+			if err != nil {
+				return fmt.Errorf("status failed: %w", err)
+			}
+			return renderStatus(s, st)
 		},
 	}
 }
@@ -64,53 +62,29 @@ Exit codes:
 // renderStatus renders the workspace overview deterministically. Any
 // store failure is propagated: status is a monitoring command and must
 // never report a false healthy state (exit code 2 on internal error).
-func renderStatus(s *ui.Style, ws *workspace.Workspace) error {
-	_, id, created := ws.Meta()
-	// The store schema version (eka.db) — the meaningful one; the
-	// workspace.json file format version is an internal detail.
-	sv, err := ws.DB.SchemaVersion()
-	if err != nil {
-		return fmt.Errorf("status failed: %w", err)
-	}
-	projects, err := ws.Projects()
-	if err != nil {
-		return fmt.Errorf("status failed: %w", err)
-	}
-	objects, payloads, attachments, err := ws.Counts()
-	if err != nil {
-		return fmt.Errorf("status failed: %w", err)
-	}
-
+func renderStatus(s *ui.Style, st *runtime.WorkspaceStatus) error {
 	ui.NewHeader(s, "Runtime").
-		Add("Workspace", ws.Path()).
-		Add("Schema", "v"+strconv.Itoa(sv)).
-		Add("ID", id).
-		Add("Created", created).
+		Add("Workspace", st.Path).
+		Add("Schema", "v"+strconv.Itoa(st.SchemaVersion)).
+		Add("ID", st.ID).
+		Add("Created", st.Created).
 		Render()
 
 	ui.NewSummary(s).
-		Add("Projects", strconv.Itoa(len(projects))).
-		Add("Objects", strconv.Itoa(objects)).
-		Add("Payloads", strconv.Itoa(payloads)).
-		Add("Attachments", strconv.Itoa(attachments)).
+		Add("Projects", strconv.Itoa(len(st.Projects))).
+		Add("Objects", strconv.Itoa(st.Objects)).
+		Add("Payloads", strconv.Itoa(st.Payloads)).
+		Add("Attachments", strconv.Itoa(st.Attachments)).
 		Render()
 
-	if len(projects) == 0 {
+	if len(st.Projects) == 0 {
 		fmt.Fprintf(s.W, "\n%s\n", s.Info("No projects registered. Run 'eka project register' to add one."))
 		return nil
 	}
-	for _, p := range projects {
-		repos, err := ws.Repos(p.ID)
-		if err != nil {
-			return fmt.Errorf("status failed: %w", err)
-		}
-		fmt.Fprintf(s.W, "\n%s %s\n", ui.IconBullet, s.Accent(p.ID))
-		for _, r := range repos {
-			last, err := lastSyncDetail(ws, p.ID, r.Name)
-			if err != nil {
-				return fmt.Errorf("status failed: %w", err)
-			}
-			fmt.Fprintf(s.W, "  %s %s  (%s)%s\n", ui.IconBullet, s.Info(r.Name), displayPath(r.Path), last)
+	for _, p := range st.Projects {
+		fmt.Fprintf(s.W, "\n%s %s\n", ui.IconBullet, s.Accent(p.Project.ID))
+		for _, r := range p.Repos {
+			fmt.Fprintf(s.W, "  %s %s  (%s)%s\n", ui.IconBullet, s.Info(r.Repo.Name), displayPath(r.Repo.Path), lastSyncDetail(r.LastSync))
 		}
 	}
 	return nil
@@ -118,14 +92,9 @@ func renderStatus(s *ui.Style, ws *workspace.Workspace) error {
 
 // lastSyncDetail renders the most recent sync-log entry of one
 // repository ("" when none).
-func lastSyncDetail(ws *workspace.Workspace, projectID, repo string) (string, error) {
-	entries, err := ws.DB.RecentSyncs(projectID, repo, 1)
-	if err != nil {
-		return "", err
+func lastSyncDetail(e *runtime.SyncEntry) string {
+	if e == nil {
+		return ""
 	}
-	if len(entries) == 0 {
-		return "", nil
-	}
-	e := entries[0]
-	return fmt.Sprintf("  [%s %s at %s]", e.Direction, shortDigest(e.SnapshotDigest), e.At), nil
+	return fmt.Sprintf("  [%s %s at %s]", e.Direction, shortDigest(e.SnapshotDigest), e.At)
 }

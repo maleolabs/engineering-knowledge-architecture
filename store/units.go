@@ -38,6 +38,37 @@ func (s *Store) UnitsByProject(projectID string) ([]*exchange.Unit, error) {
 		WHERE project_id = ? ORDER BY form`, projectID)
 }
 
+// UnitsByLine returns every instance of one artifact line across the
+// WHOLE workspace — the identity line (namespace, type, id) resolved
+// across every project and repository — decoded from their immutable
+// payloads, ordered by canonical form (the deterministic workspace
+// order). It is the line resolution primitive of the runtime
+// (Resolver.ResolveLine, Timeline.Line).
+func (s *Store) UnitsByLine(ns, typeToken, id string) ([]*exchange.Unit, error) {
+	return s.unitsByQuery(`SELECT form, object_hash FROM object_refs
+		WHERE namespace = ? AND type = ? AND id = ? ORDER BY form`, ns, typeToken, id)
+}
+
+// Unit returns one Canonical Knowledge Object by its canonical identity
+// form — the single-object resolution of the runtime ("Load/Resolve
+// Knowledge"). It mirrors the form/payload-identity check of the unit
+// projection: a reference whose form does not equal the payload's own
+// identity is store corruption and errors loudly.
+func (s *Store) Unit(form string) (*exchange.Unit, bool, error) {
+	r, ok, err := s.Ref(form)
+	if err != nil {
+		return nil, false, err
+	}
+	if !ok {
+		return nil, false, nil
+	}
+	u, err := s.decodeUnit(r.Form, r.ObjectHash)
+	if err != nil {
+		return nil, false, err
+	}
+	return u, true, nil
+}
+
 // unitsByQuery resolves the (form, object_hash) rows of one reference
 // query to their decoded units, in row order (the query carries its
 // ORDER BY form). A missing payload or an undecodable unit for a
@@ -64,23 +95,35 @@ func (s *Store) unitsByQuery(query string, args ...any) ([]*exchange.Unit, error
 	}
 	out := make([]*exchange.Unit, 0, len(forms))
 	for i, hash := range hashes {
-		unitJSON, content, err := s.Payload(hash)
+		u, err := s.decodeUnit(forms[i], hash)
 		if err != nil {
-			return nil, fmt.Errorf("store: cannot read payload of %s: %w", forms[i], err)
+			return nil, err
 		}
-		u, err := exchange.DecodeUnit(unitJSON, content)
-		if err != nil {
-			return nil, fmt.Errorf("store: cannot decode payload of %s: %w", forms[i], err)
-		}
-		// Reference/form integrity (mirror of VerifyIntegrity level 4):
-		// the reference's form must equal the payload's own identity —
-		// a mismatch is store corruption and errors loudly, never
-		// silently projected under the payload's identity.
-		if want := u.Identity.CanonicalForm(); forms[i] != want {
-			return nil, fmt.Errorf("store: reference %s points at a payload whose identity is %s (store corruption)", forms[i], want)
-		}
-		u.Digest = hash
 		out = append(out, u)
 	}
 	return out, nil
+}
+
+// decodeUnit decodes one (form, object_hash) reference pair to its
+// unit: the shared per-reference decode of the unit projection and the
+// single-object resolver.
+//
+// Reference/form integrity (mirror of VerifyIntegrity level 4): the
+// reference's form must equal the payload's own identity — a mismatch
+// is store corruption and errors loudly, never silently projected
+// under the payload's identity.
+func (s *Store) decodeUnit(form, hash string) (*exchange.Unit, error) {
+	unitJSON, content, err := s.Payload(hash)
+	if err != nil {
+		return nil, fmt.Errorf("store: cannot read payload of %s: %w", form, err)
+	}
+	u, err := exchange.DecodeUnit(unitJSON, content)
+	if err != nil {
+		return nil, fmt.Errorf("store: cannot decode payload of %s: %w", form, err)
+	}
+	if want := u.Identity.CanonicalForm(); form != want {
+		return nil, fmt.Errorf("store: reference %s points at a payload whose identity is %s (store corruption)", form, want)
+	}
+	u.Digest = hash
+	return u, nil
 }

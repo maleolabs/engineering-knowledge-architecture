@@ -1,7 +1,7 @@
 # Migration Report — Knowledge Runtime Architecture v0.2.0
 
 > Milestone: EKA v0.2.0 — Knowledge Runtime Architecture (workspace + embedded canonical store + snapshot transport + synchronization protocol).
-> Authoritative decisions: [ADR-009](decisions/adr-009-knowledge-runtime-architecture.md), [ADR-010](decisions/adr-010-synchronization-model.md), [ADR-011](decisions/adr-011-immutable-engineering-knowledge-model.md) (schema v2 — see the [Addendum §8](#8-addendum-immutable-engineering-knowledge-model-schema-v2)), [ADR-012](decisions/adr-012-canonical-knowledge-object-runtime.md) (the Canonical Knowledge Object consumption pivot — see the [Addendum §9](#9-addendum-canonical-knowledge-object-runtime)), [ADR-013](decisions/adr-013-store-backed-projections.md) (store-backed projections — see the [Addendum §10](#10-addendum-store-backed-projections)). Convention document, not an artifact.
+> Authoritative decisions: [ADR-009](decisions/adr-009-knowledge-runtime-architecture.md), [ADR-010](decisions/adr-010-synchronization-model.md), [ADR-011](decisions/adr-011-immutable-engineering-knowledge-model.md) (schema v2 — see the [Addendum §8](#8-addendum-immutable-engineering-knowledge-model-schema-v2)), [ADR-012](decisions/adr-012-canonical-knowledge-object-runtime.md) (the Canonical Knowledge Object consumption pivot — see the [Addendum §9](#9-addendum-canonical-knowledge-object-runtime)), [ADR-013](decisions/adr-013-store-backed-projections.md) (store-backed projections — see the [Addendum §10](#10-addendum-store-backed-projections)), [ADR-014](decisions/adr-014-runtime-interface-architecture.md) (the Runtime Kernel — see the [Addendum §11](#11-addendum-runtime-kernel-interfaces)). Convention document, not an artifact.
 > Version note: **CLI/artifact version 0.2.0**; the **EKA standard version remains 1.1** — this milestone changes the runtime of the reference implementation, not the standard.
 
 ## 1. Purpose
@@ -219,6 +219,40 @@ eka sync ./api && eka sync ./web && eka sync ./mobile
 - **Staleness vs live edits** — a projection reflects the **last sync**, not live authoring edits; an edit is visible only after re-sync. Deterministic and documented, never a silent hybrid; `eka sync` / `--from-docs` are the reconciliation tools.
 - **Unregistered refusal** — a repository outside the workspace cannot be projected until registered; registration is one command (`eka sync` auto-registers).
 - **Explicit sync step** — ADR-012's "authoring experience unchanged (`view` compiles on demand)" is deliberately revised; the UX cost is one command before the first view.
+
+## 11. Addendum — Runtime Kernel / Interfaces
+
+*This addendum records the fourth architectural clarification applied to the runtime before release: every consumer — starting with the CLI — now communicates with the runtime through the **Runtime Kernel** (`runtime/`): internal, in-process service contracts, never storage internals. The authoritative decision is [ADR-014](decisions/adr-014-runtime-interface-architecture.md); the interface contracts live in [`runtime-api.md`](runtime-api.md); the runtime document's §2.2 and §11 summarize. This section summarizes what it means for users.*
+
+### 11.1 What changed
+
+- **The Runtime Kernel (`runtime/` package) is the one sanctioned entry point.** It exposes two internal APIs on **concrete types** (deliberately no Go interface types — no consumer needs polymorphism yet; deliberately no HTTP/RPC — one process, one binary):
+  - **The Runtime API** — Workspace (`Status`, registry, last sync), Knowledge (`Object` / `UnitsByProject` / `Units` / `Search` / `Counts`), Resolver (`Resolve` / `ResolveLine`), Relations (`From` / `To` / `Upstream` / `Downstream`), Timeline (`Line`), Snapshot (`Read`), Integrity (`Verify` / `SchemaVersion`). Engineering-Knowledge-shaped: returns `exchange.Unit` (the CKO), packages, and reports — never table rows or `*sql.DB` handles. Never Markdown-aware.
+  - **The Authoring API** — the stateless `runtime.Authoring`: `Validate` (R0–R12 gate), `Compile` (authoring → CKO via the Knowledge Compiler), `Sync` (compile + seed the canonical store + snapshot write — the explicit synchronization of ADR-010). Markdown is one authoring adapter behind it.
+- **The CLI becomes a client of the runtime services.** Every runtime-touching command delegates: `eka sync` → `Authoring.Sync`; `eka view` / `eka watch` → `Knowledge.UnitsByProject` + the projection renderer; `eka status` → `Workspace.Status`; `eka project register`/`list` → the Workspace service; `eka integrity check` → the Integrity service; `eka validate` → `Authoring.Validate`. Production `cmd/` **no longer imports** `store/`, `workspace/`, `sync/` or `compile/`; the commands reduce to delegation, rendering and exit-code mapping.
+- **Storage isolation.** SQLite (`store/`) becomes a **private persistence implementation** of the Kernel. The persistence handle — `workspace.Store()`, replacing the exported `Workspace.DB` field — is Kernel-internal; the raw `*sql.DB` exposure is withdrawn from non-Kernel use. Tests may still use `store`/`workspace` directly for seeding and corruption fixtures (test-only, documented — the integrity detector needs a corrupted store to test against). The isolation is enforced structurally by the import graph, not by convention.
+- **`eka init` stays the authoring adapter** (bootstrap/ repo generation); **`eka export` / `eka import` stay exchange transport operations** — they touch repository files and packages, never the runtime store.
+
+### 11.2 What did NOT change
+
+| Area | Status |
+|---|---|
+| **Commands** | unchanged surfaces and behavior — `eka sync` / `eka view` / `eka watch` / `eka status` / `eka project` / `eka integrity check` / `eka validate` keep their names, arguments, determinism, output, and the 0/1/2 exit-code contract; all pinned CLI tests pass |
+| **Output and exit codes** | byte-identical — the ADR-013 refusal messages and empty-projection notes render exactly as before |
+| **Authoring** | unchanged — Markdown files in `docs/`; the authoring UX stays **write Markdown → `eka sync` → `eka view`** |
+| **RSF bytes** | unchanged — `unit.json` serialization, per-unit digests, and the snapshot format are untouched |
+| **Store schema** | unchanged — no schema change, no migration; the Kernel wraps the existing `object_refs` + `object_payloads` reads (Addendum §8) |
+
+### 11.3 Migration impact
+
+**None for users.** Same commands, same output, same repository content, same store. The change is internal architecture only: *how* the CLI reaches the runtime (through the Kernel's services instead of storage internals), not *what* users write or run. Existing workspaces, snapshots, and sync flows are unaffected.
+
+### 11.4 Trade-offs (accepted, documented in ADR-014 §Consequences)
+
+- **Thin wrappers** — some services are thin over the internal packages (`Authoring.Validate` ≈ the conformance gate, `Knowledge.Counts` ≈ store counts); mitigated because the services add real value (aggregation, traversal, search filtering, domain-shaped returns) and concentrate knowledge-shaped semantics in exactly one place — the place every future consumer shares.
+- **Scan-based traversal and search** — `Relations.To` / `Relations.Downstream` (workspace-wide reverse traversal) and `Knowledge.Search` (metadata filters) are in-memory scans over the project's units in v0.2: deterministic and fine at runtime scale, with indexed SQL reserved as a later optimization.
+- **Alias re-exports** — `SyncResult = sync.Report` and its siblings (the authoring validation report, the integrity report) leak the internal package names into the API surface; accepted as **contract types** (the reports are the domain-shaped return values).
+- **In-memory search does not use the SQL indexes yet** — the `object_refs` index columns (`dimension`, `domain`, `phase`, identity tuple) exist but search filters in memory; a future optimization pushes the filter into SQL.
 
 ---
 

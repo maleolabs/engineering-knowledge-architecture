@@ -7,8 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/maleolabs/engineering-knowledge-architecture/sync"
-	"github.com/maleolabs/engineering-knowledge-architecture/workspace"
+	"github.com/maleolabs/engineering-knowledge-architecture/runtime"
 )
 
 // viewFixtureAbs resolves the absolute path of a view test fixture.
@@ -22,35 +21,35 @@ func viewFixtureAbs(t *testing.T, name string) string {
 }
 
 // seedViewRepo copies one view fixture into a fresh repo, seeds a fresh
-// workspace (EKA_HOME) with it through the sync engine (docs-mode pull
-// + push — the store-backed setup of the projection path), and chdirs
-// into the repo copy. Returns the repo path.
+// workspace (EKA_HOME) with it through the Runtime (the Authoring API —
+// docs-mode pull + push — the store-backed setup of the projection
+// path), and chdirs into the repo copy. Returns the repo path.
 func seedViewRepo(t *testing.T, name string) string {
 	t.Helper()
 	t.Setenv("EKA_HOME", t.TempDir())
 	repo := copyFixture(t, filepath.Join("..", "view", "testdata", name))
-	ws, err := workspace.Ensure()
+	r, err := runtime.Ensure()
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer ws.Close()
-	if _, err := sync.Run(ws, repo, sync.Options{Pull: true, Push: true}); err != nil {
+	defer r.Close()
+	if _, err := runtime.Authoring.Sync(r, repo, runtime.SyncOptions{Pull: true, Push: true}); err != nil {
 		t.Fatal(err)
 	}
 	chdirInto(t, repo)
 	return repo
 }
 
-// openWorkspace opens the workspace of the current EKA_HOME and closes
-// it on cleanup.
-func openWorkspace(t *testing.T) *workspace.Workspace {
+// openRuntime opens the Runtime of the current EKA_HOME and closes it
+// on cleanup.
+func openRuntime(t *testing.T) *runtime.Runtime {
 	t.Helper()
-	ws, err := workspace.Ensure()
+	r, err := runtime.Ensure()
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { ws.Close() })
-	return ws
+	t.Cleanup(func() { r.Close() })
+	return r
 }
 
 // writeStory writes a minimal conformant work-item story doc (the
@@ -544,12 +543,12 @@ func TestViewUnregisteredRepoExitsOne(t *testing.T) {
 func TestViewNoSyncedKnowledgeExitsZero(t *testing.T) {
 	t.Setenv("EKA_HOME", t.TempDir())
 	repo := t.TempDir()
-	ws, err := workspace.Ensure()
+	r, err := runtime.Ensure()
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer ws.Close()
-	if _, _, _, err := ws.RegisterRepo(repo, ""); err != nil {
+	defer r.Close()
+	if _, _, _, err := r.Workspace.RegisterRepo(repo, ""); err != nil {
 		t.Fatal(err)
 	}
 	chdirInto(t, repo)
@@ -579,12 +578,12 @@ func TestViewNoSyncedKnowledgeExitsZero(t *testing.T) {
 func TestViewEmptyDomainExitsZero(t *testing.T) {
 	t.Setenv("EKA_HOME", t.TempDir())
 	repo := t.TempDir()
-	ws, err := workspace.Ensure()
+	r, err := runtime.Ensure()
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer ws.Close()
-	if _, _, _, err := ws.RegisterRepo(repo, ""); err != nil {
+	defer r.Close()
+	if _, _, _, err := r.Workspace.RegisterRepo(repo, ""); err != nil {
 		t.Fatal(err)
 	}
 	chdirInto(t, repo)
@@ -619,16 +618,16 @@ func TestViewMultiRepoProjectUnion(t *testing.T) {
 	writeStory(t, filepath.Join(repoA, "docs", "operating", "work-items", "stories", "sto-alpha.md"), "union-a", "alpha", "todo")
 	writeStory(t, filepath.Join(repoB, "docs", "operating", "work-items", "stories", "sto-beta.md"), "union-b", "beta", "done")
 
-	ws, err := workspace.Ensure()
+	r, err := runtime.Ensure()
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer ws.Close()
+	defer r.Close()
 	for _, repo := range []string{repoA, repoB} {
-		if _, _, _, err := ws.RegisterRepo(repo, "union"); err != nil {
+		if _, _, _, err := r.Workspace.RegisterRepo(repo, "union"); err != nil {
 			t.Fatal(err)
 		}
-		if _, err := sync.Run(ws, repo, sync.Options{Pull: true, Push: true}); err != nil {
+		if _, err := runtime.Authoring.Sync(r, repo, runtime.SyncOptions{Pull: true, Push: true}); err != nil {
 			t.Fatal(err)
 		}
 	}

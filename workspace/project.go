@@ -82,12 +82,12 @@ func (w *Workspace) RegisterRepo(path, name string) (Project, Repo, bool, error)
 	now := time.Now().Format("2006-01-02")
 
 	// Upsert the project; read its record back.
-	if _, err := w.DB.DB().Exec(`INSERT INTO projects (id, name, created) VALUES (?, ?, ?)
+	if _, err := w.Store().DB().Exec(`INSERT INTO projects (id, name, created) VALUES (?, ?, ?)
 		ON CONFLICT(id) DO UPDATE SET name = excluded.name`, projectName, projectName, now); err != nil {
 		return Project{}, Repo{}, false, fmt.Errorf("workspace: cannot register project %q: %w", projectName, err)
 	}
 	project := Project{ID: projectName, Name: projectName, Created: now}
-	if err := w.DB.DB().QueryRow(`SELECT created FROM projects WHERE id = ?`, projectName).Scan(&project.Created); err != nil {
+	if err := w.Store().DB().QueryRow(`SELECT created FROM projects WHERE id = ?`, projectName).Scan(&project.Created); err != nil {
 		return Project{}, Repo{}, false, fmt.Errorf("workspace: cannot read project %q: %w", projectName, err)
 	}
 
@@ -98,12 +98,12 @@ func (w *Workspace) RegisterRepo(path, name string) (Project, Repo, bool, error)
 		return Project{}, Repo{}, false, err
 	}
 	created := !exists
-	if _, err := w.DB.DB().Exec(`INSERT INTO repos (project_id, name, path, created) VALUES (?, ?, ?, ?)
+	if _, err := w.Store().DB().Exec(`INSERT INTO repos (project_id, name, path, created) VALUES (?, ?, ?, ?)
 		ON CONFLICT(project_id, name) DO UPDATE SET path = excluded.path`, projectName, repoName, abs, now); err != nil {
 		return Project{}, Repo{}, false, fmt.Errorf("workspace: cannot register repository %q: %w", abs, err)
 	}
 	repo := Repo{ProjectID: projectName, Name: repoName, Path: abs, Created: now}
-	if err := w.DB.DB().QueryRow(`SELECT created FROM repos WHERE project_id = ? AND name = ?`, projectName, repoName).Scan(&repo.Created); err != nil {
+	if err := w.Store().DB().QueryRow(`SELECT created FROM repos WHERE project_id = ? AND name = ?`, projectName, repoName).Scan(&repo.Created); err != nil {
 		return Project{}, Repo{}, false, fmt.Errorf("workspace: cannot read repository record: %w", err)
 	}
 	return project, repo, created, nil
@@ -113,7 +113,7 @@ func (w *Workspace) RegisterRepo(path, name string) (Project, Repo, bool, error)
 // the upsert, so a pre-existing row means the upsert was an update).
 func repoExists(w *Workspace, projectID, name string) (bool, error) {
 	var n int
-	err := w.DB.DB().QueryRow(`SELECT COUNT(*) FROM repos WHERE project_id = ? AND name = ?`, projectID, name).Scan(&n)
+	err := w.Store().DB().QueryRow(`SELECT COUNT(*) FROM repos WHERE project_id = ? AND name = ?`, projectID, name).Scan(&n)
 	if err != nil {
 		return false, fmt.Errorf("workspace: cannot check repository existence: %w", err)
 	}
@@ -130,7 +130,7 @@ func (w *Workspace) FindRepo(absPath string) (Repo, bool, error) {
 	}
 	abs = filepath.Clean(abs)
 	var r Repo
-	err = w.DB.DB().QueryRow(`SELECT project_id, name, path, created FROM repos WHERE path = ?`, abs).
+	err = w.Store().DB().QueryRow(`SELECT project_id, name, path, created FROM repos WHERE path = ?`, abs).
 		Scan(&r.ProjectID, &r.Name, &r.Path, &r.Created)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -143,7 +143,7 @@ func (w *Workspace) FindRepo(absPath string) (Repo, bool, error) {
 
 // Repos returns every repository of one project, sorted by name.
 func (w *Workspace) Repos(projectID string) ([]Repo, error) {
-	rows, err := w.DB.DB().Query(`SELECT project_id, name, path, created FROM repos
+	rows, err := w.Store().DB().Query(`SELECT project_id, name, path, created FROM repos
 		WHERE project_id = ? ORDER BY name`, projectID)
 	if err != nil {
 		return nil, fmt.Errorf("workspace: cannot list repositories: %w", err)
@@ -165,7 +165,7 @@ func (w *Workspace) Repos(projectID string) ([]Repo, error) {
 
 // Projects returns every registered project, sorted by id.
 func (w *Workspace) Projects() ([]Project, error) {
-	rows, err := w.DB.DB().Query(`SELECT id, name, created FROM projects ORDER BY id`)
+	rows, err := w.Store().DB().Query(`SELECT id, name, created FROM projects ORDER BY id`)
 	if err != nil {
 		return nil, fmt.Errorf("workspace: cannot list projects: %w", err)
 	}
@@ -182,21 +182,6 @@ func (w *Workspace) Projects() ([]Project, error) {
 		return nil, fmt.Errorf("workspace: cannot list projects: %w", err)
 	}
 	return out, nil
-}
-
-// Counts returns the canonical store totals: references (the current
-// objects of the immutable model), immutable payloads, attachments.
-func (w *Workspace) Counts() (objects, payloads, attachments int, err error) {
-	if objects, err = w.DB.RefCount(); err != nil {
-		return 0, 0, 0, err
-	}
-	if payloads, err = w.DB.PayloadCount(); err != nil {
-		return 0, 0, 0, err
-	}
-	if attachments, err = w.DB.AttachmentCount(); err != nil {
-		return 0, 0, 0, err
-	}
-	return objects, payloads, attachments, nil
 }
 
 // SortedProjectIDs returns the project ids sorted (deterministic

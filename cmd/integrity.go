@@ -5,7 +5,7 @@ import (
 	"strconv"
 
 	"github.com/maleolabs/engineering-knowledge-architecture/cmd/ui"
-	"github.com/maleolabs/engineering-knowledge-architecture/workspace"
+	"github.com/maleolabs/engineering-knowledge-architecture/runtime"
 	"github.com/spf13/cobra"
 )
 
@@ -94,24 +94,24 @@ Exit codes:
 // 1 when violations exist, 2 on internal error (workspace resolution
 // and store failures fall through to the default usage class).
 func runIntegrityCheck(cmd *cobra.Command) error {
-	ws, err := workspace.Ensure()
+	r, err := runtime.Ensure()
 	if err != nil {
 		return err // Exit 2: workspace resolution.
 	}
-	defer ws.Close()
+	defer r.Close()
 
-	report, err := ws.DB.VerifyIntegrity()
+	report, err := r.Integrity.Verify()
 	if err != nil {
 		return fmt.Errorf("integrity check failed: %w", err) // Exit 2.
 	}
-	sv, err := ws.DB.SchemaVersion()
+	sv, err := r.Integrity.SchemaVersion()
 	if err != nil {
 		return fmt.Errorf("integrity check failed: %w", err)
 	}
 
 	s := styleFor(cmd)
 	ui.NewHeader(s, "Runtime").
-		Add("Workspace", ws.Path()).
+		Add("Workspace", r.Path()).
 		Add("Schema", "v"+strconv.Itoa(sv)).
 		Render()
 

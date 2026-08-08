@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 
 	"github.com/maleolabs/engineering-knowledge-architecture/cmd/ui"
-	"github.com/maleolabs/engineering-knowledge-architecture/workspace"
+	"github.com/maleolabs/engineering-knowledge-architecture/runtime"
 	"github.com/spf13/cobra"
 )
 
@@ -74,13 +74,13 @@ Exit codes:
 			} else if !info.IsDir() {
 				return fmt.Errorf("project register failed: %s is not a directory", path)
 			}
-			ws, err := workspace.Ensure()
+			r, err := runtime.Ensure()
 			if err != nil {
 				return err
 			}
-			defer ws.Close()
+			defer r.Close()
 
-			project, repo, created, err := ws.RegisterRepo(path, name)
+			project, repo, created, err := r.Workspace.RegisterRepo(path, name)
 			if err != nil {
 				return err
 			}
@@ -122,26 +122,26 @@ Exit codes:
   2  usage or internal error`,
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			ws, err := workspace.Ensure()
+			r, err := runtime.Ensure()
 			if err != nil {
 				return err
 			}
-			defer ws.Close()
+			defer r.Close()
 
-			projects, err := ws.Projects()
+			projects, err := r.Workspace.Projects()
 			if err != nil {
 				return err
 			}
 			s := styleFor(cmd)
 			ui.NewHeader(s, "Projects").
-				Add("Workspace", ws.Path()).
+				Add("Workspace", r.Path()).
 				Render()
 			if len(projects) == 0 {
 				fmt.Fprintf(s.W, "\n%s\n", s.Info("No projects registered yet. Run 'eka project register' to add one."))
 				return nil
 			}
 			for _, p := range projects {
-				repos, err := ws.Repos(p.ID)
+				repos, err := r.Workspace.Repos(p.ID)
 				if err != nil {
 					return err
 				}

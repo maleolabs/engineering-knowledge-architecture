@@ -6,6 +6,7 @@ import (
 
 	"github.com/maleolabs/engineering-knowledge-architecture/cmd/ui"
 	"github.com/maleolabs/engineering-knowledge-architecture/conformance"
+	"github.com/maleolabs/engineering-knowledge-architecture/runtime"
 	"github.com/spf13/cobra"
 )
 
@@ -32,7 +33,9 @@ the exit code; blocking violations exit 1. Usage or internal errors
 			if len(args) == 1 {
 				path = args[0]
 			}
-			report, err := conformance.Validate(path)
+			// The Authoring API: validation is an authoring operation —
+			// the conformance gate behind the Knowledge Compiler.
+			report, err := runtime.Authoring.Validate(path)
 			if err != nil {
 				return fmt.Errorf("validate failed: %w", err)
 			}
