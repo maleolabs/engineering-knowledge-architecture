@@ -4,19 +4,27 @@
 //
 // The engine is pure data in, pure data out. It contains no terminal
 // knowledge, no command framework, and no output: it reads one
-// conformance.Scan result and produces projection models. Every
-// projection is derived exclusively from the Engineering Knowledge
-// Model (artifact identity, state fields, relationships) — never from
-// markdown content. The engine is synchronous and stateless: one graph
-// build per scan, one projection build per view, so a loading state can
+// compiled Canonical Knowledge Object set (the compile.Compile result
+// — exchange.Units) and produces projection models. Every projection
+// is derived exclusively from the Engineering Knowledge Model (unit
+// identity, state vector, relationships) — never from markdown
+// content. The engine is synchronous and stateless: one graph build
+// per compile, one projection build per view, so a loading state can
 // wrap the whole call without restructuring.
 //
-// Determinism contract: all ordering is canonical. Artifacts are
-// ordered by their canonical line identity form (<namespace>/<type>:<id>)
-// and instance-version; execution-state columns always follow the fixed
+// The engine is representation-independent by construction: it consumes
+// CKOs (exchange.Units), never authoring syntax. The Markdown adapter
+// (conformance) lives upstream of the Knowledge Compiler (compile);
+// ontology helpers shared with the authoring layer (ParseReference,
+// DomainValues, OwnedDomains, DomainForToken, Stratum) are
+// representation-independent model functions and stay in use here.
+//
+// Determinism contract: all ordering is canonical. Units are ordered
+// by their canonical line identity form (<namespace>/<type>:<id>) and
+// instance-version; execution-state columns always follow the fixed
 // value order planned, todo, in-progress, in-review, done; tickets keep
-// relationship file order in their reference lists. There are no maps in
-// output ordering and no time-dependent values.
+// their derives-from references in stored (type, target) order. There
+// are no maps in output ordering and no time-dependent values.
 //
 // Membership derivation (the single source of membership — relationships
 // only, never file text):
@@ -27,18 +35,20 @@
 //	one of its derives-from references resolves to C. Work items are
 //	identified by their type owning the Execution State domain
 //	(conformance.OwnedDomains); the ticket itself is never parsed beyond
-//	its frontmatter relationships.
+//	its relationships.
 package view
 
 import (
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/maleolabs/engineering-knowledge-architecture/conformance"
+	"github.com/maleolabs/engineering-knowledge-architecture/exchange"
 )
 
-// LineForm renders the canonical line identity form of an artifact:
-// "<namespace>/<type>:<id>". It identifies an artifact line (all
+// LineForm renders the canonical line identity form of a unit:
+// "<namespace>/<type>:<id>". It identifies a unit line (all
 // instance-versions) and is the ordering key used throughout the
 // package.
 func LineForm(ns, typeToken, id string) string {
@@ -53,105 +63,165 @@ func lineKey(ns, typeToken, id string) string {
 	return ns + "\x00" + typeToken + "\x00" + id
 }
 
-// Graph is the Knowledge Graph built from one conformance.Scan result:
-// an identity index (canonical line form -> artifact), instance lines
+// Graph is the Knowledge Graph built from one compiled CKO set: an
+// identity index (canonical line form -> unit), instance lines
 // (grouped by identity, ordered by instance-version), relationship
-// resolution (reference -> artifact), and the membership helpers used by
+// resolution (reference -> unit), and the membership helpers used by
 // the projections. It is immutable after construction.
 type Graph struct {
-	root      string
-	artifacts []conformance.Artifact
-	// byLine indexes artifacts by identity line; each bucket holds every
+	root  string
+	units []*exchange.Unit
+	// byLine indexes units by identity line; each bucket holds every
 	// instance sorted by instance-version (line resolution returns the
 	// lowest instance, matching the validator).
-	byLine map[string][]*conformance.Artifact
+	byLine map[string][]*exchange.Unit
 	// byForm maps the canonical line identity form to the line's lowest
 	// instance (the line-level resolution target).
-	byForm map[string]*conformance.Artifact
-	// byType maps type tokens to their artifact lines, sorted by
+	byForm map[string]*exchange.Unit
+	// byType maps type tokens to their unit lines, sorted by
 	// canonical identity form (then instance-version, for robustness on
 	// non-conformant input).
-	byType map[string][]*conformance.Artifact
+	byType map[string][]*exchange.Unit
 }
 
-// NewGraph builds the Knowledge Graph from a scan result. The artifact
-// slice is copied; the graph never aliases caller-owned memory.
-func NewGraph(root string, artifacts []conformance.Artifact) *Graph {
+// NewGraph builds the Knowledge Graph from a compiled CKO set. The
+// unit slice is copied; the graph never aliases caller-owned memory
+// beyond the unit pointers themselves (units are immutable payloads).
+func NewGraph(root string, units []*exchange.Unit) *Graph {
 	g := &Graph{
-		root:      root,
-		artifacts: artifacts,
-		byLine:    make(map[string][]*conformance.Artifact, len(artifacts)),
-		byForm:    make(map[string]*conformance.Artifact, len(artifacts)),
-		byType:    make(map[string][]*conformance.Artifact),
+		root:   root,
+		units:  units,
+		byLine: make(map[string][]*exchange.Unit, len(units)),
+		byForm: make(map[string]*exchange.Unit, len(units)),
+		byType: make(map[string][]*exchange.Unit),
 	}
-	for i := range g.artifacts {
-		a := &g.artifacts[i]
-		key := lineKey(a.Namespace, a.Type, a.ID)
-		g.byLine[key] = append(g.byLine[key], a)
-		g.byType[a.Type] = append(g.byType[a.Type], a)
+	for _, u := range g.units {
+		key := lineKey(u.Identity.Namespace, u.Identity.Type, u.Identity.ID)
+		g.byLine[key] = append(g.byLine[key], u)
+		g.byType[u.Identity.Type] = append(g.byType[u.Identity.Type], u)
 	}
 	for _, bucket := range g.byLine {
 		sort.Slice(bucket, func(i, j int) bool {
-			return bucket[i].InstanceVersion < bucket[j].InstanceVersion
+			return bucket[i].Identity.InstanceVersion < bucket[j].Identity.InstanceVersion
 		})
-		g.byForm[LineForm(bucket[0].Namespace, bucket[0].Type, bucket[0].ID)] = bucket[0]
+		g.byForm[LineForm(bucket[0].Identity.Namespace, bucket[0].Identity.Type, bucket[0].Identity.ID)] = bucket[0]
 	}
 	for _, bucket := range g.byType {
 		sort.Slice(bucket, func(i, j int) bool {
-			a, b := LineForm(bucket[i].Namespace, bucket[i].Type, bucket[i].ID),
-				LineForm(bucket[j].Namespace, bucket[j].Type, bucket[j].ID)
+			a, b := LineForm(bucket[i].Identity.Namespace, bucket[i].Identity.Type, bucket[i].Identity.ID),
+				LineForm(bucket[j].Identity.Namespace, bucket[j].Identity.Type, bucket[j].Identity.ID)
 			if a != b {
 				return a < b
 			}
-			return bucket[i].InstanceVersion < bucket[j].InstanceVersion
+			return bucket[i].Identity.InstanceVersion < bucket[j].Identity.InstanceVersion
 		})
 	}
 	return g
 }
 
-// Root returns the scan root the graph was built from.
+// Root returns the compile root the graph was built from.
 func (g *Graph) Root() string { return g.root }
 
-// Artifacts returns every artifact of the graph, sorted by canonical
-// identity form (then instance-version).
-func (g *Graph) Artifacts() []conformance.Artifact {
-	out := make([]conformance.Artifact, len(g.artifacts))
-	copy(out, g.artifacts)
+// Units returns every unit of the graph, sorted by canonical identity
+// form (then instance-version).
+func (g *Graph) Units() []*exchange.Unit {
+	out := make([]*exchange.Unit, len(g.units))
+	copy(out, g.units)
 	sort.Slice(out, func(i, j int) bool {
-		a, b := LineForm(out[i].Namespace, out[i].Type, out[i].ID),
-			LineForm(out[j].Namespace, out[j].Type, out[j].ID)
+		a, b := LineForm(out[i].Identity.Namespace, out[i].Identity.Type, out[i].Identity.ID),
+			LineForm(out[j].Identity.Namespace, out[j].Identity.Type, out[j].Identity.ID)
 		if a != b {
 			return a < b
 		}
-		return out[i].InstanceVersion < out[j].InstanceVersion
+		return out[i].Identity.InstanceVersion < out[j].Identity.InstanceVersion
 	})
 	return out
 }
 
 // ByLineForm resolves a canonical line identity form to the line's
 // lowest instance, or nil when the line is not in the graph.
-func (g *Graph) ByLineForm(form string) *conformance.Artifact {
+func (g *Graph) ByLineForm(form string) *exchange.Unit {
 	return g.byForm[form]
 }
 
-// Resolve resolves a parsed reference to its target artifact: a
-// versioned reference resolves to the exact instance, a line reference
-// to the lowest instance. It returns nil when the reference does not
-// resolve. Semantics match the validator's Rule 5 resolution.
-func (g *Graph) Resolve(ref conformance.Reference) *conformance.Artifact {
+// Resolve resolves a parsed reference to its target unit: a versioned
+// reference resolves to the exact instance, a line reference to the
+// lowest instance. It returns nil when the reference does not resolve.
+// Semantics match the validator's Rule 5 resolution.
+func (g *Graph) Resolve(ref conformance.Reference) *exchange.Unit {
 	bucket := g.byLine[lineKey(ref.Namespace, ref.Type, ref.ID)]
 	if len(bucket) == 0 {
 		return nil
 	}
 	if ref.HasVersion {
-		for _, a := range bucket {
-			if a.InstanceVersion == ref.Version {
-				return a
+		for _, u := range bucket {
+			if u.Identity.InstanceVersion == ref.Version {
+				return u
 			}
 		}
 		return nil
 	}
 	return bucket[0]
+}
+
+// relsOf returns the targets of a unit's relationships of one type, in
+// stored (type, target) order — the CKO replacement of the authoring
+// layer's per-field relationship map. Targets are rendered in the
+// authoring reference convention: same-namespace targets as line
+// references ("<type>:<id>"), with the instance version appended
+// exactly when the target is NOT the lowest instance of its line —
+// omitting it then would change resolution (an unversioned reference
+// resolves to the lowest instance; a versioned one to the exact
+// instance), so the rendering is lossless for resolution by
+// construction. Cross-namespace targets render in the full canonical
+// form.
+func (g *Graph) relsOf(u *exchange.Unit, relType string) []string {
+	var out []string
+	for _, r := range u.Relationships {
+		if r.Type != relType {
+			continue
+		}
+		out = append(out, g.referenceForm(u, r.Target))
+	}
+	return out
+}
+
+// Rels is the exported form of relsOf for the CLI renderer layer: the
+// projections and the renderers share the same reference-form
+// rendering, so relationship presentation is consistent across the
+// whole view stack.
+func (g *Graph) Rels(u *exchange.Unit, relType string) []string { return g.relsOf(u, relType) }
+
+// referenceForm renders one relationship target in the authoring
+// reference convention of the unit's namespace: same-namespace targets
+// render as "<type>:<id>" line forms, appending the instance version
+// ("<type>:<id>:<v>") exactly when the target is not the line's lowest
+// instance (see relsOf); cross-namespace targets render in the full
+// canonical form (namespace included).
+func (g *Graph) referenceForm(u *exchange.Unit, target string) string {
+	ref, err := conformance.ParseReference(target, u.Identity.Namespace, u.Identity.Type)
+	if err != nil {
+		return target // Defensive: canonical targets always parse.
+	}
+	if ref.Namespace != u.Identity.Namespace {
+		return target
+	}
+	form := ref.Type + ":" + ref.ID
+	if g.lowestInstance(ref) != ref.Version {
+		form += ":" + strconv.Itoa(ref.Version)
+	}
+	return form
+}
+
+// lowestInstance returns the instance version of the line's lowest
+// instance (0 when the line has no units — the caller then never
+// reaches the version comparison with a meaningful target).
+func (g *Graph) lowestInstance(ref conformance.Reference) int {
+	bucket := g.byLine[lineKey(ref.Namespace, ref.Type, ref.ID)]
+	if len(bucket) == 0 {
+		return 0
+	}
+	return bucket[0].Identity.InstanceVersion
 }
 
 // Container is one execution container (ctr-) line in the graph.
@@ -164,12 +234,12 @@ type Container struct {
 	State string
 }
 
-func containerFor(a *conformance.Artifact) *Container {
+func containerFor(u *exchange.Unit) *Container {
 	return &Container{
-		Identity: LineForm(a.Namespace, a.Type, a.ID),
-		Type:     a.Type,
-		ID:       a.ID,
-		State:    a.States[conformance.DomainContainerState],
+		Identity: LineForm(u.Identity.Namespace, u.Identity.Type, u.Identity.ID),
+		Type:     u.Identity.Type,
+		ID:       u.Identity.ID,
+		State:    u.StateVector.ContainerState,
 	}
 }
 
@@ -180,10 +250,10 @@ func containerFor(a *conformance.Artifact) *Container {
 // returns the lexicographically smallest canonical identity and reports
 // the anomaly through multiple.
 func (g *Graph) ActiveContainer() (*Container, bool) {
-	var active []*conformance.Artifact
-	for _, a := range g.byType["ctr"] {
-		if a.States[conformance.DomainContainerState] == "active" {
-			active = append(active, a)
+	var active []*exchange.Unit
+	for _, u := range g.byType["ctr"] {
+		if u.StateVector.ContainerState == "active" {
+			active = append(active, u)
 		}
 	}
 	if len(active) == 0 {
@@ -198,22 +268,22 @@ func (g *Graph) ActiveContainer() (*Container, bool) {
 // canonical identity form.
 func (g *Graph) Containers() []Container {
 	out := make([]Container, 0, len(g.byType["ctr"]))
-	for _, a := range g.byType["ctr"] {
-		out = append(out, *containerFor(a))
+	for _, u := range g.byType["ctr"] {
+		out = append(out, *containerFor(u))
 	}
 	return out
 }
 
-// WorkItems returns every work item line in the repository — all
-// artifact lines whose type owns the Execution State domain, in every
-// container and outside any container — deduplicated by identity line
-// and sorted by canonical identity. This is the membership source of
-// the board projection.
+// WorkItems returns every work item line in the repository — all unit
+// lines whose type owns the Execution State domain, in every container
+// and outside any container — deduplicated by identity line and sorted
+// by canonical identity. This is the membership source of the board
+// projection.
 func (g *Graph) WorkItems() []WorkItem {
 	var out []WorkItem
-	for _, a := range g.byForm {
-		if isWorkItemType(a.Type) {
-			out = append(out, *workItemFor(a))
+	for _, u := range g.byForm {
+		if isWorkItemType(u.Identity.Type) {
+			out = append(out, *workItemFor(u))
 		}
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].Identity < out[j].Identity })
@@ -252,7 +322,7 @@ type Ticket struct {
 	ID       string
 	// Projected is the execution-state of the ticket's referenced work
 	// item, or "unresolved" when the ticket has no resolvable work item
-	// reference. It is derived from the owner artifact's state — the
+	// reference. It is derived from the owner unit's state — the
 	// ticket's own body content is never read.
 	Projected string
 }
@@ -282,29 +352,29 @@ func isWorkItemType(token string) bool {
 	return false
 }
 
-func workItemFor(a *conformance.Artifact) *WorkItem {
+func workItemFor(u *exchange.Unit) *WorkItem {
 	return &WorkItem{
-		Identity:     LineForm(a.Namespace, a.Type, a.ID),
-		Type:         a.Type,
-		ID:           a.ID,
-		State:        a.States[conformance.DomainExecutionState],
-		Dimension:    a.Dimension,
-		HasDimension: a.HasDimension,
+		Identity:     LineForm(u.Identity.Namespace, u.Identity.Type, u.Identity.ID),
+		Type:         u.Identity.Type,
+		ID:           u.Identity.ID,
+		State:        u.StateVector.ExecutionState,
+		Dimension:    u.Classification.Dimension,
+		HasDimension: u.Classification.Dimension != "",
 	}
 }
 
 // ticketTargets resolves the container and the work item a ticket
-// derives from, scanning the ticket's derives-from references in file
+// derives from, scanning the ticket's derives-from targets in stored
 // order: the first resolvable ctr- reference is the container, the
 // first resolvable execution-state-owning reference is the work item.
-func (g *Graph) ticketTargets(t *conformance.Artifact) (*Container, *WorkItem) {
+func (g *Graph) ticketTargets(t *exchange.Unit) (*Container, *WorkItem) {
 	if t == nil {
 		return nil, nil
 	}
 	var container *Container
 	var workItem *WorkItem
-	for _, raw := range t.Relations["derives-from"] {
-		ref, err := conformance.ParseReference(raw, t.Namespace, t.Type)
+	for _, raw := range g.relsOf(t, "derives-from") {
+		ref, err := conformance.ParseReference(raw, t.Identity.Namespace, t.Identity.Type)
 		if err != nil {
 			continue // malformed references are reported by Rule 5.
 		}
@@ -313,23 +383,23 @@ func (g *Graph) ticketTargets(t *conformance.Artifact) (*Container, *WorkItem) {
 			continue
 		}
 		switch {
-		case container == nil && target.Type == "ctr":
+		case container == nil && target.Identity.Type == "ctr":
 			container = containerFor(target)
-		case workItem == nil && isWorkItemType(target.Type):
+		case workItem == nil && isWorkItemType(target.Identity.Type):
 			workItem = workItemFor(target)
 		}
 	}
 	return container, workItem
 }
 
-// ticketsFor returns the ticket artifacts deriving from the container
+// ticketsFor returns the ticket units deriving from the container
 // identity form, sorted by canonical identity.
-func (g *Graph) ticketsFor(form string) []*conformance.Artifact {
-	var out []*conformance.Artifact
-	for _, a := range g.byType["tkt"] {
-		container, _ := g.ticketTargets(a)
+func (g *Graph) ticketsFor(form string) []*exchange.Unit {
+	var out []*exchange.Unit
+	for _, u := range g.byType["tkt"] {
+		container, _ := g.ticketTargets(u)
 		if container != nil && container.Identity == form {
-			out = append(out, a)
+			out = append(out, u)
 		}
 	}
 	return out
@@ -342,16 +412,16 @@ func (g *Graph) ticketsFor(form string) []*conformance.Artifact {
 // the container's identity line.
 func (g *Graph) TicketsForContainer(form string) []Ticket {
 	out := make([]Ticket, 0, len(g.byType["tkt"]))
-	for _, a := range g.ticketsFor(form) {
-		_, workItem := g.ticketTargets(a)
+	for _, u := range g.ticketsFor(form) {
+		_, workItem := g.ticketTargets(u)
 		projected := "unresolved"
 		if workItem != nil {
 			projected = workItem.State
 		}
 		out = append(out, Ticket{
-			Identity:  LineForm(a.Namespace, a.Type, a.ID),
-			Type:      a.Type,
-			ID:        a.ID,
+			Identity:  LineForm(u.Identity.Namespace, u.Identity.Type, u.Identity.ID),
+			Type:      u.Identity.Type,
+			ID:        u.Identity.ID,
 			Projected: projected,
 		})
 	}
@@ -366,8 +436,8 @@ func (g *Graph) TicketsForContainer(form string) []Ticket {
 func (g *Graph) WorkItemsForContainer(form string) []WorkItem {
 	seen := make(map[string]bool)
 	var out []WorkItem
-	for _, a := range g.ticketsFor(form) {
-		_, workItem := g.ticketTargets(a)
+	for _, u := range g.ticketsFor(form) {
+		_, workItem := g.ticketTargets(u)
 		if workItem == nil || seen[workItem.Identity] {
 			continue
 		}
@@ -380,14 +450,14 @@ func (g *Graph) WorkItemsForContainer(form string) []WorkItem {
 
 // ContainerForTicket resolves the container a ticket derives from, or
 // nil when the ticket has no resolvable ctr- reference.
-func (g *Graph) ContainerForTicket(t *conformance.Artifact) *Container {
+func (g *Graph) ContainerForTicket(t *exchange.Unit) *Container {
 	container, _ := g.ticketTargets(t)
 	return container
 }
 
 // WorkItemForTicket resolves the work item a ticket derives from, or
 // nil when the ticket has no resolvable work item reference.
-func (g *Graph) WorkItemForTicket(t *conformance.Artifact) *WorkItem {
+func (g *Graph) WorkItemForTicket(t *exchange.Unit) *WorkItem {
 	_, workItem := g.ticketTargets(t)
 	return workItem
 }
@@ -397,11 +467,11 @@ func (g *Graph) WorkItemForTicket(t *conformance.Artifact) *WorkItem {
 // It returns nil when no ticket matches. When several namespaces hold a
 // ticket with the same id, the lexicographically smallest canonical
 // identity wins.
-func (g *Graph) TicketByTarget(target string) *conformance.Artifact {
+func (g *Graph) TicketByTarget(target string) *exchange.Unit {
 	id := strings.TrimPrefix(strings.TrimPrefix(target, "tkt-"), "tkt:")
-	for _, a := range g.byType["tkt"] {
-		if a.ID == id {
-			return a
+	for _, u := range g.byType["tkt"] {
+		if u.Identity.ID == id {
+			return u
 		}
 	}
 	return nil
@@ -411,8 +481,8 @@ func (g *Graph) TicketByTarget(target string) *conformance.Artifact {
 // identity — the available targets of the ticket projection.
 func (g *Graph) TicketIDs() []string {
 	out := make([]string, 0, len(g.byType["tkt"]))
-	for _, a := range g.byType["tkt"] {
-		out = append(out, a.ID)
+	for _, u := range g.byType["tkt"] {
+		out = append(out, u.Identity.ID)
 	}
 	return out
 }

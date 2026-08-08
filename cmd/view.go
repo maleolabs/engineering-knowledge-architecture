@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/maleolabs/engineering-knowledge-architecture/cmd/ui"
-	"github.com/maleolabs/engineering-knowledge-architecture/conformance"
+	"github.com/maleolabs/engineering-knowledge-architecture/compile"
 	"github.com/maleolabs/engineering-knowledge-architecture/view"
 	"github.com/spf13/cobra"
 )
@@ -13,8 +13,9 @@ import (
 // newViewCommand builds the `eka view` command: project the Engineering
 // Knowledge Model of the repository rooted at the current directory.
 // All projection logic lives in the view package (the Knowledge
-// Projection Engine); this command only validates arguments, runs the
-// conformance gate, renders the projection and maps the result to the
+// Projection Engine); this command only validates arguments, compiles
+// the repository through the Knowledge Compiler (conformance gate +
+// CKO assembly), renders the projection and maps the result to the
 // exit code contract.
 //
 // The projections are domain-first: discovery, architecture, planning,
@@ -38,9 +39,11 @@ func newViewCommand() *cobra.Command {
 current directory: read-only views over the repository's artifacts and
 their relationships, derived from the model — never from file text.
 
-The repository is validated against the conformance rules first
-(R0-R12); a repository with blocking violations is refused and no
-projection is produced. Warnings never block a projection.
+The repository is compiled from the authoring tree via the Knowledge
+Compiler first (conformance-gated: the authoring rules R0-R12 run
+before any projection); a repository with blocking violations is
+refused and no projection is produced. Warnings never block a
+projection.
 
 Projections (domain-first):
 
@@ -96,26 +99,24 @@ Exit codes:
 				return err
 			}
 			s := styleFor(cmd)
-			// Validation gate FIRST: only conformant repositories may be
-			// projected. Blocking violations print the full report and
+			// Compile FIRST: the Knowledge Compiler runs the authoring
+			// conformance gate and assembles the Canonical Knowledge
+			// Objects. Blocking violations print the full report and
 			// exit 1 — no projection is produced.
-			report, err := conformance.Validate(".")
+			res, err := compile.Compile(".")
 			if err != nil {
+				var ve *compile.ValidationError
+				if errors.As(err, &ve) {
+					printReport(s, ve.Report)
+					fmt.Fprintf(cmd.ErrOrStderr(), "eka: view refused: repository is not conformant\n")
+					return &exitError{code: exitFail}
+				}
 				return fmt.Errorf("view failed: %w", err)
 			}
-			if !report.Pass() {
-				printReport(s, report)
-				fmt.Fprintf(cmd.ErrOrStderr(), "eka: view refused: repository is not conformant\n")
-				return &exitError{code: exitFail}
-			}
-			// One scan, one graph: the projection engine is synchronous
-			// and stateless, so a future loading state can wrap the
-			// whole call without restructuring.
-			artifacts, err := conformance.Scan(".")
-			if err != nil {
-				return fmt.Errorf("view failed: %w", err)
-			}
-			g := view.NewGraph(".", artifacts)
+			// One compile, one graph: the projection engine is
+			// synchronous and stateless, so a future loading state can
+			// wrap the whole call without restructuring.
+			g := view.NewGraph(".", res.CKOs)
 			proj, err := view.Build(name, g, target)
 			if err != nil {
 				if errors.Is(err, view.ErrUnknownProjection) {

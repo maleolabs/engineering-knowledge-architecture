@@ -6,17 +6,8 @@ import (
 	"testing"
 
 	"github.com/maleolabs/engineering-knowledge-architecture/conformance"
+	"github.com/maleolabs/engineering-knowledge-architecture/exchange"
 )
-
-// loadFixture scans a fixture repository and builds its Knowledge Graph.
-func loadFixture(t *testing.T, name string) *Graph {
-	t.Helper()
-	artifacts, err := conformance.Scan(filepath.Join("testdata", name))
-	if err != nil {
-		t.Fatalf("scan fixture %s: %v", name, err)
-	}
-	return NewGraph(".", artifacts)
-}
 
 // validForm is the canonical identity form used across the valid
 // fixture assertions.
@@ -32,10 +23,10 @@ func TestGraphBuild(t *testing.T) {
 	// The identity index resolves canonical line forms.
 	if a := g.ByLineForm(validForm + "ctr:wave-1"); a == nil {
 		t.Error("ByLineForm(ctr:wave-1) must resolve")
-	} else if a.Type != "ctr" || a.ID != "wave-1" {
-		t.Errorf("ByLineForm(ctr:wave-1) = %s/%s:%s", a.Namespace, a.Type, a.ID)
+	} else if a.Identity.Type != "ctr" || a.Identity.ID != "wave-1" {
+		t.Errorf("ByLineForm(ctr:wave-1) = %s/%s:%s", a.Identity.Namespace, a.Identity.Type, a.Identity.ID)
 	}
-	if a := g.ByLineForm(validForm + "tkt:ts-gamma"); a == nil || a.Type != "tkt" {
+	if a := g.ByLineForm(validForm + "tkt:ts-gamma"); a == nil || a.Identity.Type != "tkt" {
 		t.Error("ByLineForm(tkt:ts-gamma) must resolve to the ticket line")
 	}
 	if a := g.ByLineForm(validForm + "sto:ghost"); a != nil {
@@ -48,14 +39,14 @@ func TestGraphBuild(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ParseReference: %v", err)
 	}
-	if a := g.Resolve(ref); a == nil || a.Type != "ts" || a.ID != "gamma" {
+	if a := g.Resolve(ref); a == nil || a.Identity.Type != "ts" || a.Identity.ID != "gamma" {
 		t.Errorf("Resolve(ts:gamma) = %+v, want ts:gamma", a)
 	}
 	versioned, err := conformance.ParseReference("ctr:wave-1:1", "eka-view-fixture", "tkt")
 	if err != nil {
 		t.Fatalf("ParseReference versioned: %v", err)
 	}
-	if a := g.Resolve(versioned); a == nil || a.InstanceVersion != 1 {
+	if a := g.Resolve(versioned); a == nil || a.Identity.InstanceVersion != 1 {
 		t.Errorf("Resolve(ctr:wave-1:1) must resolve the exact instance")
 	}
 
@@ -133,7 +124,7 @@ func TestGraphBuild(t *testing.T) {
 		"ts-gamma":      "ts-gamma",
 		"tkt:bug-delta": "bug-delta",
 	} {
-		if a := g.TicketByTarget(target); a == nil || a.ID != wantID {
+		if a := g.TicketByTarget(target); a == nil || a.Identity.ID != wantID {
 			t.Errorf("TicketByTarget(%q) = %+v, want id %q", target, a, wantID)
 		}
 	}
@@ -161,7 +152,7 @@ func TestGraphDedupByIdentity(t *testing.T) {
 	if a == nil || dup == nil {
 		t.Fatal("fixture must carry tkt:sto-alpha and tkt:sto-alpha-dup")
 	}
-	for name, tkt := range map[string]*conformance.Artifact{"tkt:sto-alpha": a, "tkt:sto-alpha-dup": dup} {
+	for name, tkt := range map[string]*exchange.Unit{"tkt:sto-alpha": a, "tkt:sto-alpha-dup": dup} {
 		if _, wi := g.ticketTargets(tkt); wi == nil || wi.Identity != alpha {
 			t.Errorf("%s must resolve to sto:alpha, got %+v", name, wi)
 		}
@@ -239,8 +230,8 @@ func TestFixtureConforms(t *testing.T) {
 // identical model slices.
 func TestGraphBuildDeterministic(t *testing.T) {
 	a, b := loadFixture(t, "valid"), loadFixture(t, "valid")
-	if !reflect.DeepEqual(a.Artifacts(), b.Artifacts()) {
-		t.Error("Artifacts() differs between identical graphs")
+	if !reflect.DeepEqual(a.Units(), b.Units()) {
+		t.Error("Units() differs between identical graphs")
 	}
 	if !reflect.DeepEqual(a.TicketsForContainer(validForm+"ctr:wave-1"), b.TicketsForContainer(validForm+"ctr:wave-1")) {
 		t.Error("TicketsForContainer differs between identical graphs")
@@ -277,4 +268,79 @@ func TestGraphMultipleActiveContainers(t *testing.T) {
 	if container.ID != "wave-1" {
 		t.Errorf("ActiveContainer() = %q, want the lexicographically smallest (wave-1)", container.ID)
 	}
+}
+
+// TestReferenceForm pins the relationship-target presentation
+// convention: same-namespace targets render in the authoring line form,
+// with the instance version appended EXACTLY when the target is not the
+// line's lowest instance (omitting it would change resolution);
+// cross-namespace targets render in the full canonical form.
+func TestReferenceForm(t *testing.T) {
+	// Multi-instance line plan:roadmap-v1 (v1, v2) + single-instance
+	// lines ctr:wave-1 and the cross-namespace sto:y.
+	g := NewGraph(".", []*exchange.Unit{
+		{Identity: exchange.Identity{Namespace: "feather", Type: "plan", ID: "roadmap-v1", InstanceVersion: 1}},
+		{Identity: exchange.Identity{Namespace: "feather", Type: "plan", ID: "roadmap-v1", InstanceVersion: 2}},
+		{Identity: exchange.Identity{Namespace: "feather", Type: "ctr", ID: "wave-1", InstanceVersion: 1}},
+	})
+	u := &exchange.Unit{Identity: exchange.Identity{Namespace: "feather", Type: "sto", ID: "x", InstanceVersion: 1}}
+	cases := []struct {
+		name   string
+		target string
+		want   string
+	}{
+		{"single-instance line", "feather/ctr:wave-1:1", "ctr:wave-1"},
+		{"lowest instance of multi line", "feather/plan:roadmap-v1:1", "plan:roadmap-v1"},
+		{"non-lowest instance of multi line", "feather/plan:roadmap-v1:2", "plan:roadmap-v1:2"},
+		{"cross-ns", "other/sto:y:1", "other/sto:y:1"},
+	}
+	for _, tc := range cases {
+		if got := g.referenceForm(u, tc.target); got != tc.want {
+			t.Errorf("%s: referenceForm(%q) = %q, want %q", tc.name, tc.target, got, tc.want)
+		}
+	}
+}
+
+// TestReferenceFormLosslessForResolution: re-parsing the rendered form
+// with the unit's namespace resolves to the SAME instance as the raw
+// canonical target — unversioned renders resolve to the lowest
+// instance (which is the target), versioned renders resolve exactly.
+func TestReferenceFormLosslessForResolution(t *testing.T) {
+	g := NewGraph(".", []*exchange.Unit{
+		{Identity: exchange.Identity{Namespace: "feather", Type: "ctr", ID: "wave-1", InstanceVersion: 1}},
+		{Identity: exchange.Identity{Namespace: "feather", Type: "plan", ID: "roadmap-v1", InstanceVersion: 1}},
+		{Identity: exchange.Identity{Namespace: "feather", Type: "plan", ID: "roadmap-v1", InstanceVersion: 2}},
+		{Identity: exchange.Identity{Namespace: "other", Type: "sto", ID: "y", InstanceVersion: 3}},
+	})
+	u := &exchange.Unit{Identity: exchange.Identity{Namespace: "feather", Type: "rel", ID: "v090", InstanceVersion: 1}}
+	for _, target := range []string{
+		"feather/ctr:wave-1:1",
+		"feather/plan:roadmap-v1:1",
+		"feather/plan:roadmap-v1:2",
+		"other/sto:y:3",
+	} {
+		rendered := g.referenceForm(u, target)
+		wantRef, err := conformance.ParseReference(target, u.Identity.Namespace, u.Identity.Type)
+		if err != nil {
+			t.Fatalf("parse %q: %v", target, err)
+		}
+		gotRef, err := conformance.ParseReference(rendered, u.Identity.Namespace, u.Identity.Type)
+		if err != nil {
+			t.Fatalf("parse rendered %q: %v", rendered, err)
+		}
+		want := g.Resolve(wantRef)
+		got := g.Resolve(gotRef)
+		if got == nil || want == nil || got.CanonicalIdentityForm != want.CanonicalIdentityForm {
+			t.Errorf("rendered %q from %q resolves to %v, want %v (target %q)",
+				rendered, target, formOf(got), formOf(want), target)
+		}
+	}
+}
+
+// formOf renders a unit's canonical identity form ("" for nil).
+func formOf(u *exchange.Unit) string {
+	if u == nil {
+		return ""
+	}
+	return u.CanonicalIdentityForm
 }

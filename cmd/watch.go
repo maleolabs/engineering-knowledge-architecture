@@ -3,6 +3,7 @@ package cmd
 import (
 	"bufio"
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -10,6 +11,7 @@ import (
 	"time"
 
 	"github.com/maleolabs/engineering-knowledge-architecture/cmd/ui"
+	"github.com/maleolabs/engineering-knowledge-architecture/compile"
 	"github.com/maleolabs/engineering-knowledge-architecture/conformance"
 	"github.com/maleolabs/engineering-knowledge-architecture/view"
 	"github.com/spf13/cobra"
@@ -60,11 +62,12 @@ rooted at the current directory: 'eka watch' is 'eka view' in a loop —
 the projection is re-rendered in place on a polling interval and
 redrawn only when it changed (no flicker on stable state).
 
-On every cycle the repository is re-validated against the conformance
-rules (R0-R12). While blocking violations exist the watch shows a calm
-validation-failure frame instead of the projection; it keeps polling
-and flips back to the projection automatically once the repository
-recovers. Warnings never block a projection.
+On every cycle the repository is re-compiled from the authoring tree
+via the Knowledge Compiler (conformance-gated: the authoring rules
+R0-R12 run before any projection). While blocking violations exist the
+watch shows a calm validation-failure frame instead of the projection;
+it keeps polling and flips back to the projection automatically once
+the repository recovers. Warnings never block a projection.
 
 Projections (the same surface as 'eka view'):
 
@@ -179,12 +182,13 @@ func runWatch(s *ui.Style, projection, target string, interval int) error {
 }
 
 // renderWatchFrame runs one watch cycle into a fresh buffer: the
-// conformance gate (the same gate as view), then either the projection
-// frame — byte-identical to the one-shot view output plus the watching
-// footer — or the validation-failure frame. The frame is a pure
-// function of (repository state, projection, target, interval): no
-// clock, no timestamps, so identical states produce identical frames
-// and the loop skips redraws by byte comparison.
+// Knowledge Compiler (the same conformance-gated pipeline as view),
+// then either the projection frame — byte-identical to the one-shot
+// view output plus the watching footer — or the validation-failure
+// frame. The frame is a pure function of (repository state,
+// projection, target, interval): no clock, no timestamps, so identical
+// states produce identical frames and the loop skips redraws by byte
+// comparison.
 //
 // The base style is copied and its writer replaced with the buffer, so
 // the frame carries exactly the color/TTY settings of the live stdout
@@ -194,19 +198,16 @@ func renderWatchFrame(s *ui.Style, root, projection, target string, interval int
 	var buf bytes.Buffer
 	frame.W = &buf
 
-	report, err := conformance.Validate(root)
+	res, err := compile.Compile(root)
 	if err != nil {
+		var ve *compile.ValidationError
+		if errors.As(err, &ve) {
+			renderWatchFailure(&frame, ve.Report, interval)
+			return buf.Bytes(), nil
+		}
 		return nil, fmt.Errorf("watch failed: %w", err)
 	}
-	if !report.Pass() {
-		renderWatchFailure(&frame, report, interval)
-		return buf.Bytes(), nil
-	}
-	artifacts, err := conformance.Scan(root)
-	if err != nil {
-		return nil, fmt.Errorf("watch failed: %w", err)
-	}
-	g := view.NewGraph(root, artifacts)
+	g := view.NewGraph(root, res.CKOs)
 	proj, err := view.Build(projection, g, target)
 	if err != nil {
 		return nil, fmt.Errorf("watch failed: %w", err)

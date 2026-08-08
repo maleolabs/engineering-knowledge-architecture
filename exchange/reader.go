@@ -118,6 +118,13 @@ func (r *PackageReader) readDir(dir string) error {
 		if d.IsDir() {
 			return nil
 		}
+		// Symlinks are never followed: a symlinked entry could read
+		// content from outside the package root (defense in depth —
+		// the digest check would catch the mismatch anyway, but a
+		// package entry must always be a regular file).
+		if d.Type()&os.ModeSymlink != 0 {
+			return nil
+		}
 		rel, err := filepath.Rel(dir, path)
 		if err != nil {
 			return err

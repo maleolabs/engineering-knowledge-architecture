@@ -1,6 +1,8 @@
 package view
 
-import "fmt"
+import (
+	"fmt"
+)
 
 // This file implements the ticket projection: one ticket (tkt-) with
 // its projected status.
@@ -15,8 +17,9 @@ import "fmt"
 //     explicit status "unresolved".
 //   - Container: the ticket's derives-from ctr- reference, when it
 //     resolves.
-//   - References: the ticket's derives-from reference strings in file
-//     order (the relationship list).
+//   - References: the ticket's derives-from relationship targets in
+//     stored (type, target) order, rendered in the authoring reference
+//     convention.
 
 // TicketProjection is the view over one ticket.
 type TicketProjection struct {
@@ -31,7 +34,9 @@ type TicketProjection struct {
 	// Projected is the ticket's projected status: the referenced work
 	// item's execution-state, or "unresolved".
 	Projected string
-	// References are the derives-from reference strings in file order.
+	// References are the derives-from relationship targets in stored
+	// (type, target) order, rendered in the authoring reference
+	// convention.
 	References []string
 }
 
@@ -53,12 +58,12 @@ func buildTicket(g *Graph, target string) (Projection, error) {
 	container, workItem := g.ticketTargets(ticket)
 	p := &TicketProjection{
 		Ticket: Ticket{
-			Identity: LineForm(ticket.Namespace, ticket.Type, ticket.ID),
-			Type:     ticket.Type,
-			ID:       ticket.ID,
+			Identity: LineForm(ticket.Identity.Namespace, ticket.Identity.Type, ticket.Identity.ID),
+			Type:     ticket.Identity.Type,
+			ID:       ticket.Identity.ID,
 		},
 		Container:  container,
-		References: ticket.Relations["derives-from"],
+		References: g.relsOf(ticket, "derives-from"),
 	}
 	if workItem != nil {
 		p.WorkItem = workItem

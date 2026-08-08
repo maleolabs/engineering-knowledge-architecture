@@ -1,0 +1,20 @@
+
+# Container — Wave 6: Foundation
+
+## Objective
+
+Lay the foundation under the roadmap plan (`plan:roadmap-v1:1`): repository bootstrap, CI gate, storage layout, and the post scaffolding command. Everything the publishing core in Wave 7 builds on.
+
+## Work Items
+
+Delivered as prose (wave completed; work items closed out and archived per protocol):
+
+- Repository bootstrap from the EKA skeleton; namespace `feather` established.
+- CI pipeline running `eka validate` + `go test ./...` on every push.
+- Storage layout per `adr:content-storage`: `content/posts/` + SQLite index with migration scaffolding.
+- `feather new` scaffolding command (slug generation, frontmatter skeleton).
+
+## Change Log
+
+- 2026-07-16: container created (active), locking `plan:roadmap-v1:1`.
+- 2026-07-28: aggregate of the wave's work items reached done; container marked completed by its owner. Wave 7 then became active (exactly-one-active preserved).

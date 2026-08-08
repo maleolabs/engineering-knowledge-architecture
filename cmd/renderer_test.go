@@ -3,11 +3,13 @@ package cmd
 import (
 	"bytes"
 	"fmt"
+	"strconv"
 	"strings"
 	"testing"
 
 	"github.com/maleolabs/engineering-knowledge-architecture/cmd/ui"
 	"github.com/maleolabs/engineering-knowledge-architecture/conformance"
+	"github.com/maleolabs/engineering-knowledge-architecture/exchange"
 	"github.com/maleolabs/engineering-knowledge-architecture/view"
 )
 
@@ -20,33 +22,71 @@ func rendererTestContext(t *testing.T) (*ui.Style, *bytes.Buffer, *view.Graph) {
 	return s, &buf, view.NewGraph(".", nil)
 }
 
-// graphWith builds a graph over the given artifact lines (relations
-// come from the artifact's own frontmatter-equivalent fields).
-func graphWith(arts ...conformance.Artifact) *view.Graph {
-	return view.NewGraph(".", arts)
+// unit builds one canonical unit for renderer tests: identity line at
+// instance-version 1, the given revision, a state vector from the
+// domain map, and relationships canonicalized to the RSF identity form
+// (targets written in the authoring reference convention).
+func unit(t *testing.T, ns, token, id string, revision int, states map[string]string, rels ...exchange.Relationship) *exchange.Unit {
+	t.Helper()
+	u := &exchange.Unit{
+		Identity:              exchange.Identity{Namespace: ns, Type: token, ID: id, InstanceVersion: 1},
+		CanonicalIdentityForm: ns + "/" + token + ":" + id + ":1",
+		Revision:              revision,
+		StateVector: exchange.StateVector{
+			ContentState:   states[conformance.DomainContentState],
+			ExecutionState: states[conformance.DomainExecutionState],
+			PlanningState:  states[conformance.DomainPlanningState],
+			ContainerState: states[conformance.DomainContainerState],
+			ExistenceState: states[conformance.DomainExistenceState],
+		},
+		Relationships: []exchange.Relationship{},
+	}
+	for _, r := range rels {
+		ref, err := conformance.ParseReference(r.Target, ns, token)
+		if err != nil {
+			t.Fatalf("unit: relationship target %q: %v", r.Target, err)
+		}
+		version := 1
+		if ref.HasVersion {
+			version = ref.Version
+		}
+		u.Relationships = append(u.Relationships, exchange.Relationship{
+			Type:   r.Type,
+			Target: ref.Namespace + "/" + ref.Type + ":" + ref.ID + ":" + strconv.Itoa(version),
+		})
+	}
+	return u
+}
+
+// graphWith builds a graph over the given units (relationship targets
+// in the authoring reference convention).
+func graphWith(units ...*exchange.Unit) *view.Graph {
+	return view.NewGraph(".", units)
 }
 
 // graphWithContainer builds a graph where each of the given work item
 // forms is a member of container feather/ctr:wave-7 (one ticket per
 // item), so renderer tests resolve container tags to "wave-7".
-func graphWithContainer(forms ...string) *view.Graph {
-	arts := []conformance.Artifact{
-		{Namespace: "feather", Type: "ctr", ID: "wave-7",
-			States: map[string]string{conformance.DomainContainerState: "active"}},
+func graphWithContainer(t *testing.T, forms ...string) *view.Graph {
+	t.Helper()
+	units := []*exchange.Unit{
+		unit(t, "feather", "ctr", "wave-7", 1,
+			map[string]string{conformance.DomainContainerState: "active"}),
 	}
 	for i, form := range forms {
 		parts := strings.SplitN(form, "/", 2)
 		ns, rest := parts[0], parts[1]
 		typeID := strings.SplitN(rest, ":", 2)
 		token, id := typeID[0], typeID[1]
-		arts = append(arts,
-			conformance.Artifact{Namespace: ns, Type: token, ID: id,
-				States: map[string]string{conformance.DomainExecutionState: "todo"}},
-			conformance.Artifact{Namespace: ns, Type: "tkt", ID: fmt.Sprintf("tkt-%d", i),
-				Relations: map[string][]string{"derives-from": {"ctr:wave-7", token + ":" + id}}},
+		units = append(units,
+			unit(t, ns, token, id, 1,
+				map[string]string{conformance.DomainExecutionState: "todo"}),
+			unit(t, ns, "tkt", fmt.Sprintf("tkt-%d", i), 1, nil,
+				exchange.Relationship{Type: "derives-from", Target: "ctr:wave-7"},
+				exchange.Relationship{Type: "derives-from", Target: token + ":" + id}),
 		)
 	}
-	return view.NewGraph(".", arts)
+	return view.NewGraph(".", units)
 }
 
 // TestRenderBoardProjection: the board renders every work item with its
@@ -263,7 +303,7 @@ func TestRenderExecutionBoard(t *testing.T) {
 	}
 	// The items resolve to container wave-7 through the graph, so their
 	// labels carry the container tag — same rule as the board.
-	g = graphWithContainer("feather/sto:alpha", "feather/sto:beta", "feather/ch:gamma")
+	g = graphWithContainer(t, "feather/sto:alpha", "feather/sto:beta", "feather/ch:gamma")
 	renderExecution(s, g, p)
 	out := buf.String()
 	for _, want := range []string{
@@ -298,15 +338,22 @@ func TestRenderExecutionBoard(t *testing.T) {
 // of two containers shows both tags on the active container's board —
 // the same tag rule as the board projection.
 func TestRenderExecutionSharedContainerTag(t *testing.T) {
-	arts := []conformance.Artifact{
-		{Namespace: "feather", Type: "ctr", ID: "wave-7", States: map[string]string{conformance.DomainContainerState: "active"}},
-		{Namespace: "feather", Type: "ctr", ID: "wave-0", States: map[string]string{conformance.DomainContainerState: "completed"}},
-		{Namespace: "feather", Type: "sto", ID: "shared", States: map[string]string{conformance.DomainExecutionState: "in-progress"}},
-		{Namespace: "feather", Type: "tkt", ID: "one", Relations: map[string][]string{"derives-from": {"ctr:wave-7", "sto:shared"}}},
-		{Namespace: "feather", Type: "tkt", ID: "two", Relations: map[string][]string{"derives-from": {"ctr:wave-0", "sto:shared"}}},
+	units := []*exchange.Unit{
+		unit(t, "feather", "ctr", "wave-7", 1,
+			map[string]string{conformance.DomainContainerState: "active"}),
+		unit(t, "feather", "ctr", "wave-0", 1,
+			map[string]string{conformance.DomainContainerState: "completed"}),
+		unit(t, "feather", "sto", "shared", 1,
+			map[string]string{conformance.DomainExecutionState: "in-progress"}),
+		unit(t, "feather", "tkt", "one", 1, nil,
+			exchange.Relationship{Type: "derives-from", Target: "ctr:wave-7"},
+			exchange.Relationship{Type: "derives-from", Target: "sto:shared"}),
+		unit(t, "feather", "tkt", "two", 1, nil,
+			exchange.Relationship{Type: "derives-from", Target: "ctr:wave-0"},
+			exchange.Relationship{Type: "derives-from", Target: "sto:shared"}),
 	}
 	s, buf, _ := rendererTestContext(t)
-	g := graphWith(arts...)
+	g := graphWith(units...)
 	p := &view.ExecutionProjection{
 		Container: &view.Container{Identity: "feather/ctr:wave-7", State: "active"},
 		Columns: view.StateColumns{
@@ -429,10 +476,10 @@ func TestRenderPlanningNoPlan(t *testing.T) {
 func TestRenderArchitectureTree(t *testing.T) {
 	s, buf, _ := rendererTestContext(t)
 	g := graphWith(
-		conformance.Artifact{Namespace: "feather", Type: "adr", ID: "content-storage", Revision: 1,
-			Relations: map[string][]string{"depends-on": {"fnd:markdown-editor-options"}}},
-		conformance.Artifact{Namespace: "feather", Type: "fnd", ID: "markdown-editor-options", Revision: 1},
-		conformance.Artifact{Namespace: "feather", Type: "arc", ID: "feather-system", Revision: 1},
+		unit(t, "feather", "adr", "content-storage", 1, nil,
+			exchange.Relationship{Type: "depends-on", Target: "fnd:markdown-editor-options"}),
+		unit(t, "feather", "fnd", "markdown-editor-options", 1, nil),
+		unit(t, "feather", "arc", "feather-system", 1, nil),
 	)
 	p := &view.ArchitectureProjection{
 		Groups: []view.Group{
@@ -500,8 +547,8 @@ func TestRenderArchitectureNoDescription(t *testing.T) {
 func TestRenderDiscoveryCards(t *testing.T) {
 	s, buf, _ := rendererTestContext(t)
 	g2 := graphWith(
-		conformance.Artifact{Namespace: "feather", Type: "vis", ID: "feather-vision", Revision: 3},
-		conformance.Artifact{Namespace: "feather", Type: "req", ID: "comments-phase2", Revision: 1},
+		unit(t, "feather", "vis", "feather-vision", 3, nil),
+		unit(t, "feather", "req", "comments-phase2", 1, nil),
 	)
 	p := &view.DiscoveryProjection{
 		Groups: []view.Group{
@@ -555,9 +602,9 @@ func TestRenderDiscoveryCards(t *testing.T) {
 func TestRenderOperationsRelease(t *testing.T) {
 	s, buf, _ := rendererTestContext(t)
 	g2 := graphWith(
-		conformance.Artifact{Namespace: "feather", Type: "rel", ID: "v090", Revision: 1,
-			Relations: map[string][]string{"derives-from": {"plan:roadmap-v1:1"}}},
-		conformance.Artifact{Namespace: "feather", Type: "plan", ID: "roadmap-v1", InstanceVersion: 1, Revision: 1},
+		unit(t, "feather", "rel", "v090", 1, nil,
+			exchange.Relationship{Type: "derives-from", Target: "plan:roadmap-v1:1"}),
+		unit(t, "feather", "plan", "roadmap-v1", 1, nil),
 	)
 	p := &view.OperationsProjection{
 		Groups: []view.Group{
@@ -577,7 +624,7 @@ func TestRenderOperationsRelease(t *testing.T) {
 		"┌",
 		"│ ✓ feather/rel:v090",
 		"│ approved",
-		"│ derives-from plan:roadmap-v1:1",
+		"│ derives-from plan:roadmap-v1",
 		"Runbooks",
 		"▸ feather/run:deploy-feather  (approved)",
 		"│ ▸ feather/run:backup-feather  (draft)",
@@ -718,7 +765,7 @@ func TestRenderersDeterministic(t *testing.T) {
 	build := func() string {
 		var buf bytes.Buffer
 		s := ui.NewStyle(&buf, false)
-		g := graphWithContainer("feather/sto:alpha")
+		g := graphWithContainer(t, "feather/sto:alpha")
 		renderExecution(s, g, &view.ExecutionProjection{
 			Container: &view.Container{Identity: "feather/ctr:wave-7", State: "active"},
 			Columns: view.StateColumns{
@@ -749,7 +796,7 @@ func TestRenderersDeterministic(t *testing.T) {
 func TestRenderersNoANSI(t *testing.T) {
 	var buf bytes.Buffer
 	s := ui.NewStyle(&buf, false)
-	g := graphWithContainer("feather/sto:alpha")
+	g := graphWithContainer(t, "feather/sto:alpha")
 	renderExecution(s, g, &view.ExecutionProjection{
 		Container: &view.Container{Identity: "feather/ctr:wave-7", State: "active"},
 		Columns: view.StateColumns{

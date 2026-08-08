@@ -48,7 +48,7 @@ func renderArchitecture(s *ui.Style, g *view.Graph, p *view.ArchitectureProjecti
 }
 
 // architectureEdge returns the first resolvable derives-from (else
-// depends-on) reference of an architecture artifact in short form,
+// depends-on) reference of an architecture unit in short form,
 // e.g. "derives-from arc:feather-system"; "" when nothing resolves.
 // The projection model carries no relationships, so the edge is read
 // from the graph — read-only, never mutated.
@@ -58,12 +58,12 @@ func architectureEdge(g *view.Graph, a view.DomainArtifact) string {
 		return ""
 	}
 	for _, field := range []string{"derives-from", "depends-on"} {
-		for _, raw := range art.Relations[field] {
-			ref, err := conformance.ParseReference(raw, art.Namespace, art.Type)
+		for _, raw := range g.Rels(art, field) {
+			ref, err := conformance.ParseReference(raw, art.Identity.Namespace, art.Identity.Type)
 			if err != nil || g.Resolve(ref) == nil {
 				continue
 			}
-			return field + " " + shortRef(ref, art.Namespace)
+			return field + " " + shortRef(ref, art.Identity.Namespace)
 		}
 	}
 	return ""

@@ -12,8 +12,12 @@
 - **`eka export`** — the first practical implementation of the Exchange Specification: exports engineering knowledge as an **Exchange Package** per the Reference Serialization Format (RSF).
 - **`eka import`** — the inverse of export: consumes an Exchange Package and integrates knowledge into an existing EKA repository — implementing the import semantics of Exchange Specification §11.
 - **`eka validate`** — the conformance validator: repository conformance must not rest on manual review alone — rules R0–R12 in `skeleton/docs/exchange/validation.md` are designed to be mechanical, and this validator is their canonical implementation (P16: enforcement mechanisms vary, invariants stay identical).
-- **`eka view`** — the Knowledge Projection Engine: read-only projections of the Engineering Knowledge Model (the five domain projections `discovery` / `architecture` / `planning` / `execution` / `operations` + the `ticket` projection), rendered as per-domain visualizations — Kanban board (execution), roadmap (planning), dependency tree (architecture), information cards (discovery), release timeline (operations), detail card (ticket) — the canonical executable form of the State Projection semantics (Core Specification §11), relationship-derived, never markdown-rendered.
+- **`eka view`** — the Knowledge Projection Engine: read-only projections of the Engineering Knowledge Model (the five domain projections `discovery` / `architecture` / `planning` / `execution` / `operations` + the `ticket` projection), rendered as per-domain visualizations — Kanban board (execution), roadmap (planning), dependency tree (architecture), information cards (discovery), release timeline (operations), detail card (ticket) — the canonical executable form of the State Projection semantics (Core Specification §11), relationship-derived, never markdown-rendered. Compiles the authoring tree into **Canonical Knowledge Objects** via the Knowledge Compiler and projects over `exchange.Unit` (ADR-012).
 - **`eka watch`** — the realtime projection viewer: the same Knowledge Projections as `eka view`, refreshed in place by polling — TTY-only, read-only, live validation failure frames, Ctrl-C to stop.
+- **`eka sync`** — the Knowledge Runtime synchronization command: pull (verify the repository's Knowledge Snapshot and seed the EKA Workspace canonical store, or seed from the docs tree via the conformance gate when no snapshot exists) then push (assemble the repository's canonical objects into a deterministic snapshot at `exchange/snapshots/`). Idempotent; deletions never applied.
+- **`eka project`** — the project/repository registry of the EKA Workspace: `register` (bind a repository to a project; same `--name` = same project) and `list`.
+- **`eka status`** — the workspace status probe: path, schema version, canonical store totals (Objects = references, Payloads = immutable objects, Attachments), per-repository last sync. Read-only; never creates the workspace.
+- **`eka integrity`** — the store integrity verifier: `eka integrity check` recomputes every content-derived hash, strict-decodes every payload, verifies every reference (target existence + derived index columns), recomputes attachment digests, and checks the repository registry — the canonical store's immutability guarantee, verified independent of the storage engine. Manual database modification is detected, not prevented.
 
 New to EKA? Start with the [Engineering Operating Guide](../skeleton/docs/workflow-guide.md) — the primary onboarding document (mental model, lifecycle, domains, workflows).
 
@@ -44,7 +48,7 @@ All commands share one three-part hierarchy:
 2. **Workflow body** — the operation's stages (progressive tree) or, for single-operation commands, the report.
 3. **Summary** — the outcome as facts.
 
-`init`, `export` and `import` render a progressive tree; `validate` renders the report as the body; `view` renders the projection as the body — each projection is a per-domain visualization (board, roadmap, tree, cards, timeline, detail card); `watch` renders the same per-domain visualizations as `view`, refreshed in place. Every command ends with a summary block; `watch` is the interactive exception — it runs until Ctrl-C, then clears the screen and exits `0`.
+`init`, `export` and `import` render a progressive tree; `validate` renders the report as the body; `view` renders the projection as the body — each projection is a per-domain visualization (board, roadmap, tree, cards, timeline, detail card); `watch` renders the same per-domain visualizations as `view`, refreshed in place. The runtime commands (`sync`, `project`, `status`, `integrity`) render a context header + report + summary — single-operation reports, no progressive tree. Every command ends with a summary block; `watch` is the interactive exception — it runs until Ctrl-C, then clears the screen and exits `0`.
 
 ### Context header
 
@@ -166,6 +170,13 @@ eka import <package-path>
 eka view [projection] [target]
 eka watch <projection> [target] [--interval N]
 eka validate [path]
+eka sync [path]
+eka sync pull [path] [--from-docs]
+eka sync push [path]
+eka project register [path] [--name NAME]
+eka project list
+eka status
+eka integrity check
 eka completion [bash|zsh|fish|powershell]
 eka help [command]
 ```
@@ -422,6 +433,198 @@ No partial integration: all analysis happens before a single file is written.
 | Invalid package (digest, JSON, missing entries, unsupported version, unknown fields) | Stops, repository unchanged, exit `2` |
 | Filesystem / usage failure | Error, exit `2` |
 
+## `eka sync` — Knowledge Runtime Synchronization
+
+```
+eka sync [path]
+eka sync pull [path] [--from-docs]
+eka sync push [path]
+```
+
+`eka sync` operates the **EKA Knowledge Runtime** (milestone v0.2.0, ADR-009/ADR-010): the bidirectional transport between a registered repository and the EKA Workspace canonical store. The workspace (`~/.eka/` or `$EKA_HOME`) is canonical; the transport is the snapshot directory `<repo>/exchange/snapshots` — an RSF package in directory layout, verified byte-exact on every read and written deterministically.
+
+### Synchronization philosophy
+
+- **The workspace is the store; the repository is the transport.** Immutable knowledge payloads, their mutable references, and attachments live in the workspace database; the repository carries a deterministic snapshot of its own knowledge. Knowledge objects are content-addressed (`object_hash` = the RSF per-unit digest), so snapshot digests and store hashes agree by construction.
+- **`eka sync [path]` runs the full cycle: pull, then push.** `eka sync pull` and `eka sync push` run one side.
+- **Auto-registration:** an unregistered repository is registered on first sync (project name = repository basename). Explicit registration with `--name` exists for multi-repository projects (`eka project register`).
+- **Git-native:** the snapshot is ordinary repository content — commit, review, push, merge through normal Git workflows. No hooks, no wrappers (ADR-010 §Decision 4); synchronization is explicit by design.
+- **Deterministic:** identical state → identical pull result, byte-identical snapshot, identical report.
+
+### Pull semantics
+
+| Mode | When | Behavior |
+|---|---|---|
+| **Snapshot** (default) | a snapshot exists at `<repo>/exchange/snapshots` and `--from-docs` is not set | the package is verified byte-exact (structure, strict JSON, SHA-256 integrity, self-consistency — the same verification path as `eka import`), then its units are stored as **immutable payloads** (the canonical `unit.json` entry inserted verbatim, keyed by its content hash — which equals the snapshot's per-unit digest), its references are upserted, and its attachments are stored id-keyed with digest verification, all attributed with `source_repo` = the repository name. An unchanged snapshot digest reports `unchanged` and skips the work (idempotent). A corrupt snapshot is always an error — never silently skipped. |
+| **Docs** (migration) | no snapshot exists yet | the repository's `docs/` tree is validated against the conformance rules (R0–R12); blocking violations **refuse the pull** (exit `1`, full report printed). The package is then assembled exactly as `eka export` would assemble it and seeded the same way — the migration path for existing repositories. |
+| **Docs** (`--from-docs`) | forced re-seed | the same docs-mode path, independent of snapshot presence — the reconciliation tool when the docs tree and the snapshot drift. |
+
+**Deletions are never applied in v0.2:** units missing from a new pull stay in the canonical store (additive transport; future deletion protocol reserved).
+
+### Push semantics
+
+The repository's references in the canonical store (`source_repo` = this repository's name) are resolved to their immutable payloads and assembled into a deterministic RSF package, written **atomically**: entries are staged in `<repo>/exchange/.snapshots-tmp`, then the old snapshot directory is removed and the staging directory renamed into place — a failed push leaves the previous snapshot untouched. A repository with no stored references is a **no-op** (nothing written). Namespace resolution for the package label: the existing snapshot's header namespace when a snapshot exists, else the most common namespace among the objects (ties → lexicographically smallest), else an error.
+
+Every pull and push run is recorded in the `sync_log` table (project, repo, direction, snapshot digest, unit count, timestamp) — the backing data of `eka status` and of the idempotent-pull check.
+
+### Exit codes
+
+| Code | Meaning |
+|---|---|
+| `0` | Sync succeeded — pulled (seeded or unchanged), pushed, or no-op |
+| `1` | **Validation failure** (docs gate refused the repository — full report printed) or **integrity failure** (snapshot package refused as corrupt) |
+| `2` | Usage or internal error — workspace resolution, registry failure, filesystem failure |
+
+### Determinism
+
+The report is deterministic and machine-readable: Runtime context header (Workspace, Project, Repository) + summary (Repository, Project, Status, Pull, Push, Snapshot) + optional warning bullets. Status values: `registered (new)` / `unchanged` / `synced`. Pull detail: `not run` / `unchanged (snapshot up to date)` / `<source>: <n> units, <m> attachments` where `<source>` is `snapshot` or `docs`. Push detail: `no-op (no stored objects)` or `<n> units, <m> attachments`. Snapshot detail: package label + 12-hex digest (e.g. `rsf-repo-feather-1.1 (3f9a2c1d0b4e)`), or `none`. Warnings render as `• no changes: snapshot already up to date` on unchanged runs.
+
+### Examples
+
+```sh
+eka sync                 # full cycle on the current repository (pull + push)
+eka sync /path/to/repo   # full cycle on another repository
+eka sync pull            # pull only (snapshot mode)
+eka sync pull --from-docs # force re-seed from the docs tree
+eka sync push            # push only (store → snapshot)
+```
+
+Illustrative first-sync output (repository with no snapshot yet — docs-mode migration):
+
+```
+Runtime
+Workspace  /home/user/.eka
+Project    myproj
+Repository myproj
+↓ Sync
+
+Summary:
+└── Repository: myproj
+└── Project: myproj
+└── Status: registered (new)
+└── Pull: docs: 37 units, 0 attachments
+└── Push: 37 units, 0 attachments
+└── Snapshot: rsf-repo-myproj-1.1 (7e9b3c1d2a4f)
+```
+
+A second run reports `Status: unchanged`, `Pull: unchanged (snapshot up to date)`, and the `• no changes: snapshot already up to date` warning.
+
+### Error handling
+
+| Condition | Behavior |
+|---|---|
+| Repository non-conformant (docs gate, no snapshot / `--from-docs`) | Pull refused; full validation report printed; `sync pull refused: repository validation failed with N blocking error(s); no knowledge seeded` on stderr; exit `1` |
+| Snapshot corrupt (digest, JSON, structure, self-consistency) | `sync pull failed: snapshot package refused: ...`; exit `1` |
+| Workspace resolution failure (`EKA_HOME` relative, no home dir) | Error; exit `2` |
+| Path not accessible / filesystem failure | Error; exit `2` |
+
+## `eka project` — Workspace Project Registry
+
+```
+eka project register [path] [--name NAME]
+eka project list
+```
+
+`eka project` manages the projects and repositories registered in the EKA Workspace (default `~/.eka`, or `$EKA_HOME`). A project groups one or more repositories; the repository name is the basename of its normalized absolute path (the unit key of the canonical store); the project name is the `--name` flag value or the same basename.
+
+### `eka project register [path] [--name NAME]`
+
+Registers the EKA repository at `path` (default: the current directory). Registering the same repository again is a **no-op** (the stored path is refreshed; the report says `already registered`). A repository registered under one project always resolves to that project — the first registration owns it. Multi-repository projects use the same `--name`:
+
+```sh
+eka project register                       # current directory, project = basename
+eka project register /path/to/repo         # project = "repo"
+eka project register /path/to/repo --name atrium   # project "atrium", repo "repo"
+```
+
+| Code | Meaning |
+|---|---|
+| `0` | Registration succeeded (new or already registered) |
+| `2` | Usage or internal error — workspace resolution, registry failure, inaccessible path |
+
+Output: `Project` context header (Project, Repository, Path) + summary (Project, Repository, Path, Status: `registered` / `already registered`).
+
+### `eka project list`
+
+Lists every project with its repositories (name and path), sorted deterministically — projects by id, repositories by name. A workspace with no registered projects prints `No projects registered yet. Run 'eka project register' to add one.` and exits `0`.
+
+| Code | Meaning |
+|---|---|
+| `0` | Success (list printed, or informational empty message) |
+| `2` | Usage or internal error |
+
+## `eka status` — Workspace Status
+
+```
+eka status
+```
+
+`eka status` prints the EKA Workspace overview: workspace path, schema version, workspace id, created date, canonical store totals (**Objects** = the number of references, **Payloads** = the number of immutable objects including retained history, **Attachments**), registered projects and repositories, and the most recent sync per repository (`[direction digest at time]` from the sync log). There is no Relationships count: relationships live inside the immutable payloads and are parsed at read time.
+
+`eka status` is a **read-only probe**: without a workspace it prints `No EKA workspace at <home> yet. Run 'eka project register' to create it.` and exits `0` — it never initializes the workspace, never creates files.
+
+| Code | Meaning |
+|---|---|
+| `0` | Status shown (or no workspace yet) |
+| `2` | Usage or internal error |
+
+## `eka integrity check` — Canonical Store Integrity
+
+```
+eka integrity check
+```
+
+`eka integrity check` verifies the integrity of the EKA Workspace canonical store (default `~/.eka`, or `$EKA_HOME`) — the executable form of the Immutable Engineering Knowledge Model's verification contract (ADR-011 §Decision 4). Engineering Knowledge Objects are immutable and content-addressed: every payload row is keyed by `SHA-256(unit.json ‖ content)`, written once, and never updated. The command recomputes every content-derived value and compares it with the stored state, independent of the storage engine.
+
+### Verification levels
+
+The scan is **read-only** (all SQL parameterized; no writes) and checks:
+
+| Level | Check |
+|---|---|
+| **1. Payload integrity** | recompute `SHA-256(unit.json ‖ content)` for every `object_payloads` row and compare with `object_hash` |
+| **2. Payload decode** | every `unit_json` payload strict-decodes (unknown fields rejected — the same decode path as the exchange layer, RSF §9.5) |
+| **3. Reference integrity** | every `object_refs.object_hash` exists in `object_payloads`; the refs' derived index columns and `form` equal the referenced payload's identity fields (namespace, type, id, instance version, revision, dimension, domain, phase) |
+| **4. Workspace integrity** | registry foreign keys (`repos` → `projects`); attachment digests recomputed against `attachments.data` |
+
+Violation kinds in the report: `payload-hash`, `payload-decode`, `reference-target`, `reference-index`, `attachment-hash`, `registry` — sorted by (kind, subject) for deterministic output.
+
+### Detected, not prevented
+
+Manual modification of the SQLite file is **DETECTED, not prevented** — the runtime verifies and reports inconsistencies; it does not pretend a hand-edited database is trusted. SQLite is a persistence layer, not a trust boundary. Unreferenced payloads are the **immutable history archive**: they are counted in the report (`History payloads`) and **never** reported as violations.
+
+### Exit codes
+
+| Code | Meaning |
+|---|---|
+| `0` | clean — no violations (history payloads may be present) |
+| `1` | violations found — the report is printed; stderr carries `eka: integrity check found N violation(s)` |
+| `2` | Usage or internal error — workspace resolution or store read failure |
+
+### Output
+
+Deterministic, non-TTY-safe: `Runtime` context header (Workspace, Schema) + summary (Payloads checked, References checked, Attachments checked, History payloads, Violations) + optional violation lines. Example (clean store):
+
+```
+Runtime
+Workspace  /home/user/.eka
+Schema     v2
+
+Summary:
+└── Payloads checked: 37
+└── References checked: 37
+└── Attachments checked: 0
+└── History payloads: 0
+└── Violations: 0
+```
+
+### Error handling
+
+| Condition | Behavior |
+|---|---|
+| Workspace resolution failure (`EKA_HOME` relative, no home dir) | `eka: <error>`, exit `2` |
+| Store read failure during the scan | `eka: integrity check failed: <error>`, exit `2` |
+
 ## `eka view` — Knowledge Projections
 
 ```
@@ -429,6 +632,8 @@ eka view [projection] [target]
 ```
 
 `eka view` projects the **Engineering Knowledge Model** of the repository rooted at the current directory: read-only views over the repository's artifacts and their relationships. Projections are named by **Engineering Domain** — `discovery`, `architecture`, `planning`, `execution`, `operations` — plus the `ticket` and `board` projections. The `target` argument is required by the ticket projection only (a bare ticket id, `tkt-<id>` or `tkt:<id>`); domain projections ignore it. With no arguments, the available projections are listed and the command exits `0`.
+
+The projection is built from **Canonical Knowledge Objects (CKO)** — the authoring tree is compiled on demand by the **Knowledge Compiler** (`compile.Compile`) into `exchange.Unit` objects, and the projections read those, never Markdown (ADR-012; the CKO schema is [`cko-specification.md`](cko-specification.md)). Markdown parsing happens only inside the compiler's authoring adapter, as the conformance gate.
 
 ### Projection philosophy — Knowledge Projection
 
@@ -444,9 +649,9 @@ eka view [projection] [target]
 run → validate → load → construct → render → exit
 ```
 
-1. **Validate** — the conformance gate (R0–R12) runs first; a non-conformant repository is refused (exit `1`).
-2. **Load** — one `conformance.Scan` of the repository.
-3. **Construct** — one Knowledge Graph, then one projection build (the builder).
+1. **Validate** — the authoring conformance gate (R0–R12, the compiler's validation stage) runs first; a non-conformant repository is refused (exit `1`).
+2. **Load** — the Knowledge Compiler compiles the authoring tree into Canonical Knowledge Objects (`compile.Compile`: parse → validate R0–R12 → normalize → generate CKO → integrity verification).
+3. **Construct** — one Knowledge Graph over the compiled `exchange.Unit` objects, then one projection build (the builder).
 4. **Render** — the projection renderer applies the projection's visualization (board, roadmap, tree, cards, timeline, detail card), deterministically.
 5. **Exit** — mapped per the exit-code contract below.
 
@@ -509,9 +714,9 @@ The visualization is **read-only presentation of the model** — it never become
 One pipeline, five stages, one dependency direction — the **Projection Renderer** is the presentation stage of the projection pipeline:
 
 ```
-Repository
+Repository (authoring tree)
     ↓
-Knowledge Loader       one conformance.Scan — the repository's artifacts
+Knowledge Loader       the Knowledge Compiler (compile.Compile) — authoring → Canonical Knowledge Objects (exchange.Unit)
     ↓
 Knowledge Graph        identity index, relationship resolution, membership helpers
     ↓
@@ -526,8 +731,8 @@ Two layers, one dependency direction:
 
 | Layer | Location | Role |
 |---|---|---|
-| Projection engine | `view/` (public package) | Knowledge Graph (identity index, relationship resolution, membership helpers) + independent projection builders (one per projection: `discovery`, `architecture`, `planning`, `execution`, `operations`, `ticket`, `board`) + the projection registry. Pure data in, pure data out. |
-| Terminal rendering | `cmd/view.go` + `cmd/ui` | Argument validation, the conformance gate, dispatch to the per-domain projection renderer (`cmd/ui`), exit-code mapping. No projection logic. |
+| Projection engine | `view/` (public package) | Knowledge Graph over the compiled CKO set (identity index, relationship resolution, membership helpers) + independent projection builders (one per projection: `discovery`, `architecture`, `planning`, `execution`, `operations`, `ticket`, `board`) + the projection registry. Pure data in, pure data out. |
+| Terminal rendering | `cmd/view.go` + `cmd/ui` | Argument validation, the Knowledge Compiler invocation (conformance gate + CKO compile), dispatch to the per-domain projection renderer (`cmd/ui`), exit-code mapping. No projection logic. |
 
 - **Builder and renderer are independent responsibilities.** The builder defines the projection's **information** — which artifacts, in which order, grouped into which state sets; the renderer defines its **presentation** — the visual shape (Kanban board, roadmap, dependency tree, information cards, timeline, detail card) and the framing. A renderer can attach to any builder's output without touching the builder.
 - The **renderer does not know the repository layout**; the **builders do not know terminals**.
@@ -716,12 +921,12 @@ Summary:
 eka watch <projection> [target] [--interval N]
 ```
 
-`eka watch` is the **realtime projection viewer**: it renders the same projections as `eka view` — `discovery`, `architecture`, `planning`, `execution`, `operations`, `ticket`, plus the `sprint` / `wave` CLI aliases of `execution` — and refreshes them in place while the repository changes. Like `eka view`, it is read-only: a projection has no State of its own and never becomes a writer (P6, Core Specification §11). The [projections table](#projections) above defines what each projection shows; the ticket target argument behaves exactly as in `eka view`.
+`eka watch` is the **realtime projection viewer**: it renders the same projections as `eka view` — `discovery`, `architecture`, `planning`, `execution`, `operations`, `ticket`, plus the `sprint` / `wave` CLI aliases of `execution` — and refreshes them in place while the repository changes. Like `eka view`, it is read-only: a projection has no State of its own and never becomes a writer (P6, Core Specification §11). Like `eka view`, each refresh compiles the authoring tree into **Canonical Knowledge Objects** via the Knowledge Compiler and projects over `exchange.Unit` (ADR-012). The [projections table](#projections) above defines what each projection shows; the ticket target argument behaves exactly as in `eka view`.
 
 ### Interaction model
 
 - **No keyboard navigation** — the viewer refreshes by polling; Ctrl-C (SIGINT) stops it. No paging, no cursor movement, no editing.
-- **Polling refresh, no filesystem watchers** — the repository is re-scanned at a fixed interval.
+- **Polling refresh, no filesystem watchers** — the repository is re-compiled (via the Knowledge Compiler) at a fixed interval.
 - **TTY-only** — a terminal is required. On a non-TTY (pipe, redirect, CI) the command exits `2` with the deterministic error `requires a terminal` — the non-TTY determinism contract (byte-identical, no ANSI) applies to this error path.
 
 ### Refresh model
@@ -773,7 +978,7 @@ Knowledge   EKA v1.1
 ↓ Validate
 
 Repository validation
-Root: . — 131 .md files, 45 artifacts, 0 errors, 8 warnings
+Root: . — 138 .md files, 49 artifacts, 0 errors, 12 warnings
 
 Results (sorted by file, then rule):
   [warning] R10 reference/decisions/adr-001-identity-serialization.md: no resolvable derives-from/depends-on chain reaches a stratum above Architecture (stratum 2); stratification traceability is missing (chains must reach one of: Discovery)
@@ -784,16 +989,20 @@ Results (sorted by file, then rule):
   [warning] R10 reference/decisions/adr-006-exchange-conventions.md: no resolvable derives-from/depends-on chain reaches a stratum above Architecture (stratum 2); stratification traceability is missing (chains must reach one of: Discovery)
   [warning] R10 reference/decisions/adr-007-extension-research-finding.md: no resolvable derives-from/depends-on chain reaches a stratum above Architecture (stratum 2); stratification traceability is missing (chains must reach one of: Discovery)
   [warning] R10 reference/decisions/adr-008-engineering-domain-model.md: no resolvable derives-from/depends-on chain reaches a stratum above Architecture (stratum 2); stratification traceability is missing (chains must reach one of: Discovery)
+  [warning] R10 reference/decisions/adr-009-knowledge-runtime-architecture.md: no resolvable derives-from/depends-on chain reaches a stratum above Architecture (stratum 2); stratification traceability is missing (chains must reach one of: Discovery)
+  [warning] R10 reference/decisions/adr-010-synchronization-model.md: no resolvable derives-from/depends-on chain reaches a stratum above Architecture (stratum 2); stratification traceability is missing (chains must reach one of: Discovery)
+  [warning] R10 reference/decisions/adr-011-immutable-engineering-knowledge-model.md: no resolvable derives-from/depends-on chain reaches a stratum above Architecture (stratum 2); stratification traceability is missing (chains must reach one of: Discovery)
+  [warning] R10 reference/decisions/adr-012-canonical-knowledge-object-runtime.md: no resolvable derives-from/depends-on chain reaches a stratum above Architecture (stratum 2); stratification traceability is missing (chains must reach one of: Discovery)
 
 Verdict: PASS
 Summary:
-└── Artifacts: 45
+└── Artifacts: 49
 └── Errors: 0
-└── Warnings: 8
+└── Warnings: 12
 └── Status: Repository conforms to EKA v1.1
 ```
 
-> Note: the `.md files` count is a snapshot — it grows with every new convention document added; the output format stays fixed. The artifact, error, and warning counts are the contract (45 artifacts; error > 0 ⇒ FAIL). The 8 R10 warnings are the repository's own stratification traceability gap: the 8 Implementation ADRs (Architecture, stratum 2) carry no `derives-from`/`depends-on` chain reaching a higher stratum. The Reference Project (`reference/project/`) demonstrates the best practice: **37 artifacts, 0 errors, 0 warnings** (every artifact carries a stratification chain). R10 is a warning — it never blocks the verdict; the exit code stays `0`.
+> Note: the `.md files` count is a snapshot — it grows with every new convention document added; the output format stays fixed. The artifact, error, and warning counts are the contract (49 artifacts; error > 0 ⇒ FAIL). The 12 R10 warnings are the repository's own stratification traceability gap: the 12 Implementation ADRs (Architecture, stratum 2) carry no `derives-from`/`depends-on` chain reaching a higher stratum. The Reference Project (`reference/project/`) demonstrates the best practice: **37 artifacts, 0 errors, 0 warnings** (every artifact carries a stratification chain). R10 is a warning — it never blocks the verdict; the exit code stays `0`.
 
 Output structure:
 
@@ -845,7 +1054,7 @@ source <(eka completion bash)
 
 ## Repository conformance
 
-The EKA repository **passes its own conformance suite**: all `.md` files scanned, 45 artifacts (37 in the Reference Project `reference/project/` + 8 Implementation ADRs), **0 errors, 8 warnings (R10 stratification traceability), exit 0** (see example output above). R10 warnings never block the verdict.
+The EKA repository **passes its own conformance suite**: all `.md` files scanned, 49 artifacts (37 in the Reference Project `reference/project/` + 12 Implementation ADRs), **0 errors, 12 warnings (R10 stratification traceability), exit 0** (see example output above). R10 warnings never block the verdict.
 
 This milestone is codified as the automated test `TestReferenceImplementationConforms` in `conformance/self_validation_test.go`: the test locates the repository root, runs `Validate` over the whole repository, and asserts 0 blocking errors. Any conformance regression (e.g., a new ADR violating a rule) therefore breaks the test suite before it can reach a commit.
 
@@ -860,6 +1069,9 @@ The CLI is organized as **two layers + one entry point**:
 | Application layer | `exchange/` (public package) | Import/export engine (Exchange Spec + RSF): discovery, loading, model building, serialization, deserialization, identity/relationship resolver, conflict analyzer, integration engine (staged commit + rollback), package writer — reusable without the CLI. |
 | Application layer | `conformance/` (public package) | Validation engine: scanning, artifact classification, rules R0–R12, result model (`Report`); also provides `Scan` and `ParseReference` for other consumers. |
 | Application layer | `view/` (public package) | Knowledge Projection Engine: Knowledge Graph (identity index, relationship resolution, membership helpers) + independent projection builders + projection registry — reusable without the CLI. |
+| Application layer | `workspace/` (public package) | EKA Workspace: workspace resolution (`EKA_HOME` / `~/.eka`), `workspace.json` metadata, project/repository registry, canonical store handle. |
+| Application layer | `store/` (public package) | Canonical store: SQLite schema v2 (`object_payloads` — immutable, content-addressed payloads, insert-only; `object_refs` — mutable references with derived index columns; `attachments`, `sync_log`, `meta`), in-place v1→v2 schema migration, payload insert, reference upserts, sync log, integrity verification (`VerifyIntegrity`). |
+| Application layer | `sync/` (public package) | Knowledge Runtime synchronization engine: pull (snapshot verification + upsert / docs-mode conformance gate + seed) and push (deterministic snapshot assembly + atomic swap). |
 | Entry point | `cmd/eka/main.go` | Thin: `os.Exit(cmd.Execute(...))`. Executable name: `eka`. |
 
 ```
@@ -870,6 +1082,11 @@ cmd/                package cmd — Cobra command definitions (command layer)
   export.go         export command
   import.go         import command
   view.go           view command (renders projections via cmd/ui)
+  watch.go          watch command
+  sync.go           sync command tree (sync / sync pull / sync push)
+  project.go        project command tree (project register / project list)
+  status.go         status command
+  integrity.go      integrity command tree (integrity check)
   execute_test.go   CLI tests (exit codes, help, completion, modes)
 cmd/ui/             package ui — presentation primitives (no business logic)
   ui.go             Style: color/TTY/verbose context per execution
@@ -886,14 +1103,17 @@ bootstrap/          public package — eka init engine (application layer)
 exchange/           public package — import/export engine (application layer)
 conformance/        public package — validation engine (application layer)
 view/               public package — knowledge projection engine (application layer)
+workspace/          public package — EKA workspace + registry (application layer)
+store/              public package — canonical store, SQLite schema v2 (application layer)
+sync/               public package — synchronization engine (application layer)
 skeletonembed.go    root package — //go:embed skeleton (canonical Reference Skeleton)
 ```
 
 Principles:
 
-- **Cobra is an adapter, not the architecture.** The framework (currently Cobra) is an implementation detail of the command interface. Business logic lives in `bootstrap/`, `exchange/` and `conformance/` — public packages imported as `github.com/maleolabs/engineering-knowledge-architecture/bootstrap` and `.../conformance`, **with no dependency on `cmd/`**.
-- **The command layer calls services, not the other way around.** Future tooling (import/export, graph query, SDKs, Knowledge OS integration) can import the application packages without being tied to Cobra.
-- **No `internal/` or `pkg/`** — there is no second internal consumer; `bootstrap/`, `exchange/` and `conformance/` are already public API. Adding a directory without an immediate purpose is speculative abstraction (forbidden).
+- **Cobra is an adapter, not the architecture.** The framework (currently Cobra) is an implementation detail of the command interface. Business logic lives in `bootstrap/`, `exchange/`, `conformance/`, `view/`, `workspace/`, `store/` and `sync/` — public packages imported as `github.com/maleolabs/engineering-knowledge-architecture/bootstrap`, `.../conformance`, `.../workspace`, `.../sync`, etc., **with no dependency on `cmd/`**.
+- **The command layer calls services, not the other way around.** Future tooling (import/export, graph query, SDKs, Knowledge OS integration, MCP servers) can import the application packages without being tied to Cobra.
+- **No `internal/` or `pkg/`** — there is no second internal consumer; the application packages are already public API. Adding a directory without an immediate purpose is speculative abstraction (forbidden).
 - **Reference Skeleton embedded** (`skeletonembed.go`): `eka init` generates repositories from the canonical `skeleton/` source, not from a hardcoded directory. The standalone binary can still generate the structure without a repository checkout.
 - **Deterministic exit codes** (0/1/2) mapped in `cmd/root.go`; all errors go through a single output path `eka: <message>`.
 
@@ -916,12 +1136,17 @@ A new command is added without architectural refactoring:
 | `eka init` | **Implemented** | Repository Bootstrapper (5 stages, adaptive wizard, dry-run, idempotent, post-generation validation). |
 | `eka export` | **Implemented** | Exchange Package export (RSF v1.1): repo/line/instance/collection scope, automatic validation, deterministic, external reference declaration, attachments, SHA-256 digests. |
 | `eka import` | **Implemented** | Exchange Package import (RSF v1.1 + Exchange §11): package + integrity validation, identity/relationship resolution, conflict → abort, atomic staged commit, rollback, post-import revalidation. |
-| `eka view` | **Implemented** | Knowledge projections (execution / planning / architecture / discovery / operations / ticket; CLI aliases `sprint`, `wave` → execution): read-only views derived from the Engineering Knowledge Model — relationships + State, never markdown text — rendered as per-domain visualizations (Kanban board, roadmap, dependency tree, information cards, release timeline, detail card). Conformance-gated, deterministic, exit codes 0/1/2. |
+| `eka view` | **Implemented** | Knowledge projections (execution / planning / architecture / discovery / operations / ticket; CLI aliases `sprint`, `wave` → execution): read-only views derived from the Engineering Knowledge Model — relationships + State, never markdown text — over Canonical Knowledge Objects compiled from authoring via the Knowledge Compiler (ADR-012); rendered as per-domain visualizations (Kanban board, roadmap, dependency tree, information cards, release timeline, detail card). Conformance-gated, deterministic, exit codes 0/1/2. |
 | `eka watch` | **Implemented** | Realtime projection viewer: same projections as `eka view` (incl. `sprint` / `wave` aliases); TTY-only, polling refresh (`--interval`, default 2s, min 1s), redraw on change only, live validation failure frames with auto-recovery, Ctrl-C to stop (exit `0`). |
 | `eka validate` | **Implemented** | Full conformance validator (R0–R12: R1–R9 + structural R0 + domain-aware R10–R12). |
+| `eka sync` | **Implemented** | Knowledge Runtime synchronization (v0.2.0): pull (snapshot mode: verify + idempotent upsert; docs mode: conformance-gated seed) + push (deterministic snapshot, atomic swap); auto-registration; deletions never applied; exit codes 0/1/2. |
+| `eka project` | **Implemented** | Workspace project registry: `register [path] [--name NAME]` (no-op re-registration) + `list` (deterministic, sorted). |
+| `eka status` | **Implemented** | Workspace status probe: path, schema version, id, store totals (Objects = references, Payloads = immutable objects, Attachments), per-repository last sync; read-only, never creates the workspace. |
+| `eka integrity check` | **Implemented** | Store integrity verification (Immutable Engineering Knowledge Model, ADR-011): recompute payload hashes, strict-decode payloads, verify reference targets + derived index columns, recompute attachment digests, check the repository registry; unreferenced payloads counted as history, never violations; manual modification detected, not prevented; exit codes 0/1/2. |
 | `eka version` | **Implemented** | CLI build version + EKA standard version (currently `EKA standard 1.1`). |
 | `eka completion` | **Implemented** | bash/zsh/fish/powershell completion scripts (provided by Cobra). |
 | `eka diagnose` | Not implemented | Repository diagnostics — future candidate. |
 | `eka graph` | Not implemented | Query/knowledge graph over artifacts. |
+| Runtime evolution | Future | Deletion protocol, cloud sync, hooks/automation, store-backed projections, machine-readable API, MCP integration, Atrium. |
 
 Future commands are added following the [Contribution guide](#contribution-guide-adding-a-command) — without architectural refactoring.

@@ -1,0 +1,14 @@
+
+# Story — Publish a Post
+
+## Description
+
+As an author, I can publish a draft with one action, and the post appears on the public site immediately. This is the heart of the publishing-core requirement: the draft → publish flip defined in `adr:content-storage` (file stays, index status flips, FTS index updates).
+
+## Acceptance Criteria
+
+- `POST /api/posts/{id}/publish` flips the post's index status from `draft` to `published` and stamps `published-at` (see `spec:publishing-api`).
+- The public page renders the post after publish; the FTS index contains the post (search finds it).
+- Publishing a non-existent or already-published post returns a clear error (404 / 409) and leaves state unchanged.
+- Autosaved-but-unpublished content is never exposed publicly.
+- Verified against the DoD (`std:definition-of-done`): tests added, `eka validate` clean, review recorded in `rvw:publishing-core-review`.

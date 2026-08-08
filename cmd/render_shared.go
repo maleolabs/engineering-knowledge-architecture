@@ -106,7 +106,7 @@ func planningStateIcon(state string) string {
 	}
 }
 
-// revisionOf returns the artifact line's revision from the graph (the
+// revisionOf returns the unit line's revision from the graph (the
 // projection model carries no revision), or "" when the line does not
 // resolve or carries no revision.
 func revisionOf(g *view.Graph, a view.DomainArtifact) string {

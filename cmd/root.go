@@ -1,11 +1,13 @@
 // Package cmd implements the EKA CLI as a thin Cobra command layer.
 //
-// The command tree (root, validate, init, export) is the only part of the
-// codebase that knows about argument parsing, flags, help text, output
-// rendering and exit codes. It contains no domain logic: validate
-// delegates to the conformance package, init delegates to the bootstrap
-// engine, export delegates to the exchange engine — all public, reusable
-// application packages.
+// The command tree (root, validate, init, export, import, view, watch,
+// sync, project, status) is the only part of the codebase that knows
+// about argument parsing, flags, help text, output rendering and exit
+// codes. It contains no domain logic: validate delegates to the
+// conformance package, init delegates to the bootstrap engine, export
+// delegates to the exchange engine, and the runtime commands (sync,
+// project, status) delegate to the workspace/sync engines — all
+// public, reusable application packages.
 //
 // Layout rationale: the reusable engines stay where they are
 // (bootstrap/, conformance/, skeletonembed.go at the module root). There
@@ -111,8 +113,13 @@ eka init bootstraps a new EKA repository from the embedded skeleton
 (validating the result afterwards), eka export projects a repository
 to a deterministic package in the EKA Reference Serialization Format
 (RSF) v1.0, eka import consumes such a package, eka view projects
-the Engineering Knowledge Model (sprint/wave/ticket views), and eka
-watch re-renders a projection live as the repository changes.
+the Engineering Knowledge Model (sprint/wave/ticket views), eka
+watch re-renders a projection live as the repository changes, and
+the Knowledge Runtime commands (eka sync, eka project, eka status,
+eka integrity) keep a local canonical workspace (~/.eka or
+$EKA_HOME) synchronized with registered repositories via
+deterministic snapshots — immutable, content-addressed knowledge
+objects whose integrity eka integrity check verifies.
 
 Command output is deterministic: the same input always produces the
 same bytes. On a terminal the output is colored and progress is shown
@@ -145,7 +152,9 @@ Exit codes:
 	}
 	root.PersistentFlags().BoolP(flagVerbose, "v", false,
 		"verbose output: additional detail lines (per-unit lists, plan actions)")
-	root.AddCommand(newValidateCommand(), newInitCommand(), newExportCommand(), newImportCommand(), newViewCommand(), newWatchCommand(), newVersionCommand())
+	root.AddCommand(newValidateCommand(), newInitCommand(), newExportCommand(), newImportCommand(),
+		newViewCommand(), newWatchCommand(), newSyncCommand(), newProjectCommand(), newStatusCommand(),
+		newIntegrityCommand(), newVersionCommand())
 	return root
 }
 
@@ -157,8 +166,8 @@ func printLanding(s *ui.Style) {
 	fmt.Fprintln(s.W, s.Accent("Engineering Knowledge Architecture (EKA)"))
 	fmt.Fprintln(s.W)
 	fmt.Fprintln(s.W, "  The official command-line interface for the EKA engineering")
-	fmt.Fprintln(s.W, "  knowledge standard: bootstrap, validate, and exchange")
-	fmt.Fprintln(s.W, "  engineering knowledge repositories.")
+	fmt.Fprintln(s.W, "  knowledge standard: bootstrap, validate, exchange, and run")
+	fmt.Fprintln(s.W, "  the knowledge runtime (sync, projects, status, integrity).")
 	fmt.Fprintln(s.W)
 	fmt.Fprintln(s.W, "Commands")
 	for _, c := range newRootCommand().Commands() {

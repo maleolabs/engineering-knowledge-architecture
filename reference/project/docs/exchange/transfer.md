@@ -64,3 +64,44 @@ When the identity `(namespace, type, id, instance-version)` already exists in th
 - EX **does not judge content correctness** — only conformance and integrity.
 - EX **does not change state** — state transitions remain the sole right of the state owner; transfer only copies values.
 - Projections (tickets/tables) are not transferred as sources of truth; after import, projections are refreshed from the owner state in the target.
+
+## 4. Knowledge Snapshots and Synchronization
+
+The Knowledge Runtime (v0.2) adds a second transport over the same Exchange Package Object Model: **Knowledge Snapshots**, synchronized between the repository and the local EKA Workspace canonical store. The snapshot is the same RSF package contract as import/export — one format, two transports.
+
+### 4.1 Snapshot = RSF package at `exchange/snapshots/`
+
+A Knowledge Snapshot is an RSF package written in **directory layout** (not the single-file `.ekapkg`) at `exchange/snapshots/`:
+
+| Entry | Contents |
+|---|---|
+| `header.json` | package header: serialization version 1.1, exchange format 1, specification 1.0, exporter `eka`, label `rsf-repo-<namespace>-1.1`, scope `repo`, namespace |
+| `manifest.json` | ordered unit list (canonical identity form) with per-unit and package digests |
+| `declarations.json` | closure + external reference declarations |
+| `integrity.json` | SHA-256 digests: package-level, per-unit, per-attachment |
+| `units/` | one directory per unit: `unit.json` (identity, state vector, change log, relationships, classification) + `content` payload, byte-exact |
+| `attachments/` | non-`.md` payloads from `docs/`, byte-exact |
+
+The same verification rules as import apply (RSF §9.4/§9.5): entry structure, strict JSON (unknown fields rejected), digest verification, manifest self-consistency. A corrupt snapshot is **refused, never silently skipped**.
+
+### 4.2 `eka sync` workflow
+
+- `eka sync [path]` — **pull, then push** (the default cycle).
+- `eka sync pull [path]` — verify the snapshot, then upsert its units and attachments into the workspace store, attributed to the repository. **Idempotent:** an unchanged snapshot digest skips the work.
+- `eka sync pull --from-docs` — re-seed from the `docs/` tree (conformance gate first) — the reconciliation tool when docs and snapshot drift.
+- **Migration mode:** a repository with a `docs/` tree but no snapshot is seeded from the docs tree through the conformance gate on first pull.
+- `eka sync push [path]` — assemble the repository's stored objects into the deterministic snapshot (atomic temp-dir swap; failed pushes leave the previous snapshot untouched).
+
+### 4.3 Deletions and conflicts (v0.2)
+
+- **Deletions are never applied** — pull is additive; units missing from a new snapshot stay in the store. A deletion protocol is reserved for a future version.
+- **Duplicate identity** across repositories in one project resolves by deterministic **last-wins** overwrite, recorded in the sync report.
+
+### 4.4 Explicit Git commit
+
+The snapshot is ordinary repository content. After `eka sync`, commit it with the normal workflow:
+
+- [ ] `git add exchange/snapshots` and commit after every sync that changed the snapshot.
+- [ ] Review snapshot changes in pull requests like any other content (the directory layout diffs cleanly).
+
+There are **no hooks**: synchronization is explicit by design (the workspace database is never committed; the snapshot is the transport). `eka project register <path> --name <project>` groups repositories into projects for multi-repository synchronization.

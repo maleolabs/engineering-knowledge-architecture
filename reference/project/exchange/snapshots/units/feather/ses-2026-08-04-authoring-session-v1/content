@@ -1,0 +1,22 @@
+
+# Session — 2026-08-04 Authoring Flow Testing
+
+## Context
+
+Manual testing pass over the authoring flow in the active container (Wave 7, `ctr:wave-7`): create → autosave → preview → publish → edit, on a local instance behind Caddy. Focus: the autosave story (`sto:draft-autosave`, in-progress) and the publish path (`sto:publish-post`, done — regression check).
+
+## Notes
+
+- Autosave debounce set to 800 ms; typing bursts batch into one save. Reload mid-typing restored the buffer up to the last debounce flush — at most one keystroke lost, as specified.
+- `beforeunload` flush works on tab close (verified in Firefox and Chromium).
+- **Found:** PATCH with a stale `If-Match` returns 409 as specced, but the editor then keeps the user's buffer and re-saves on the next debounce tick — creating a save loop that never succeeds. The reconciliation (reload file → merge → retry) is not implemented yet; added to `sto:draft-autosave` acceptance work.
+- **Found (minor):** preview pane scroll position resets on every keystroke; cosmetic, tracked as a note, not a work item (fix later with the renderer story).
+- Publish regression: empty-title publish returns 400, process stays alive (fix from `bug:empty-title-crash` holds).
+- Micro-decision: keep autosave writes atomic (temp + rename) — already how the storage layer writes; no change needed.
+
+## Verification
+
+- `go test ./...` — 142 passed, 0 failed (local, Go 1.24 toolchain from `ch:update-go-version` prep).
+- `eka validate` — 0 errors, 0 warnings on the Feather knowledge base.
+- Manual checklist above: create/autosave/reload/publish/edit all exercised; two findings recorded in Notes.
+- Distillation: the stale-`If-Match` finding belongs to `sto:draft-autosave` (already tracked); no new durable artifact required from this session.

@@ -7,7 +7,7 @@ Usage:
   # Specific version or custom directory (Invoke-Expression takes no
   # script parameters — interpolate them into the script text):
   $s = irm https://github.com/maleolabs/engineering-knowledge-architecture/releases/latest/download/install.ps1
-  iex "$s -Version v0.1.0"
+  iex "$s -Version v0.2.0"
   iex "$s -To 'C:\tools\bin'"
 
 Downloads the latest (or specified) EKA release binary for the current OS

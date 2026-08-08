@@ -67,13 +67,16 @@ type entry struct {
 	data []byte
 }
 
-// unitDirName builds the unit entry directory
+// UnitDirName builds the unit entry directory
 // "units/<namespace>/<type>-<id>-v<nn>". Instance-versions are integers,
 // so v<nn> is canonical (never zero-padded). IDs are carried verbatim;
 // the load-phase charset guard (load.go) enforces RSF §5.2.3 on every
 // identity component before this builder runs, so the interpolated
 // segments can never escape the package root (path-traversal defense).
-func unitDirName(id Identity) string {
+// Exported for consumers that need the canonical entry location of a
+// unit identity (the sync engine of the Knowledge Runtime resolves raw
+// unit.json entries by it).
+func UnitDirName(id Identity) string {
 	return "units/" + id.Namespace + "/" + id.Type + "-" + id.ID + "-v" + strconv.Itoa(id.InstanceVersion)
 }
 
@@ -85,7 +88,7 @@ func assemble(b *built) ([]entry, error) {
 	manifestUnits := make([]ManifestUnit, 0, len(b.units))
 
 	for _, u := range b.units {
-		u.UnitDir = unitDirName(u.Identity)
+		u.UnitDir = UnitDirName(u.Identity)
 		unitJSON, err := marshal(u)
 		if err != nil {
 			return nil, fmt.Errorf("serialization failed for %s: %w", u.CanonicalIdentityForm, err)

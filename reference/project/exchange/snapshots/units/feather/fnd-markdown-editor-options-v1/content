@@ -1,0 +1,26 @@
+
+# Research Finding — Editor Approach Options
+
+## Purpose
+
+Answer the question behind the authoring experience: should the Feather editor be a plain textarea with live preview, or a rich (WYSIWYG) markdown editor? This finding feeds the content-storage decision and the authoring epic.
+
+## Content
+
+Two candidate approaches were investigated:
+
+1. **Plain textarea + live preview.** The author writes raw Markdown in a textarea; a second pane renders the result (server-side with Goldmark, or client-side). No intermediate document model.
+2. **Rich editor (ProseMirror / TipTap style).** A structured document model with markdown as an import/export format; formatting via toolbar and shortcuts.
+
+The investigation covered: implementation effort, markdown fidelity, autosave interplay, mobile experience, and maintenance burden for a two-person team.
+
+## Investigation Summary
+
+- Prototyped both approaches against the same post list (~200 lines each). The textarea prototype reached parity (draft, preview, publish) in two days; the rich editor prototype needed five days and still had serialization edge cases (tables, footnotes, code blocks round-tripping).
+- Markdown fidelity: textarea is lossless by construction. The rich editor round-trip corrupted fenced code blocks and nested lists in 4 of 12 test documents.
+- Autosave: textarea needs only debounced raw-text saves; rich editor needs document-model serialization plus snapshot handling.
+- The target audience (writers comfortable with Markdown, per the vision) matches the textarea model; WYSIWYG buys little for them.
+
+## Conclusion
+
+Adopt **plain textarea + live preview** for v1. It is lossless, cheap to build, and matches the author profile. Revisit rich editing only if a future user study shows demand. This finding distills into `adr:content-storage` (which assumes a plain-text authoring model) and constrains the authoring epic (`epc:authoring-experience`).

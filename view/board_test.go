@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/maleolabs/engineering-knowledge-architecture/conformance"
+	"github.com/maleolabs/engineering-knowledge-architecture/exchange"
 )
 
 // boardColumnIDs returns the identities of one board column.
@@ -136,11 +137,9 @@ func TestBoardProjectionUnassigned(t *testing.T) {
 // TestBoardProjectionOrphan: a work item referenced by no ticket at
 // all is unassigned.
 func TestBoardProjectionOrphan(t *testing.T) {
-	g := NewGraph(".", []conformance.Artifact{
-		{
-			Namespace: "ns", Type: "sto", ID: "orphan",
-			States: map[string]string{conformance.DomainExecutionState: "planned"},
-		},
+	g := NewGraph(".", []*exchange.Unit{
+		unitFixture(t, "ns", "sto", "orphan",
+			map[string]string{conformance.DomainExecutionState: "planned"}),
 	})
 	p, err := Build("board", g, "")
 	if err != nil {
@@ -161,14 +160,21 @@ func TestBoardProjectionOrphan(t *testing.T) {
 // TestBoardProjectionMultiContainer: a work item referenced by tickets
 // of two different containers carries both container tags, sorted.
 func TestBoardProjectionMultiContainer(t *testing.T) {
-	artifacts := []conformance.Artifact{
-		{Namespace: "ns", Type: "ctr", ID: "wave-b", States: map[string]string{conformance.DomainContainerState: "active"}},
-		{Namespace: "ns", Type: "ctr", ID: "wave-a", States: map[string]string{conformance.DomainContainerState: "completed"}},
-		{Namespace: "ns", Type: "sto", ID: "shared", States: map[string]string{conformance.DomainExecutionState: "todo"}},
-		{Namespace: "ns", Type: "tkt", ID: "one", Relations: map[string][]string{"derives-from": {"ctr:wave-b", "sto:shared"}}},
-		{Namespace: "ns", Type: "tkt", ID: "two", Relations: map[string][]string{"derives-from": {"ctr:wave-a", "sto:shared"}}},
+	units := []*exchange.Unit{
+		unitFixture(t, "ns", "ctr", "wave-b",
+			map[string]string{conformance.DomainContainerState: "active"}),
+		unitFixture(t, "ns", "ctr", "wave-a",
+			map[string]string{conformance.DomainContainerState: "completed"}),
+		unitFixture(t, "ns", "sto", "shared",
+			map[string]string{conformance.DomainExecutionState: "todo"}),
+		unitFixture(t, "ns", "tkt", "one", nil,
+			exchange.Relationship{Type: "derives-from", Target: "ctr:wave-b"},
+			exchange.Relationship{Type: "derives-from", Target: "sto:shared"}),
+		unitFixture(t, "ns", "tkt", "two", nil,
+			exchange.Relationship{Type: "derives-from", Target: "ctr:wave-a"},
+			exchange.Relationship{Type: "derives-from", Target: "sto:shared"}),
 	}
-	g := NewGraph(".", artifacts)
+	g := NewGraph(".", units)
 	p, err := Build("board", g, "")
 	if err != nil {
 		t.Fatalf("Build(board): %v", err)

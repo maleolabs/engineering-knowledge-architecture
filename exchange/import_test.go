@@ -236,7 +236,7 @@ func assembleTestPackage(t *testing.T, spec testPackageSpec) string {
 	unitDigests := map[string]string{}
 	var manifestUnits []ManifestUnit
 	for _, u := range spec.units {
-		u.UnitDir = unitDirName(u.Identity)
+		u.UnitDir = UnitDirName(u.Identity)
 		unitJSON, err := marshalLF(u)
 		if err != nil {
 			t.Fatal(err)

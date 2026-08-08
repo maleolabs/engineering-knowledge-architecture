@@ -1,6 +1,6 @@
 # Engineering Knowledge Lifecycle
 
-> Anchor EKA: conceptual lifecycle (EKA 11) — how knowledge is born, organized, validated, projected, exchanged, and consumed.
+> Anchor EKA: conceptual lifecycle (EKA 11) — how knowledge is born, organized, validated, projected, exchanged, synchronized, and consumed.
 > Convention document, not an artifact (no `type`/`id`). Companion to [README.md](README.md) (what lives where) and [operating/protocol.md](operating/protocol.md) (how state moves).
 
 ## Purpose
@@ -12,6 +12,8 @@ The lifecycle is **how knowledge flows**; the Engineering Domain is **where it s
 - **Knowledge Stratum** — the authority level of the domain: a fixed position in the strict order **Discovery → Architecture → Planning → Execution → Operations** (stratum 1 highest → 5). Always derived from the domain; never declared by an artifact.
 
 An artifact is born in a domain, moves through its lifecycle, and is consumed — it never changes stratum. This document describes the whole flow, step by step.
+
+> **Terminology status (v0.2).** The lifecycle is evolving to include the Knowledge Runtime: the target sequence is **Draft → Validate → Publish → Synchronize → Project → Consume** (ADR-010). The stage names below (Produce, Organize, Exchange, Synchronize) are **not finalized** — implementation informs the final workflow; the Synchronize stage is the runtime addition of this milestone.
 
 ## Produce
 
@@ -66,6 +68,17 @@ Import/export moves knowledge between repositories without loss (P13):
 
 Exchange packages cross the same validation pipeline (R0–R12) as the repository itself. See [exchange/transfer.md](exchange/transfer.md) for the round-trip contract.
 
+## Synchronize
+
+The Knowledge Runtime (v0.2) adds a synchronization stage between the repository and the local **EKA Workspace** (default `~/.eka/`, or `$EKA_HOME`):
+
+- **The workspace is canonical; the repository is the transport.** Identity, State, Content, Relationships, and Classification live in the workspace store (`eka.db`); the repository carries a deterministic **Knowledge Snapshot** at `exchange/snapshots/` (an RSF package in directory layout) plus the human-readable `docs/` tree.
+- **`eka sync`** runs the cycle: **pull** (verify the snapshot and seed the workspace store; or seed from the `docs/` tree through the conformance gate R0–R12 when no snapshot exists yet — the migration path) then **push** (assemble the repository's stored objects into a deterministic snapshot). Pulls are idempotent: an unchanged snapshot digest skips the work. **Deletions are never applied** in v0.2.
+- **Explicit and Git-native.** The snapshot is ordinary repository content — commit, review, push, merge through normal Git workflows. There are no hooks: synchronization runs when you run it. `eka sync pull --from-docs` re-seeds from the docs tree when the two representations drift.
+- **Multi-repository projects.** One project can register many repositories (`eka project register <path> --name <project>`); the workspace holds the complete union, attributed per repository (`source_repo`), so projections and future queries can read a whole project as one set.
+
+Synchronization conventions: [exchange/transfer.md](exchange/transfer.md) §4.
+
 ## Consume
 
 Knowledge is consumed by humans and agents alike:
@@ -87,11 +100,12 @@ Each lifecycle step is dominated by one Engineering Domain — the domain whose 
 | **Validate** | all (Exchange Layer) | the R0–R12 verdict over every artifact |
 | **Project** | all (one projection per domain) | domain projections (discovery / architecture / planning / execution / operations) + ticket views — read-only |
 | **Exchange** | all (Exchange Layer) | packages carrying every domain |
+| **Synchronize** | all (Exchange Layer) | workspace ↔ repository: Knowledge Snapshots (`eka sync`), migration from the docs tree |
 | **Consume** | Operations (+ Execution) | `run-` executed; tickets read |
 
 ## Mental Model Shift
 
-Folders are the **physical structure**; the lifecycle is the **mental model**. The same knowledge is born (Produce), shaped (Organize), checked (Validate), seen (Project), moved (Exchange), and used (Consume) — wherever its folder sits.
+Folders are the **physical structure**; the lifecycle is the **mental model**. The same knowledge is born (Produce), shaped (Organize), checked (Validate), seen (Project), moved (Exchange), synchronized (Synchronize), and used (Consume) — wherever its folder sits.
 
 The Engineering Domain is **orientation, not location**: it tells you what kind of knowledge an artifact is and how much authority it carries, independent of where the file lives. The `dimension == folder` rule (R6) keeps the two aligned, but the domain — derived from the token — is what the standard and the validator reason about.
 
@@ -100,4 +114,4 @@ The Engineering Domain is **orientation, not location**: it tells you what kind 
 - [README.md](README.md) — serialization conventions: identity, state, phase, relationships, classification, projections.
 - [operating/protocol.md](operating/protocol.md) — the Operating Manual: ordering chain, State Domains, gates, change-log, distillation obligations.
 - [exchange/validation.md](exchange/validation.md) — the mechanical checklist (R0–R12) behind the Validate step.
-- [exchange/transfer.md](exchange/transfer.md) — import/export conventions behind the Exchange step.
+- [exchange/transfer.md](exchange/transfer.md) — import/export conventions behind the Exchange step; snapshot + synchronization conventions behind the Synchronize step.

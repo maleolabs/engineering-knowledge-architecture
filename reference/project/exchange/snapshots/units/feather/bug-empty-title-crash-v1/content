@@ -1,0 +1,21 @@
+
+# Bug — Empty Title Crashes Publish
+
+## Description
+
+**Symptom.** Publishing a draft whose title is empty (or whitespace-only) panics the server: `POST /api/posts/{id}/publish` dereferences the empty slug path, and the request 500s — after which the process dies (a recover() handler was missing on the publish route).
+
+**Reproduction.**
+
+1. Create a draft via the editor.
+2. Clear the title field entirely; save (autosave writes the file).
+3. Click publish.
+4. Server panics; the process exits; all requests fail until restart.
+
+**Expected behavior.** The API returns `400` with a validation message; the draft stays a draft; the process keeps serving (per `spec:publishing-api`).
+
+## Impact
+
+- **Severity:** high — a trivial input sequence takes down the whole site (single-binary deployment has no second instance to absorb it).
+- **Users:** any author with an empty title; all readers while the process is down.
+- **Root cause (identified during fix):** publish route validated the body after the slug path was already built from the title; empty title → empty path → index panic. Fix: validate title before any path construction + install a panic-recover boundary on all `/api/*` routes (severity baseline referenced by `std:definition-of-done`).

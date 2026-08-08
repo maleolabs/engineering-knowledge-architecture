@@ -4,6 +4,10 @@
 
 EKA is not a documentation template, not a Markdown repository scheme, and not a project management tool. It is a **standard**: a set of contracts — Identity, State, Knowledge Taxonomy, Layer Contracts, and Exchange — that any implementation can follow. This repository is one implementation of that standard, built to prove it works.
 
+### Knowledge Runtime (v0.2)
+
+Milestone **EKA v0.2.0** adds the **Knowledge Runtime Architecture**: a local **EKA Workspace** (`~/.eka/` or `$EKA_HOME`; `workspace.json` + `eka.db`, an embedded SQLite canonical store) where canonical Engineering Knowledge lives, with repositories as **synchronization endpoints** carrying deterministic **Knowledge Snapshots** (`exchange/snapshots/`, RSF directory packages). `eka sync` (pull/push), `eka project register`/`list`, `eka status`, and `eka integrity check` operate the runtime; all pre-existing commands behave exactly as before. The runtime consumes **Canonical Knowledge Objects** — compiled from Markdown via the Knowledge Compiler (`compile/`); Markdown is the authoring format, not the runtime representation (ADR-012). The store implements the **Immutable Engineering Knowledge Model** (ADR-011): knowledge objects are content-addressed (`object_hash` = SHA-256(unit.json ‖ content), insert-only, never updated) with mutable references only, and `eka integrity check` verifies the store by recomputing every content-derived hash (manual database modification is detected, not prevented). Git stays the VCS — synchronization is explicit, no hooks. Experimental: workspace/snapshot/sync terminology is not finalized. See [Knowledge Runtime Architecture](reference/runtime-architecture.md), the [Canonical Knowledge Object specification](reference/cko-specification.md), and [ADR-009](reference/decisions/adr-009-knowledge-runtime-architecture.md) / [ADR-010](reference/decisions/adr-010-synchronization-model.md) / [ADR-011](reference/decisions/adr-011-immutable-engineering-knowledge-model.md) / [ADR-012](reference/decisions/adr-012-canonical-knowledge-object-runtime.md).
+
 ---
 
 ## Why EKA?
@@ -46,6 +50,16 @@ EKA is organized as three layers, bound by Artifact Identity:
 
 Every Artifact carries an **Identity** `(Namespace, Type, ID, InstanceVersion)`, a **State Vector** of owned state domains (Content, Execution, Planning, Container, Existence), **Content**, and **Relationships** (supersedes, amends, derives-from, depends-on, validates) — all by Identity.
 
+### Git · EKA Runtime · Atrium
+
+Since v0.2.0, three runtimes share the one knowledge model above:
+
+- **Git** — source code version control, never replaced: it versions code and the knowledge transport (snapshots commit like any other content).
+- **EKA Knowledge Runtime** — the local, indexed runtime of canonical Engineering Knowledge: the EKA Workspace (`~/.eka/` or `$EKA_HOME`) holds the canonical store (`eka.db`); repositories are synchronization endpoints carrying deterministic Knowledge Snapshots (`exchange/snapshots/`), moved by `eka sync`. Canonical storage lives in the workspace; the repository is the transport.
+- **Atrium** — the future unified project runtime: a consumer of the complete Engineering Knowledge of a multi-repository project (e.g. `api`/`web`/`mobile` under one project) from the runtime. Not implemented in v0.2; the architecture is shaped for it.
+
+The full runtime architecture, sync protocol, and known limitations: [Knowledge Runtime Architecture](reference/runtime-architecture.md) (ADR-009, ADR-010).
+
 ## Specifications
 
 | Specification | Status | Contents |
@@ -79,10 +93,15 @@ The `eka` CLI is the official interface of the architecture (Cobra-based command
 |---|---|
 | `eka init` | Repository Bootstrapper: analyzes the workspace, adaptively configures, generates an EKA repository from the Reference Skeleton, validates the result. Idempotent; `--dry-run` supported. |
 | `eka validate` | Conformance validator: runs Conformance Rules R0–R12 mechanically, with deterministic output and exit codes (0/1/2). |
-| `eka export` | Exports engineering knowledge into a canonical Exchange Package following the RSF — deterministic, validated before export, scopes: repository / line / instance / collection. |
-| `eka import` | Integrates an Exchange Package into an existing repository — atomic, conservative merge, conflict detection, rollback, post-import validation. |
+| `eka export` | Exports engineering knowledge into a canonical Exchange Package following the RSF — deterministic, validated before export, scopes: repository / line / instance / collection. The same object model as the Knowledge Snapshot used by `eka sync` (directory layout at `exchange/snapshots/`); `.ekapkg` remains the on-demand package form. |
+| `eka import` | Integrates an Exchange Package into an existing repository — atomic, conservative merge, conflict detection, rollback, post-import validation. Unchanged under the runtime; synchronization uses the same verification path (`exchange.LoadPackage`) rather than import. |
 | `eka view` | Knowledge projections: `execution`, `planning`, `architecture`, `discovery`, `operations`, `ticket`, `board` — read-only, relationship-derived projections over the Engineering Knowledge Model (never markdown text); `sprint` / `wave` are CLI aliases of `execution`; conformance-gated, deterministic. `board` shows every work item across all containers with per-item container tags. |
 | `eka watch` | Realtime projection viewer: the same projections as `eka view`, refreshed in place by polling (`--interval`, default 2s, min 1s); TTY-only; live validation failure frames with auto-recovery; Ctrl-C to stop. |
+| `eka sync [path]` | Knowledge Runtime synchronization: pull (verify snapshot → seed canonical store; or conformance-gated seed from the docs tree when no snapshot exists) then push (store → deterministic snapshot at `exchange/snapshots/`). Idempotent; deletions never applied; auto-registers the repository. |
+| `eka project register [path] [--name NAME]` | Registers a repository in the EKA workspace under a project; same `--name` = same project (multi-repository projects). |
+| `eka project list` | Lists the workspace's registered projects and repositories (deterministic). |
+| `eka status` | EKA workspace status: path, schema version, store totals (objects/references, immutable payloads, attachments), per-repository last sync. Read-only probe; never creates the workspace. |
+| `eka integrity check` | Verifies the workspace canonical store: recomputes every payload hash, strict-decodes every payload, verifies every reference (target + derived index columns), recomputes attachment digests, checks the repository registry. Read-only; unreferenced payloads count as history, never violations; manual database modification is detected, not prevented; exit codes 0 (clean) / 1 (violations) / 2 (internal). |
 | `eka completion` | Shell completion (bash/zsh/fish/powershell). |
 | `eka version` | CLI build version and the EKA standard version implemented. |
 | `eka` | Product landing: a calm orientation with a compact command overview (help and version pointers). |
@@ -107,7 +126,19 @@ eka export
 
 # 5. Import it elsewhere
 eka import ./rsf-repo-my-project-1.ekapkg
+
+# 6. Knowledge Runtime: register the repository under a project
+eka project register . --name my-project
+
+# 7. Sync: seed the canonical store (~/.eka/eka.db) and write the
+#    Knowledge Snapshot (exchange/snapshots/) — idempotent, re-run safe
+eka sync
+
+# 8. Inspect the workspace
+eka status
 ```
+
+The snapshot at `exchange/snapshots/` is ordinary repository content — commit it with normal Git workflows (no hooks; synchronization is explicit). More: [Knowledge Runtime Architecture](reference/runtime-architecture.md).
 
 New to EKA? Read the [Engineering Operating Guide](skeleton/docs/workflow-guide.md) first — the primary onboarding document: the twelve-part journey from mental model and knowledge lifecycle through engineering domains, daily and AI workflows, projections, and the CLI.
 
@@ -138,7 +169,7 @@ Specific version or custom directory:
 
 ```powershell
 $s = irm https://github.com/maleolabs/engineering-knowledge-architecture/releases/latest/download/install.ps1
-iex "$s -Version v0.1.0"
+iex "$s -Version v0.2.0"
 iex "$s -To 'C:\tools\bin'"
 ```
 
@@ -161,15 +192,19 @@ standard/          Canonical specification texts (Core, Exchange, Naming, Glossa
 skeleton/          Copyable project serialization (docs structure, conventions)
 reference/         Reference Implementation meta-documentation: architecture,
                    ADRs, CLI docs, ratification notes, traceability matrices
-cmd/               CLI command layer (Cobra): root, init, validate, export, import, view, watch
+cmd/               CLI command layer (Cobra): root, init, validate, export, import, view, watch, sync, project, status
 bootstrap/         Application layer: eka init engine (public package)
 exchange/          Application layer: export/import engine (public package)
 conformance/       Application layer: validation engine (public package)
+compile/           Application layer: the Knowledge Compiler — authoring → Canonical Knowledge Objects (public package)
 view/              Application layer: knowledge projection engine (public package)
+workspace/         Application layer: EKA workspace + project/repository registry (public package)
+store/             Application layer: canonical store (SQLite, schema v2 — immutable content-addressed payloads + mutable references) (public package)
+sync/              Application layer: synchronization engine (pull/push) (public package)
 skeletonembed.go   Embedded Reference Skeleton (go:embed)
 ```
 
-The application packages (`bootstrap/`, `exchange/`, `conformance/`, `view/`) are public and reusable independently of the CLI — by SDKs, MCP integrations, or other tools.
+The application packages (`bootstrap/`, `exchange/`, `conformance/`, `compile/`, `view/`, `workspace/`, `store/`, `sync/`) are public and reusable independently of the CLI — by SDKs, MCP integrations, or other tools.
 
 ## Example Workflow
 
@@ -188,7 +223,8 @@ The application packages (`bootstrap/`, `exchange/`, `conformance/`, `view/`) ar
 | Reference Serialization Format v1.1 | Reference |
 | Reference Implementation + Validator (rules R0–R12) | Active |
 | `eka init`, `eka validate`, `eka export`, `eka import`, `eka view`, `eka watch` | Implemented |
-| `eka diagnose`, `eka graph`, sync strategies (replace, forward-only reconciliation) | Future |
+| Knowledge Runtime (v0.2): `eka sync`, `eka project`, `eka status`, workspace + canonical store | Implemented (experimental) |
+| `eka diagnose`, `eka graph`, sync strategies (replace, forward-only reconciliation), cloud sync, deletion protocol | Future |
 
 ## Contributing
 

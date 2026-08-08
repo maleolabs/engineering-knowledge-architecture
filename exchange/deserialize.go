@@ -125,7 +125,7 @@ func loadPackage(path string) (*loadedPackage, error) {
 				r.Path(), mu.CanonicalIdentityForm)}
 		}
 		seenForms[mu.CanonicalIdentityForm] = true
-		dir := unitDirName(Identity{Namespace: mu.Namespace, Type: mu.Type, ID: mu.ID, InstanceVersion: mu.InstanceVersion})
+		dir := UnitDirName(Identity{Namespace: mu.Namespace, Type: mu.Type, ID: mu.ID, InstanceVersion: mu.InstanceVersion})
 		dirCounts[dir]++
 		if !unitDirs[dir] {
 			return nil, &PackageError{msg: fmt.Sprintf(
@@ -141,7 +141,7 @@ func loadPackage(path string) (*loadedPackage, error) {
 		}
 	}
 	for _, mu := range pkg.manifest.Units {
-		dir := unitDirName(Identity{Namespace: mu.Namespace, Type: mu.Type, ID: mu.ID, InstanceVersion: mu.InstanceVersion})
+		dir := UnitDirName(Identity{Namespace: mu.Namespace, Type: mu.Type, ID: mu.ID, InstanceVersion: mu.InstanceVersion})
 		unitJSON, ok := r.Entry(dir + "/unit.json")
 		if !ok {
 			return nil, &PackageError{msg: fmt.Sprintf(
@@ -244,7 +244,7 @@ func validateUnitEntryConsistency(dir string, mu ManifestUnit, u *Unit) error {
 			"package is not self-consistent: unit.json identity (%s) does not match its manifest entry (%s)",
 			u.Identity.CanonicalForm(), mu.CanonicalIdentityForm)}
 	}
-	wantDir := unitDirName(u.Identity)
+	wantDir := UnitDirName(u.Identity)
 	if dir != wantDir {
 		return &PackageError{msg: fmt.Sprintf(
 			"package is not self-consistent: unit %s lives at entry directory %s, expected %s",

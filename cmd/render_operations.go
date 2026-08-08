@@ -50,20 +50,21 @@ func renderOperations(s *ui.Style, g *view.Graph, p *view.OperationsProjection) 
 }
 
 // releasePlan returns the first resolvable plan reference of a release
-// record in short form ("plan:roadmap-v1:1"), or "" when none. The
-// projection model carries no relationships, so the reference is read
-// from the graph — read-only, never mutated.
+// record in short form ("plan:roadmap-v1", appending the instance
+// version when the target is not the line's lowest instance), or ""
+// when none. The projection model carries no relationships, so the
+// reference is read from the graph — read-only, never mutated.
 func releasePlan(g *view.Graph, a view.DomainArtifact) string {
 	art := g.ByLineForm(a.Identity)
 	if art == nil {
 		return ""
 	}
-	for _, raw := range art.Relations["derives-from"] {
-		ref, err := conformance.ParseReference(raw, art.Namespace, art.Type)
+	for _, raw := range g.Rels(art, "derives-from") {
+		ref, err := conformance.ParseReference(raw, art.Identity.Namespace, art.Identity.Type)
 		if err != nil || ref.Type != "plan" || g.Resolve(ref) == nil {
 			continue
 		}
-		return shortRef(ref, art.Namespace)
+		return shortRef(ref, art.Identity.Namespace)
 	}
 	return ""
 }
