@@ -297,6 +297,38 @@ func chdirInto(t *testing.T, dir string) {
 	}
 }
 
+// copyFixture copies a fixture directory tree (files only) into a
+// fresh temp dir and returns the copy path.
+func copyFixture(t *testing.T, src string) string {
+	t.Helper()
+	dst := t.TempDir()
+	err := filepath.WalkDir(src, func(path string, d os.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if d.IsDir() {
+			return nil
+		}
+		rel, err := filepath.Rel(src, path)
+		if err != nil {
+			return err
+		}
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return err
+		}
+		target := filepath.Join(dst, rel)
+		if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
+			return err
+		}
+		return os.WriteFile(target, data, 0o644)
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return dst
+}
+
 func TestInitHelpExitsZero(t *testing.T) {
 	for _, args := range [][]string{{"init", "-h"}, {"init", "--help"}} {
 		code, text, _ := runIn(args)

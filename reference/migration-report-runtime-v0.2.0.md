@@ -1,7 +1,7 @@
 # Migration Report — Knowledge Runtime Architecture v0.2.0
 
 > Milestone: EKA v0.2.0 — Knowledge Runtime Architecture (workspace + embedded canonical store + snapshot transport + synchronization protocol).
-> Authoritative decisions: [ADR-009](decisions/adr-009-knowledge-runtime-architecture.md), [ADR-010](decisions/adr-010-synchronization-model.md), [ADR-011](decisions/adr-011-immutable-engineering-knowledge-model.md) (schema v2 — see the [Addendum §8](#8-addendum-immutable-engineering-knowledge-model-schema-v2)), [ADR-012](decisions/adr-012-canonical-knowledge-object-runtime.md) (the Canonical Knowledge Object consumption pivot — see the [Addendum §9](#9-addendum-canonical-knowledge-object-runtime)). Convention document, not an artifact.
+> Authoritative decisions: [ADR-009](decisions/adr-009-knowledge-runtime-architecture.md), [ADR-010](decisions/adr-010-synchronization-model.md), [ADR-011](decisions/adr-011-immutable-engineering-knowledge-model.md) (schema v2 — see the [Addendum §8](#8-addendum-immutable-engineering-knowledge-model-schema-v2)), [ADR-012](decisions/adr-012-canonical-knowledge-object-runtime.md) (the Canonical Knowledge Object consumption pivot — see the [Addendum §9](#9-addendum-canonical-knowledge-object-runtime)), [ADR-013](decisions/adr-013-store-backed-projections.md) (store-backed projections — see the [Addendum §10](#10-addendum-store-backed-projections)). Convention document, not an artifact.
 > Version note: **CLI/artifact version 0.2.0**; the **EKA standard version remains 1.1** — this milestone changes the runtime of the reference implementation, not the standard.
 
 ## 1. Purpose
@@ -171,7 +171,7 @@ eka sync ./api && eka sync ./web && eka sync ./mobile
 
 | Area | Status |
 |---|---|
-| **Authoring UX** | unchanged — Markdown files in `docs/`; the compiler runs automatically (`view` compiles on demand; `sync` compiles in docs mode) |
+| **Authoring UX** | unchanged at the CKO pivot — Markdown files in `docs/`; the compiler runs automatically inside `eka sync` (docs mode). **Later revised by the store-backed milestone (Addendum §10):** projections read the store, so the authoring UX becomes write Markdown → `eka sync` → `eka view` |
 | **Commands** | unchanged — `eka validate` / `eka view` / `eka watch` / `eka sync` behave identically, same output |
 | **RSF bytes** | unchanged — `unit.json` serialization and per-unit digests are the same bytes; the CKO *is* the RSF unit entry |
 | **Store schema** | unchanged — the store was already CKO-based (`object_payloads`: `unit.json` + representation-tagged content; `object_refs`) since the immutable-model milestone (Addendum §8); no schema change, no migration |
@@ -182,9 +182,43 @@ eka sync ./api && eka sync ./web && eka sync ./mobile
 
 ### 9.4 Trade-offs (accepted, documented in ADR-012 §Consequences)
 
-- **`view` compiles on demand** — authoring validation repeats per invocation; acceptable because it is deterministic and repositories are small; store-backed projections remain future work.
+- **`view` compiles on demand** — at the CKO pivot, authoring validation repeated per invocation; acceptable because it is deterministic and repositories are small. **Resolved by ADR-013 (Addendum §10):** projections are store-backed — per-invocation compilation and re-validation are gone, replaced by the sync-first precondition (trade-offs in §10.4).
 - **Relationship rendering nuance** — projection relationship targets are presented in the authoring line convention (`ctr:wave-1`) for same-namespace references (instance version dropped), and in **full canonical form** (`<namespace>/<type>:<id>:<instance-version>`) for cross-namespace references (`view`'s `referenceForm`). Same-namespace output matches the pre-pivot authoring convention; cross-namespace targets now render canonically.
 - **Authoring validation and runtime validation are distinct commands** with distinct scopes — documented, but the split could confuse users who expect one validator.
+
+## 10. Addendum — Store-Backed Projections
+
+*This addendum records the third architectural clarification applied to the runtime before release: projections moved off the docs tree and onto the workspace canonical store. The authoritative decision is [ADR-013](decisions/adr-013-store-backed-projections.md); the implementation details live in [`runtime-architecture.md`](runtime-architecture.md) §2.1, §8, and §11. This section summarizes what it means for users.*
+
+### 10.1 What changed
+
+- **Projections read the store.** `eka view` / `eka watch` now read Canonical Knowledge Objects from the EKA workspace canonical store — `store.UnitsByProject(projectID)` resolves every reference of the project to its immutable payload, `exchange.DecodeUnit` strict-decodes each (canonical-form order, digest-tagged) — instead of compiling the docs tree on demand. **Zero Markdown in the projection path.** `compile` remains the **authoring gateway** used by `eka sync` (docs mode / `--from-docs`), but is **no longer imported** by the view/watch commands.
+- **Projection scope = the project (union).** The projections cover the complete Engineering Knowledge of the project — the union of every registered repository's units (e.g. Atrium `api`/`web`/`mobile` project as one knowledge set), partitioned by `source_repo` provenance. Multi-repository projects project as **one knowledge set**, with no per-repo projection logic.
+- **Synchronization is the precondition.** A repository must be **registered and synced** before it can be projected. The authoring UX becomes **write Markdown → `eka sync` → `eka view`**; authoring validation (R0–R12) still runs inside sync (the compile gate), never at projection time. Failure modes, deterministic:
+  - **Unregistered repository** — refused, exit `1`, deterministic message + hint: `eka: view refused: repository <abs> is not registered in the EKA workspace; run 'eka sync' (auto-registers) or 'eka project register' first`.
+  - **Registered project without synced knowledge** — empty projection + informational note (`no synced knowledge for project <id>; run 'eka sync' after editing docs`), exit `0` — consistent with the existing empty-projection behavior.
+- **`eka watch` polls the store.** Per tick (`--interval` unchanged) the project's units are re-read from the store; an `eka sync` run in another terminal is picked up without a restart. The **unregistered-repository refusal frame** replaces the compile-failure frame; the TTY contract and byte-comparison redraw logic are unchanged; the refusal is a rendered state, never an exit.
+
+### 10.2 What did NOT change
+
+| Area | Status |
+|---|---|
+| **Commands** | unchanged surfaces — `eka validate` / `eka view` / `eka watch` / `eka sync` keep their names, arguments, determinism, and the 0/1/2 exit-code contract; only the view/watch *input source and precondition* changed |
+| **Authoring** | unchanged — Markdown files in `docs/`; `eka validate` still validates the authoring representation (R0–R12, read-only); the same gate runs inside `eka sync` before seeding |
+| **RSF bytes** | unchanged — `unit.json` serialization, per-unit digests, and the snapshot format are untouched; `eka integrity check` recomputes the same object hashes the projections now read |
+| **Store schema** | unchanged — no schema change, no migration; `store.UnitsByProject` is a read over the existing `object_refs` + `object_payloads` (Addendum §8) |
+
+### 10.3 Migration impact
+
+- **Existing users with a synced workspace: no action.** The first `eka view` after upgrading works immediately — the store already holds the project's units (any prior `eka sync` seeded them). The change is in *how* view reads, not in *what* is stored.
+- **Fresh repositories: one extra step.** `eka sync` before `eka view` — the previously seamless compile-on-demand is replaced by an explicit step. The reference project's snapshot is committed, so `eka sync reference/project` then `eka view` works out of the box.
+- **Unregistered clones: one command to fix.** `eka view` no longer works on a repository outside the workspace; `eka sync` (auto-registers) or `eka project register` first — the refusal message says exactly this.
+
+### 10.4 Trade-offs (accepted, documented in ADR-013 §Consequences)
+
+- **Staleness vs live edits** — a projection reflects the **last sync**, not live authoring edits; an edit is visible only after re-sync. Deterministic and documented, never a silent hybrid; `eka sync` / `--from-docs` are the reconciliation tools.
+- **Unregistered refusal** — a repository outside the workspace cannot be projected until registered; registration is one command (`eka sync` auto-registers).
+- **Explicit sync step** — ADR-012's "authoring experience unchanged (`view` compiles on demand)" is deliberately revised; the UX cost is one command before the first view.
 
 ---
 

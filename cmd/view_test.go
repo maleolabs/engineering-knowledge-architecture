@@ -6,6 +6,9 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/maleolabs/engineering-knowledge-architecture/sync"
+	"github.com/maleolabs/engineering-knowledge-architecture/workspace"
 )
 
 // viewFixtureAbs resolves the absolute path of a view test fixture.
@@ -16,6 +19,60 @@ func viewFixtureAbs(t *testing.T, name string) string {
 		t.Fatal(err)
 	}
 	return abs
+}
+
+// seedViewRepo copies one view fixture into a fresh repo, seeds a fresh
+// workspace (EKA_HOME) with it through the sync engine (docs-mode pull
+// + push — the store-backed setup of the projection path), and chdirs
+// into the repo copy. Returns the repo path.
+func seedViewRepo(t *testing.T, name string) string {
+	t.Helper()
+	t.Setenv("EKA_HOME", t.TempDir())
+	repo := copyFixture(t, filepath.Join("..", "view", "testdata", name))
+	ws, err := workspace.Ensure()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer ws.Close()
+	if _, err := sync.Run(ws, repo, sync.Options{Pull: true, Push: true}); err != nil {
+		t.Fatal(err)
+	}
+	chdirInto(t, repo)
+	return repo
+}
+
+// openWorkspace opens the workspace of the current EKA_HOME and closes
+// it on cleanup.
+func openWorkspace(t *testing.T) *workspace.Workspace {
+	t.Helper()
+	ws, err := workspace.Ensure()
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { ws.Close() })
+	return ws
+}
+
+// writeStory writes a minimal conformant work-item story doc (the
+// same shape the sync fixtures use).
+func writeStory(t *testing.T, path, ns, id, state string) {
+	t.Helper()
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	content := "---\nnamespace: " + ns + "\n"
+	content += "type: sto\nid: " + id + "\n"
+	content += "instance-version: 1\nrevision: 1\n"
+	content += "execution-state: " + state + "\nexistence-state: active\n"
+	content += "author: Engineering\ncreated: 2026-08-05\nupdated: 2026-08-05\n"
+	content += "supersedes: []\nderives-from: []\ndepends-on: []\n"
+	content += "change-log:\n"
+	content += "  - date: 2026-08-05\n    domain: existence-state\n    from: \"-\"\n    to: active\n    by: Engineering\n"
+	content += "  - date: 2026-08-05\n    domain: execution-state\n    from: \"-\"\n    to: " + state + "\n    by: Engineering\n"
+	content += "---\n# " + id + "\n\n## Description\n\nd\n\n## Acceptance Criteria\n\nc\n"
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
 }
 
 // TestViewNoArgsListsProjections: `eka view` without arguments is a
@@ -57,12 +114,15 @@ func TestViewHelpExitsZero(t *testing.T) {
 				t.Errorf("args %v: help missing %q:\n%s", args, want, text)
 			}
 		}
+		if !strings.Contains(text, "EKA workspace") {
+			t.Errorf("args %v: help must document the workspace canonical source:\n%s", args, text)
+		}
 	}
 }
 
 // TestViewUnknownProjectionExitsTwo: an unregistered projection is a
 // usage error with the available list (canonical + aliases) — exit 2,
-// no repository access.
+// no workspace access.
 func TestViewUnknownProjectionExitsTwo(t *testing.T) {
 	code, _, errText := runIn([]string{"view", "bogus"})
 	if code != 2 {
@@ -96,12 +156,14 @@ func TestViewTooManyArgsExitsTwo(t *testing.T) {
 	}
 }
 
-// TestViewExecutionHappyPath: the execution projection of a conformant
+// TestViewExecutionHappyPath: the execution projection of a synced
 // fixture — header, container line, the kanban board (column titles
 // with counts, short work item ids, box borders) and the insight
-// summary — exit 0.
+// summary — exit 0. The projection is store-backed: the knowledge
+// comes from the workspace canonical store seeded by the sync engine,
+// not from Markdown.
 func TestViewExecutionHappyPath(t *testing.T) {
-	chdirInto(t, viewFixtureAbs(t, "valid"))
+	seedViewRepo(t, "valid")
 	code, out, errText := runIn([]string{"view", "execution"})
 	if code != 0 {
 		t.Fatalf("exit = %d, want 0\nstdout: %s\nstderr: %s", code, out, errText)
@@ -150,7 +212,7 @@ func TestViewExecutionHappyPath(t *testing.T) {
 // TestViewExecutionAliasesIdentical: the sprint and wave aliases render
 // byte-identical output to the canonical execution projection.
 func TestViewExecutionAliasesIdentical(t *testing.T) {
-	chdirInto(t, viewFixtureAbs(t, "valid"))
+	seedViewRepo(t, "valid")
 	runOnce := func(args ...string) string {
 		_, out, _ := runIn(args)
 		return out
@@ -168,7 +230,7 @@ func TestViewExecutionAliasesIdentical(t *testing.T) {
 // chosen container (lexicographically smallest canonical identity) and
 // the command still exits 0.
 func TestViewMultipleActiveWarning(t *testing.T) {
-	chdirInto(t, viewFixtureAbs(t, "multi-active"))
+	seedViewRepo(t, "multi-active")
 	code, out, errText := runIn([]string{"view", "execution"})
 	if code != 0 {
 		t.Fatalf("exit = %d, want 0\nstdout: %s\nstderr: %s", code, out, errText)
@@ -196,14 +258,11 @@ func TestViewMultipleActiveWarning(t *testing.T) {
 	}
 }
 
-// TestViewPlanningHappyPath: the planning projection — the roadmap
-// timeline (plan milestone, scope and epics rows, traceability footer)
-// and the insight summary.
 // TestViewBoardHappyPath: the board projection — every work item of the
 // fixture across both containers (wave-0 completed, wave-1 active), on
 // the fixed five-column board with container tags.
 func TestViewBoardHappyPath(t *testing.T) {
-	chdirInto(t, viewFixtureAbs(t, "valid"))
+	seedViewRepo(t, "valid")
 	code, out, errText := runIn([]string{"view", "board"})
 	if code != 0 {
 		t.Fatalf("exit = %d, want 0\nstdout: %s\nstderr: %s", code, out, errText)
@@ -253,7 +312,7 @@ func TestViewBoardHappyPath(t *testing.T) {
 // phase (mvp, release) with the milestone line, the scope/epic/plan
 // timeline rows and the phase context, plus the plans-by-state summary.
 func TestViewPlanningHappyPath(t *testing.T) {
-	chdirInto(t, viewFixtureAbs(t, "valid"))
+	seedViewRepo(t, "valid")
 	code, out, errText := runIn([]string{"view", "planning"})
 	if code != 0 {
 		t.Fatalf("exit = %d, want 0\nstdout: %s\nstderr: %s", code, out, errText)
@@ -282,7 +341,7 @@ func TestViewPlanningHappyPath(t *testing.T) {
 // grouped subtrees, and the insight summary. The Decisions group merges
 // adr-/dec- (including the superseded ADR).
 func TestViewArchitectureHappyPath(t *testing.T) {
-	chdirInto(t, viewFixtureAbs(t, "valid"))
+	seedViewRepo(t, "valid")
 	code, out, errText := runIn([]string{"view", "architecture"})
 	if code != 0 {
 		t.Fatalf("exit = %d, want 0\nstdout: %s\nstderr: %s", code, out, errText)
@@ -317,7 +376,7 @@ func TestViewArchitectureHappyPath(t *testing.T) {
 // per artifact under its group heading, drafts visually distinct (○),
 // and the insight summary.
 func TestViewDiscoveryHappyPath(t *testing.T) {
-	chdirInto(t, viewFixtureAbs(t, "valid"))
+	seedViewRepo(t, "valid")
 	code, out, errText := runIn([]string{"view", "discovery"})
 	if code != 0 {
 		t.Fatalf("exit = %d, want 0\nstdout: %s\nstderr: %s", code, out, errText)
@@ -351,7 +410,7 @@ func TestViewDiscoveryHappyPath(t *testing.T) {
 // record card and the runbook activity timeline, with the insight
 // summary.
 func TestViewOperationsHappyPath(t *testing.T) {
-	chdirInto(t, viewFixtureAbs(t, "valid"))
+	seedViewRepo(t, "valid")
 	code, out, errText := runIn([]string{"view", "operations"})
 	if code != 0 {
 		t.Fatalf("exit = %d, want 0\nstdout: %s\nstderr: %s", code, out, errText)
@@ -379,7 +438,7 @@ func TestViewOperationsHappyPath(t *testing.T) {
 // status from the work item's owner state; the status leads the detail
 // card.
 func TestViewTicketHappyPath(t *testing.T) {
-	chdirInto(t, viewFixtureAbs(t, "valid"))
+	seedViewRepo(t, "valid")
 	code, out, errText := runIn([]string{"view", "ticket", "tkt-ts-gamma"})
 	if code != 0 {
 		t.Fatalf("exit = %d, want 0\nstdout: %s\nstderr: %s", code, out, errText)
@@ -406,7 +465,7 @@ func TestViewTicketHappyPath(t *testing.T) {
 
 // TestViewTicketBareID: a bare ticket id resolves like tkt-<id>.
 func TestViewTicketBareID(t *testing.T) {
-	chdirInto(t, viewFixtureAbs(t, "valid"))
+	seedViewRepo(t, "valid")
 	code, out, _ := runIn([]string{"view", "ticket", "ts-gamma"})
 	if code != 0 {
 		t.Fatalf("exit = %d, want 0\n%s", code, out)
@@ -419,7 +478,7 @@ func TestViewTicketBareID(t *testing.T) {
 // TestViewTicketUnresolved: a ticket without a resolvable work item
 // renders an explicit unresolved status — exit 0.
 func TestViewTicketUnresolved(t *testing.T) {
-	chdirInto(t, viewFixtureAbs(t, "valid"))
+	seedViewRepo(t, "valid")
 	code, out, _ := runIn([]string{"view", "ticket", "tkt-unresolved"})
 	if code != 0 {
 		t.Fatalf("exit = %d, want 0\n%s", code, out)
@@ -441,7 +500,7 @@ func TestViewTicketUnresolved(t *testing.T) {
 // TestViewTicketNotFoundExitsTwo: an unknown ticket target is a usage
 // error with the available tickets.
 func TestViewTicketNotFoundExitsTwo(t *testing.T) {
-	chdirInto(t, viewFixtureAbs(t, "valid"))
+	seedViewRepo(t, "valid")
 	code, _, errText := runIn([]string{"view", "ticket", "tkt-ghost"})
 	if code != 2 {
 		t.Fatalf("exit = %d, want 2", code)
@@ -454,42 +513,52 @@ func TestViewTicketNotFoundExitsTwo(t *testing.T) {
 	}
 }
 
-// TestViewInvalidRepoExitsOne: the conformance gate runs first — a
-// repository with blocking violations is refused, the report is
-// printed, exit 1, no projection.
-func TestViewInvalidRepoExitsOne(t *testing.T) {
-	dir := t.TempDir()
-	workItems := filepath.Join(dir, "docs", "operating", "work-items", "stories")
-	if err := os.MkdirAll(workItems, 0o755); err != nil {
-		t.Fatal(err)
-	}
-	bad := "---\nnamespace: eka-cli\n"
-	bad += "type: sto\n" // type without id violates the artifact rule (R0)
-	bad += "---\n# Bad\n"
-	if err := os.WriteFile(filepath.Join(workItems, "sto-bad.md"), []byte(bad), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	chdirInto(t, dir)
+// TestViewUnregisteredRepoExitsOne: the repository-state gate runs
+// first — a repository not registered in the EKA workspace is refused
+// with the deterministic message and the sync hint, exit 1, no
+// projection.
+func TestViewUnregisteredRepoExitsOne(t *testing.T) {
+	t.Setenv("EKA_HOME", t.TempDir())
+	chdirInto(t, t.TempDir())
 	code, out, errText := runIn([]string{"view", "execution"})
 	if code != 1 {
 		t.Fatalf("exit = %d, want 1\nstdout: %s\nstderr: %s", code, out, errText)
 	}
-	if !strings.Contains(out, "Verdict: FAIL") {
-		t.Errorf("stdout must contain the validation report:\n%s", out)
+	if out != "" {
+		t.Errorf("stdout must be empty (no projection), got %q", out)
 	}
-	if !strings.Contains(errText, "view refused") {
+	if !strings.Contains(errText, "not registered") {
 		t.Errorf("stderr must explain the refusal, got %q", errText)
+	}
+	if !strings.Contains(errText, "eka sync") {
+		t.Errorf("stderr must hint at 'eka sync', got %q", errText)
+	}
+	if !strings.Contains(errText, "eka project register") {
+		t.Errorf("stderr must hint at 'eka project register', got %q", errText)
 	}
 }
 
-// TestViewEmptyProjectionExitsZero: an empty directory is trivially
-// conformant; the execution projection renders a calm "No active
-// container" line, the empty board, and still exits 0.
-func TestViewEmptyProjectionExitsZero(t *testing.T) {
-	chdirInto(t, t.TempDir())
+// TestViewNoSyncedKnowledgeExitsZero: a registered but never-synced
+// repository renders the empty projection with the informational note —
+// exit 0, consistent with the existing empty-projection behavior.
+func TestViewNoSyncedKnowledgeExitsZero(t *testing.T) {
+	t.Setenv("EKA_HOME", t.TempDir())
+	repo := t.TempDir()
+	ws, err := workspace.Ensure()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer ws.Close()
+	if _, _, _, err := ws.RegisterRepo(repo, ""); err != nil {
+		t.Fatal(err)
+	}
+	chdirInto(t, repo)
 	code, out, errText := runIn([]string{"view", "execution"})
 	if code != 0 {
 		t.Fatalf("exit = %d, want 0\nstdout: %s\nstderr: %s", code, out, errText)
+	}
+	if !strings.Contains(out, "no synced knowledge for project") {
+		t.Errorf("output must carry the no-synced-knowledge note:\n%s", out)
 	}
 	for _, want := range []string{
 		"No active container.",
@@ -504,11 +573,21 @@ func TestViewEmptyProjectionExitsZero(t *testing.T) {
 	}
 }
 
-// TestViewEmptyDomainExitsZero: a repository without artifacts of a
-// domain renders a calm "No <Domain> artifacts." line per domain and
+// TestViewEmptyDomainExitsZero: a registered repository without synced
+// knowledge renders a calm "No <Domain> artifacts." line per domain and
 // still exits 0.
 func TestViewEmptyDomainExitsZero(t *testing.T) {
-	chdirInto(t, t.TempDir())
+	t.Setenv("EKA_HOME", t.TempDir())
+	repo := t.TempDir()
+	ws, err := workspace.Ensure()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer ws.Close()
+	if _, _, _, err := ws.RegisterRepo(repo, ""); err != nil {
+		t.Fatal(err)
+	}
+	chdirInto(t, repo)
 	for domain, want := range map[string]string{
 		"planning":     "No Planning artifacts.",
 		"architecture": "No Architecture artifacts.",
@@ -529,10 +608,62 @@ func TestViewEmptyDomainExitsZero(t *testing.T) {
 	}
 }
 
+// TestViewMultiRepoProjectUnion: two repositories of one project with
+// distinct namespaces — the projection covers the whole project: the
+// board viewed from repository A shows the work items of BOTH
+// repositories (the complete Engineering Knowledge of the project).
+func TestViewMultiRepoProjectUnion(t *testing.T) {
+	t.Setenv("EKA_HOME", t.TempDir())
+	repoA := t.TempDir()
+	repoB := t.TempDir()
+	writeStory(t, filepath.Join(repoA, "docs", "operating", "work-items", "stories", "sto-alpha.md"), "union-a", "alpha", "todo")
+	writeStory(t, filepath.Join(repoB, "docs", "operating", "work-items", "stories", "sto-beta.md"), "union-b", "beta", "done")
+
+	ws, err := workspace.Ensure()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer ws.Close()
+	for _, repo := range []string{repoA, repoB} {
+		if _, _, _, err := ws.RegisterRepo(repo, "union"); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := sync.Run(ws, repo, sync.Options{Pull: true, Push: true}); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	chdirInto(t, repoA)
+	code, out, errText := runIn([]string{"view", "board"})
+	if code != 0 {
+		t.Fatalf("exit = %d, want 0\nstdout: %s\nstderr: %s", code, out, errText)
+	}
+	for _, want := range []string{
+		"Board",
+		"2 work items across 0 containers",
+		"│ ▸ alpha",
+		"│   [sto] · unassigned",
+		"│ ▸ beta",
+		"│   [sto] · unassigned",
+		"Summary:",
+		"Total Work Items: 2",
+		"Unassigned: 2",
+	} {
+		if !strings.Contains(out, want) {
+			t.Errorf("union board must contain %q:\n%s", want, out)
+		}
+	}
+	// The projection source is the project, not the repository: the
+	// board viewed from repository A carries repository B's item too.
+	if strings.Contains(out, "no synced knowledge") {
+		t.Errorf("union board must not carry the no-synced-knowledge note:\n%s", out)
+	}
+}
+
 // TestViewDeterministicCLI: two runs of each projection produce
 // byte-identical output.
 func TestViewDeterministicCLI(t *testing.T) {
-	chdirInto(t, viewFixtureAbs(t, "valid"))
+	seedViewRepo(t, "valid")
 	runOnce := func(args ...string) string {
 		_, out, _ := runIn(args)
 		return out
@@ -559,7 +690,7 @@ func TestViewDeterministicCLI(t *testing.T) {
 // contract for the view command: non-TTY output carries no ANSI
 // escapes.
 func TestViewNoANSIEscapesInNonTTYOutput(t *testing.T) {
-	chdirInto(t, viewFixtureAbs(t, "valid"))
+	seedViewRepo(t, "valid")
 	for _, args := range [][]string{
 		{"view"},
 		{"view", "discovery"},

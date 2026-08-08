@@ -21,15 +21,14 @@
 //     Idempotent: an unchanged package digest skips the work; re-seeding
 //     the same package is a no-op. Deletions are never applied.
 //   - Pull (docs mode): the repository's docs tree is compiled through
-//     the Knowledge Compiler (compile.Compile: the authoring
+//     the Knowledge Compiler (the compile package: the authoring
 //     conformance gate, then the package assembled exactly as
 //     `eka export` would via exchange.RepositoryPackage), then seeded
 //     the same way with unit.json bytes serialized via
 //     exchange.MarshalUnit. This is the migration path for repositories
 //     without a snapshot, and the --from-docs re-seed path.
-//   - Push: the repository's references in the canonical store are
-//     resolved to their immutable payloads, the units are reconstructed
-//     (exchange.DecodeUnit) and assembled into an RSF package
+//   - Push: the repository's canonical units in the workspace store are
+//     read back (store.Units), assembled into an RSF package
 //     (namespace resolution: existing-snapshot header, else most common
 //     namespace, else error) and emitted into
 //     <repo>/exchange/snapshots atomically (write to .snapshots-tmp,

@@ -4,20 +4,22 @@
 //
 // The engine is pure data in, pure data out. It contains no terminal
 // knowledge, no command framework, and no output: it reads one
-// compiled Canonical Knowledge Object set (the compile.Compile result
-// — exchange.Units) and produces projection models. Every projection
-// is derived exclusively from the Engineering Knowledge Model (unit
-// identity, state vector, relationships) — never from markdown
-// content. The engine is synchronous and stateless: one graph build
-// per compile, one projection build per view, so a loading state can
-// wrap the whole call without restructuring.
+// Canonical Knowledge Object set (exchange.Units — the decoded units
+// of the EKA workspace canonical store, store.UnitsByProject) and
+// produces projection models. Every projection is derived exclusively
+// from the Engineering Knowledge Model (unit identity, state vector,
+// relationships) — never from markdown content. The engine is
+// synchronous and stateless: one graph build per read, one projection
+// build per view, so a loading state can wrap the whole call without
+// restructuring.
 //
 // The engine is representation-independent by construction: it consumes
 // CKOs (exchange.Units), never authoring syntax. The Markdown adapter
-// (conformance) lives upstream of the Knowledge Compiler (compile);
-// ontology helpers shared with the authoring layer (ParseReference,
-// DomainValues, OwnedDomains, DomainForToken, Stratum) are
-// representation-independent model functions and stay in use here.
+// (conformance) lives upstream of the Knowledge Compiler (compile),
+// which runs inside the sync engine only; ontology helpers shared with
+// the authoring layer (ParseReference, DomainValues, OwnedDomains,
+// DomainForToken, Stratum) are representation-independent model
+// functions and stay in use here.
 //
 // Determinism contract: all ordering is canonical. Units are ordered
 // by their canonical line identity form (<namespace>/<type>:<id>) and

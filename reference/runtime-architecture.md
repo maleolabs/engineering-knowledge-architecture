@@ -1,7 +1,7 @@
 # Knowledge Runtime Architecture — EKA v0.2.0
 
 > Convention document, not an artifact (no `type`/`id`). Implementation-focused companion to [`reference-architecture.md`](reference-architecture.md) (repository serialization) — it documents the **runtime** storage, synchronization, and consumption (compiler + Canonical Knowledge Object) layer added in milestone EKA v0.2.0.
-> Authoritative decisions: [ADR-009](decisions/adr-009-knowledge-runtime-architecture.md) (workspace + embedded canonical store), [ADR-010](decisions/adr-010-synchronization-model.md) (synchronization protocol), [ADR-011](decisions/adr-011-immutable-engineering-knowledge-model.md) (the Immutable Engineering Knowledge Model — schema v2), and [ADR-012](decisions/adr-012-canonical-knowledge-object-runtime.md) (the Canonical Knowledge Object Runtime — the consumption side, §2.1). This document summarizes and explains; the ADRs are normative for this implementation.
+> Authoritative decisions: [ADR-009](decisions/adr-009-knowledge-runtime-architecture.md) (workspace + embedded canonical store), [ADR-010](decisions/adr-010-synchronization-model.md) (synchronization protocol), [ADR-011](decisions/adr-011-immutable-engineering-knowledge-model.md) (the Immutable Engineering Knowledge Model — schema v2), [ADR-012](decisions/adr-012-canonical-knowledge-object-runtime.md) (the Canonical Knowledge Object Runtime — the consumption side, §2.1), and [ADR-013](decisions/adr-013-store-backed-projections.md) (store-backed projections — projections read the canonical store, §2.1/§8/§11). This document summarizes and explains; the ADRs are normative for this implementation.
 > Terminology status: the names *workspace*, *Knowledge Snapshot*, *runtime*, and *sync* are **not finalized** — a future milestone may rename them. Everything here is experimental.
 
 ## 1. The mental model: three runtimes, one knowledge model
@@ -60,6 +60,7 @@ The runtime's consumption path is representation-independent: **authoring is an 
           ▼
 ┌────────────────────┐
 │ Knowledge Compiler │   compile/: parse → validate R0–R12 → normalize → generate CKO → verify
+│                    │   (the authoring gateway — used by eka sync docs-mode / --from-docs)
 └─────────┬──────────┘
           ▼
 ┌────────────────────┐
@@ -71,11 +72,11 @@ The runtime's consumption path is representation-independent: **authoring is an 
 └─────────┬──────────┘
           ▼
 ┌────────────────────┐
-│      Resolver      │   form → object_hash (current immutable payload)
+│      Resolver      │   store.UnitsByProject — object_refs → object_payloads → DecodeUnit
 └─────────┬──────────┘
           ▼
 ┌────────────────────┐
-│     Projection     │   view/ renderers — eka view / eka watch (CKO consumers)
+│     Projection     │   view/ renderers — eka view / eka watch (store reads, zero Markdown)
 └─────────┬──────────┘
           ▼
 ┌────────────────────┐
@@ -89,13 +90,13 @@ Role split — who parses what, and who validates what:
 | Role | Location | Responsibility |
 |---|---|---|
 | **Authoring adapter** | `conformance/` (`Scan`/`analyzeFile`) | Markdown parsing + authoring conformance R0–R12 — the compiler's validation stage; the only Markdown-aware code in the runtime |
-| **Knowledge Compiler** | `compile/` | the canonical gateway: read authoring → parse → validate syntax → normalize → generate CKO → integrity (package digest) → hand off (`compile.Compile`); representation-independent by construction |
-| **CKO consumers** | `view/` + `cmd` | projections over `exchange.Unit` — `eka view` / `eka watch` compile authoring into CKOs on demand; **zero Markdown parsing in the consumption path** (the `view` package imports no `conformance.Scan`/`Artifact`) |
+| **Knowledge Compiler** | `compile/` | the canonical gateway: read authoring → parse → validate syntax → normalize → generate CKO → integrity (package digest) → hand off (`compile.Compile`); representation-independent by construction; the **authoring gateway** — used by sync docs-mode/migration (ADR-010 §Decision 2), **no longer imported by `eka view` / `eka watch`** (ADR-013 §Decision 1) |
+| **CKO consumers** | `view/` + `cmd` | projections over `exchange.Unit` read **from the workspace canonical store** — `eka view` / `eka watch` resolve the project via `store.UnitsByProject` (refs → immutable payloads → `exchange.DecodeUnit`, canonical-form order) and never read Markdown; the compile path is gone from `cmd/view.go` / `cmd/watch.go`; **zero Markdown parsing in the consumption path** (the `view` package imports no `conformance.Scan`/`Artifact`) |
 | **Authoring validation** | `eka validate` | R0–R12 against the authoring representation (adapter layer; read-only, P6) |
 | **Runtime validation** | `eka integrity check` | CKO integrity: payload hash, decode, references, attachments, workspace ([§6](#6-integrity)) |
 | **CKO persistence** | `store/` | `object_payloads` (unit.json + content) + `object_refs` — never a Markdown cache ([§4](#4-canonical-store-schema-summary)) |
 
-The ontology helpers remain shared and representation-independent: `conformance.ParseReference` (reference resolution), `DomainValues`/`OwnedDomains` (state-domain taxonomy), `DomainForToken`/`Stratum` (domain/stratum derivation). Presentation is a separate concern: terminal projections today; future presentations (MCP JSON, Atrium components) consume the same CKO contract. The docs-mode pull (sync) goes through the compiler; `view` compiles on demand; store-backed projections remain future work (ADR-012 §Consequences).
+The ontology helpers remain shared and representation-independent: `conformance.ParseReference` (reference resolution), `DomainValues`/`OwnedDomains` (state-domain taxonomy), `DomainForToken`/`Stratum` (domain/stratum derivation). Presentation is a separate concern: terminal projections today; future presentations (MCP JSON, Atrium components) consume the same CKO contract. The docs-mode pull (sync) goes through the compiler — the authoring gateway; projections (`eka view` / `eka watch`) read the canonical store directly (`store.UnitsByProject`), so the runtime consumption path never touches Markdown and never re-runs the authoring gate per invocation (ADR-013).
 
 ## 3. Workspace layout
 
@@ -281,6 +282,17 @@ Namespace resolution for the package label (deterministic order): the existing s
 - `eka sync [path]` = **pull, then push** — the default workflow. Repositories are processed one at a time; the report is deterministic and machine-readable (workspace, project, repository, status, pull source and counts, push counts, snapshot label and 12-hex digest).
 - Determinism: identical state → identical pull result, identical push bytes, identical report. The only time-dependent data in the entire runtime is operational bookkeeping — `sync_log` timestamps and digests plus the store's `created_at`/`updated_at` columns — which never enters serialized output.
 
+### 8.6 Store-backed projections: the sync → projection link
+
+`eka sync` is the **precondition of every projection**: it compiles the authoring (docs mode / `--from-docs`) or verifies the snapshot (snapshot mode), seeds the canonical store, and thereby makes the project's knowledge projectable. The projections consume the store directly — `store.UnitsByProject(projectID)` resolves every reference of every registered repository of the project to its immutable payload and strict-decodes each via `exchange.DecodeUnit`, in canonical-form order (ADR-013 §Decision 1–2). The projection scope is the **project union**: multi-repository projects (e.g. Atrium `api`/`web`/`mobile`) project as one knowledge set, partitioned by `source_repo` provenance ([§7](#7-projects-repositories-and-registration)). Projection input is deterministic: identical synced store state → identical unit sequence → identical projection.
+
+The failure modes are deterministic and part of the CLI contract ([§11](#11-cli-behavior-review)):
+
+- **Unregistered repository** — the current directory does not resolve to a registered repository: `eka view` is **refused** (exit `1`) with the deterministic message + hint; `eka watch` renders a refusal frame and keeps polling until the repository is registered and synced (ADR-013 §Decision 3, 5).
+- **Registered project without synced knowledge** — `store.UnitsByProject` returns nothing: the projection renders empty with the informational note `no synced knowledge for project <id>; run 'eka sync' after editing docs`, exit `0` — consistent with the existing empty-projection behavior.
+
+Authoring validation (R0–R12) runs inside sync (the compile gate); projections never re-validate authoring per invocation — the correctness of the projected units is the store's integrity contract, checked by `eka integrity check` ([§6](#6-integrity)). Authoring UX: **write Markdown → `eka sync` → `eka view`**.
+
 ## 9. Git integration: explicit synchronization
 
 **Decision (v0.2):** users run `eka sync` explicitly; the snapshot is then committed, reviewed, pushed, and merged through **normal Git workflows — untouched**. The workspace database is never committed to any repository (the snapshot is the transport, the DB is the store).
@@ -303,7 +315,7 @@ The existing lifecycle — Produce → Organize → Validate → Project → Exc
 Draft → Validate → Publish → Synchronize → Project → Consume
 ```
 
-The runtime inserts **Synchronize** between publishing and projecting: after knowledge is drafted, validated, and published (approved into the governed world), it is synchronized into the canonical store; projections then consume the **canonical model — the CKO** — compiled from authoring on demand via the Knowledge Compiler, instead of re-scanning Markdown (a projection reads `exchange.Unit`, never files; store-backed projections that read the indexed runtime directly remain future work). **Terminology is not finalized** — stage names (Draft/Publish/Synchronize) and their mapping onto the current Produce/Organize/Exchange steps are implementation-informed and may change before the workflow is fixed. See [`../skeleton/docs/lifecycle.md`](../skeleton/docs/lifecycle.md) for the lifecycle document.
+The runtime inserts **Synchronize** between publishing and projecting: after knowledge is drafted, validated, and published (approved into the governed world), it is synchronized into the canonical store; projections then consume the **canonical model — the CKO** — read from the canonical store (`store.UnitsByProject`; ADR-013), instead of re-scanning Markdown or re-compiling per invocation (a projection reads `exchange.Unit` from the store, never files). **Terminology is not finalized** — stage names (Draft/Publish/Synchronize) and their mapping onto the current Produce/Organize/Exchange steps are implementation-informed and may change before the workflow is fixed. See [`../skeleton/docs/lifecycle.md`](../skeleton/docs/lifecycle.md) for the lifecycle document.
 
 ## 11. CLI behavior review
 
@@ -315,8 +327,8 @@ All commands are deterministic (identical input → identical output) and follow
 | `eka validate` | unchanged — read-only **authoring** conformance gate (R0–R12; the compiler's authoring-validation stage); never writes | **unchanged** |
 | `eka export` | unchanged — `.ekapkg` or directory-layout RSF package on demand; the snapshot is a sibling transport with the same object model | **unchanged** |
 | `eka import` | unchanged — package → repository integration | **unchanged** |
-| `eka view` | unchanged — repository projections **compiled from authoring via the Knowledge Compiler; consumes Canonical Knowledge Objects** (`exchange.Unit`; compiled on demand); store-backed projections are future work | **unchanged** |
-| `eka watch` | unchanged — polling refresh of the repository projections (each refresh re-compiles via the Knowledge Compiler) | **unchanged** |
+| `eka view` | **store-backed** — reads Canonical Knowledge Objects **from the workspace canonical store** (`store.UnitsByProject` → `exchange.DecodeUnit`), projecting the **complete knowledge of the project** (the union of every registered repository's units); requires a **registered and synced** repository (run `eka sync` first): unregistered → **refused**, exit `1` (deterministic message + hint); registered-but-unsynced → empty projection + informational note, exit `0`; `compile` is no longer imported (ADR-013) | **revised** — sync-first precondition (was: compile-on-demand); ADR-013 |
+| `eka watch` | **store-backed** — polls the canonical store (`store.UnitsByProject` per tick, `--interval` unchanged); TTY contract and byte-comparison redraw unchanged; the **unregistered-repository refusal frame** replaces the compile-failure frame; keeps polling until registered + synced (ADR-013 §Decision 5) | **revised** — sync-first precondition (was: compile-on-demand); ADR-013 |
 | `eka sync [path]` | **new** — pull then push; auto-registers the repository | new |
 | `eka sync pull [path] [--from-docs]` | **new** — snapshot mode (verified, idempotent) or docs mode (conformance gate, migration/re-seed) | new |
 | `eka sync push [path]` | **new** — store → snapshot, atomic temp-dir swap; no-op on empty store | new |
@@ -327,17 +339,18 @@ All commands are deterministic (identical input → identical output) and follow
 | `eka version` | unchanged — CLI build version + EKA standard version (the standard remains **1.1**; `0.2.0` is the CLI/artifact version) | **unchanged** |
 | `eka completion` | unchanged — Cobra-provided shell completion | **unchanged** |
 
-The compatibility promise: **every pre-runtime command keeps its exact pre-runtime behavior**. The runtime adds commands; it changes none.
+The compatibility promise: every pre-runtime command keeps its pre-runtime behavior, **with one deliberate, documented revision**: `eka view` / `eka watch` are store-backed and require a registered + synced repository (ADR-013 — the resolution of ADR-012's own future-work note). The runtime adds commands; it changes nothing else.
 
 ## 12. Future roadmap (NOT implemented in v0.2)
 
-The schema and protocol leave structural room for all of these; none of them exist yet. One paragraph each on how the runtime supports them (ADR-011 §Decision 8 reserves the same room):
+The schema and protocol leave structural room for all of these; none of them exist yet — **except store-backed projections, implemented in v0.2** (ADR-013; see §2.1 and §8). One paragraph each on how the runtime supports the rest (ADR-011 §Decision 8 reserves the same room):
 
+- **Store-Backed Projections — DONE (v0.2)** — `eka view` / `eka watch` read the canonical store (`store.UnitsByProject` → `exchange.DecodeUnit`) and project the project union; `eka sync` is the precondition; an unregistered repository is refused (exit `1`). This closes the "store-backed projections remain future work" note ADR-012 left open.
 - **Knowledge History** — the Immutable Engineering Knowledge Model is the complete raw material: `prev_hash` chains (same-form evolution), forward-only instance versions (distinct forms), and retained unreferenced payloads (the immutable archive). A history query is a **read-side projection** over payloads; there is no dedicated history table, and nothing in v0.2 implements a history command.
 - **Knowledge Timeline** — the change-log array inside each immutable `unit.json` payload carries the per-form transitions (date, domain, from, to, by) in occurrence order; a timeline is a projection over payloads. No timeline command exists.
 - **Context Engine** — metadata queries over the `object_refs` index columns (`dimension`, `domain`, `phase`, provenance, identity tuple) are point lookups on existing indexes. v0.2 exposes only `eka status` counts.
 - **Machine-readable API** — the store is a single SQLite file with a stable schema; a read-only API over payloads + refs is a future command or library, made trivially safe for concurrent readers by immutability. The schema is deliberately public (ADR-009) so the API can be added without redesign.
-- **Knowledge Watch** — `sync_log` records every run, and WAL mode supports cheap change detection; a store-backed watch would replace the polling re-compile of `eka watch` (projections already consume CKO — compiled on demand; reading the store directly instead is the future step). Not implemented.
+- **Knowledge Watch (event-driven)** — the store-backed polling watch is implemented (ADR-013: `eka watch` re-reads `store.UnitsByProject` per tick, refusal frame instead of compile-failure frame). What remains future is **event-driven** change detection — `sync_log` + WAL as the change trigger — replacing polling with change notification; the store-backed read makes that a presentation-loop change only (ADR-010 §Decision 6 reserves the room). Not implemented.
 - **MCP Integration** — the application packages (`workspace/`, `store/`, `sync/`) are public Go packages independent of the CLI; an MCP server is a thin adapter over them. Not implemented.
 - **Knowledge Graph** — relationships are parsed from payloads at read time (they live inside `unit.json`); there is **no SQL-side graph table** in v0.2. Recursive traversal over the five canonical relationship types is a read-time projection over the payload archive — not implemented.
 - **Vector Search** — the content BLOB plus the future FTS5/`sqlite-vec` path is the designed route; nothing indexes embeddings today.
@@ -361,6 +374,8 @@ Documented, accepted, not mitigated in this milestone (ADR-009/ADR-010 §Consequ
 | **Last-wins conflicts** | duplicate identity across repositories in one project resolves by deterministic last-wins overwrite — a silent-overwrite risk, mitigated by the sync report record |
 | **No cloud sync** | local-first by design; determinism and offline capability are preserved, server-mediated sync is deferred |
 | **No hooks / no automation** | users must run `eka sync`; hooks and wrappers are explicitly rejected for v0.2 (see §9) |
+| **Store-backed projection staleness** | a projection reflects the **last sync**, not live authoring edits — an edit is visible only after `eka sync`; `--from-docs` / `eka sync` are the reconciliation tools (ADR-013 §Consequences) |
+| **Unregistered repositories cannot be projected** | `eka view` refuses (exit `1`) a repository not registered in the workspace; registration is one command — `eka sync` auto-registers (ADR-013 §Decision 3) |
 | **Snapshot swap non-atomic window** | push stages to `.snapshots-tmp`, moves the current snapshot to `.snapshots-old`, renames the staged copy into place, then drops the old copy — a brief non-atomic window between move and rename; acceptable for v0.2, tightened later |
 | **Attachments carry no unit references** | attachments are attributed to their provenance pair like objects (a push never packages another repository's attachments), but v1 carries no unit→attachment references — attachment-to-unit linking is a future concern |
 | **Push namespace resolution rules** | the package label namespace is resolved as existing-snapshot header → most common namespace → error; a multi-namespace repository without a snapshot may not package the way a human would expect |
@@ -374,6 +389,7 @@ Documented, accepted, not mitigated in this milestone (ADR-009/ADR-010 §Consequ
 - [ADR-010 — Synchronization Model](decisions/adr-010-synchronization-model.md) — snapshot transport, protocol, Git integration decision, lifecycle extension
 - [ADR-011 — Immutable Engineering Knowledge Model](decisions/adr-011-immutable-engineering-knowledge-model.md) — schema v2, content addressing, integrity, v1 → v2 migration; supersedes ADR-009 §3 storage model
 - [ADR-012 — Canonical Knowledge Object Runtime](decisions/adr-012-canonical-knowledge-object-runtime.md) — the CKO consumption pivot: Knowledge Compiler, CKO-only runtime, two validators
+- [ADR-013 — Store-Backed Projections](decisions/adr-013-store-backed-projections.md) — projections read the canonical store (`store.UnitsByProject`); sync-first precondition; project-union scope; watch polls the store
 - [`cko-specification.md`](cko-specification.md) — the Canonical Knowledge Object schema (field reference, derived values, integrity, Runtime Contract)
 - [`reference-architecture.md`](reference-architecture.md) — the serialization this runtime stores and transports
 - [`cli.md`](cli.md) — command reference, exit codes, output model

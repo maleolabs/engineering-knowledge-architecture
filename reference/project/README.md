@@ -24,7 +24,11 @@ This repository is an **EKA v1.1 serialization** (Git + Markdown). The engineeri
 # Validate the knowledge base against the conformance rules (R0–R12)
 eka validate
 
+# Seed the EKA workspace canonical store (registers this repository)
+eka sync
+
 # See the current execution picture: active container, work items by state
+# (projections read the workspace store, never the docs tree directly)
 eka view execution
 ```
 

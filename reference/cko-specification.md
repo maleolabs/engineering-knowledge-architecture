@@ -72,7 +72,7 @@ Every runtime subsystem consumes the CKO; Markdown awareness belongs exclusively
 | **Knowledge Compiler** (`compile/`) | authoring representations (via the adapter) | parses Markdown itself |
 | **Runtime store** (`store/`) | CKO payloads: `object_payloads` (`unit.json` + content) + `object_refs` | caches or indexes Markdown |
 | **Resolver** | the Canonical Identity Form → current immutable payload | re-reads authoring |
-| **Projections** (`view/`, `eka view` / `eka watch`) | `exchange.Unit` (CKO), compiled on demand | parses Markdown (`view` imports no `conformance.Scan`/`Artifact`) |
+| **Projections** (`view/`, `eka view` / `eka watch`) | `exchange.Unit` (CKO) read from the workspace canonical store (`store.UnitsByProject`, ADR-013) | parses Markdown (`view` imports no `conformance.Scan`/`Artifact`) |
 | **`eka validate`** | the **authoring representation** — R0–R12, the compiler's stage-3 validation | validates CKO (that is `eka integrity check`'s scope) |
 | **`eka integrity check`** | **CKO integrity**: payload hash, decode, references, attachments, registry | re-validates Markdown |
 

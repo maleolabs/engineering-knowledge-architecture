@@ -12,10 +12,10 @@ import (
 	"github.com/maleolabs/engineering-knowledge-architecture/workspace"
 )
 
-// This file implements the push side of the sync engine: the references
-// attributed to a repository (provenance pair project_id + source_repo)
-// are resolved to their immutable payloads, the units are reconstructed
-// from the stored canonical bytes, and the result is assembled into an
+// This file implements the push side of the sync engine: the canonical
+// units attributed to a repository (provenance pair project_id +
+// source_repo) are read from the workspace store (store.Units: decoded
+// from their immutable payloads), and the result is assembled into an
 // RSF package and emitted into <repo>/exchange/snapshots.
 //
 // Emission is crash-safe: the entries are written into
@@ -29,12 +29,12 @@ import (
 // Namespace resolution for the package label (deterministic order):
 //  1. the namespace of an existing snapshot's header, when a snapshot
 //     exists;
-//  2. else the most common namespace among the repository's references
+//  2. else the most common namespace among the repository's units
 //     (ties resolve to the lexicographically smallest);
-//  3. else an error (a repository with references but no namespace
-//     cannot be packaged).
+//  3. else an error (a repository with units but no namespace cannot
+//     be packaged).
 //
-// A push with zero stored references is a no-op: nothing is written and
+// A push with zero stored units is a no-op: nothing is written and
 // the result carries empty label/digest.
 
 // PushResult is the outcome of one push run.
@@ -58,41 +58,30 @@ type PushResult struct {
 	Changed bool
 }
 
-// Push assembles the repository's canonical units (references resolved
-// to their immutable payloads) into a snapshot package at
-// <repo>/exchange/snapshots and records the sync log. A repository with
-// no stored references is a no-op (no files written).
+// Push assembles the repository's canonical units (store.Units: the
+// references resolved to their immutable payloads) into a snapshot
+// package at <repo>/exchange/snapshots and records the sync log. A
+// repository with no stored units is a no-op (no files written).
 func Push(w *workspace.Workspace, repo workspace.Repo) (PushResult, error) {
-	refs, err := w.DB.Refs(repo.ProjectID, repo.Name)
+	units, err := w.DB.Units(repo.ProjectID, repo.Name)
 	if err != nil {
 		return PushResult{}, fmt.Errorf("sync push failed: %w", err)
 	}
-	if len(refs) == 0 {
+	if len(units) == 0 {
 		return PushResult{}, nil
 	}
 
-	ns, err := resolveNamespace(w, repo, refs)
+	ns, err := resolveNamespace(w, repo, units)
 	if err != nil {
 		return PushResult{}, fmt.Errorf("sync push failed: %w", err)
 	}
 	label := exchange.PackageIdentityLabel(exchange.ScopeRepository, ns)
 
 	unitSet := map[string]bool{}
-	units := make([]*exchange.Unit, 0, len(refs))
-	for _, r := range refs {
-		// References are sorted by form, so the units come out in
-		// canonical identity order (the deterministic package order).
-		unitJSON, content, err := w.DB.Payload(r.ObjectHash)
-		if err != nil {
-			return PushResult{}, fmt.Errorf("sync push failed: cannot read payload of %s: %w", r.Form, err)
-		}
-		u, err := exchange.DecodeUnit(unitJSON, content)
-		if err != nil {
-			return PushResult{}, fmt.Errorf("sync push failed: cannot decode payload of %s: %w", r.Form, err)
-		}
-		u.Digest = r.ObjectHash
+	for _, u := range units {
+		// Units are sorted by canonical form (store.Units), so the
+		// package order is the deterministic canonical identity order.
 		unitSet[u.CanonicalIdentityForm] = true
-		units = append(units, u)
 	}
 
 	storedAtts, err := w.DB.Attachments(repo.ProjectID, repo.Name)
@@ -202,12 +191,12 @@ func Push(w *workspace.Workspace, repo workspace.Repo) (PushResult, error) {
 
 // resolveNamespace picks the package namespace: the existing
 // snapshot's header namespace when a snapshot exists, else the most
-// common namespace among the references (ties -> lexicographically
-// smallest). An existing but unreadable snapshot is skipped (the
-// references carry the authority); a corrupted snapshot header only
-// influences the label — the emitted snapshot itself is always rebuilt
-// from the canonical store and verified on the next pull.
-func resolveNamespace(w *workspace.Workspace, repo workspace.Repo, refs []*store.Ref) (string, error) {
+// common namespace among the units (ties -> lexicographically
+// smallest). An existing but unreadable snapshot is skipped (the units
+// carry the authority); a corrupted snapshot header only influences the
+// label — the emitted snapshot itself is always rebuilt from the
+// canonical store and verified on the next pull.
+func resolveNamespace(w *workspace.Workspace, repo workspace.Repo, units []*exchange.Unit) (string, error) {
 	snapshotDir := filepath.Join(repo.Path, "exchange", "snapshots")
 	if data, err := os.ReadFile(filepath.Join(snapshotDir, "header.json")); err == nil {
 		var header struct {
@@ -219,11 +208,11 @@ func resolveNamespace(w *workspace.Workspace, repo workspace.Repo, refs []*store
 	}
 
 	counts := map[string]int{}
-	for _, r := range refs {
-		counts[r.Namespace]++
+	for _, u := range units {
+		counts[u.Identity.Namespace]++
 	}
 	if len(counts) == 0 {
-		return "", fmt.Errorf("cannot determine namespace: the repository has no references with a namespace")
+		return "", fmt.Errorf("cannot determine namespace: the repository has no units with a namespace")
 	}
 	namespaces := make([]string, 0, len(counts))
 	for ns := range counts {

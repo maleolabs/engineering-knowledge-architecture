@@ -9,6 +9,8 @@ import (
 	"testing"
 
 	"github.com/maleolabs/engineering-knowledge-architecture/cmd/ui"
+	"github.com/maleolabs/engineering-knowledge-architecture/sync"
+	"github.com/maleolabs/engineering-knowledge-architecture/workspace"
 )
 
 // watch tests: the live projection command. Two layers:
@@ -19,9 +21,11 @@ import (
 //   - frame tests call the pure helpers (renderWatchFrame, frameChanged,
 //     writeClearScreen) directly — the infinite loop is not exercised,
 //     only the per-cycle functions, which is where all the state lives.
+//     The projection source is the workspace canonical store, so every
+//     frame test seeds a fresh workspace (EKA_HOME + sync) first.
 //
 // watch requires a TTY, so runIn-based success-path tests (like view's)
-// are impossible by construction; the frame helpers take the root path
+// are impossible by construction; the frame helpers take the workspace
 // explicitly and are tested without a terminal.
 
 // watchFrameStyle returns a non-TTY Style for frame rendering. The
@@ -138,17 +142,21 @@ func TestWatchHelpExitsZero(t *testing.T) {
 				t.Errorf("args %v: help missing %q:\n%s", args, want, text)
 			}
 		}
+		if !strings.Contains(text, "EKA workspace") {
+			t.Errorf("args %v: help must document the workspace canonical source:\n%s", args, text)
+		}
 	}
 }
 
 // --- frame rendering (unit, no loop) -----------------------------------
 
-// TestWatchFrameProjection: one watch cycle over a conformant fixture
+// TestWatchFrameProjection: one watch cycle over a synced fixture
 // renders the projection (byte-identical to the one-shot view output,
-// plus the watching footer) — not the failure frame.
+// plus the watching footer) — not the refusal frame.
 func TestWatchFrameProjection(t *testing.T) {
-	root := viewFixtureAbs(t, "valid")
-	frame, err := renderWatchFrame(watchFrameStyle(), root, "execution", "", 2)
+	seedViewRepo(t, "valid")
+	ws := openWorkspace(t)
+	frame, err := renderWatchFrame(watchFrameStyle(), ws, "execution", "", 2)
 	if err != nil {
 		t.Fatalf("renderWatchFrame: %v", err)
 	}
@@ -165,8 +173,8 @@ func TestWatchFrameProjection(t *testing.T) {
 			t.Errorf("frame must contain %q:\n%s", want, text)
 		}
 	}
-	if strings.Contains(text, "validation failed") {
-		t.Errorf("a conformant repository must not render the failure frame:\n%s", text)
+	if strings.Contains(text, "not registered") {
+		t.Errorf("a synced repository must not render the refusal frame:\n%s", text)
 	}
 	if strings.Contains(text, "\x1b") {
 		t.Errorf("non-TTY frame must not contain ANSI escapes:\n%s", text)
@@ -177,13 +185,13 @@ func TestWatchFrameProjection(t *testing.T) {
 // frame is the one-shot `eka view` output byte for byte (same
 // renderers, same style settings); the frame only appends the footer.
 func TestWatchFrameByteAgreementWithView(t *testing.T) {
-	root := viewFixtureAbs(t, "valid")
-	chdirInto(t, root)
+	seedViewRepo(t, "valid")
+	ws := openWorkspace(t)
 	code, viewOut, errText := runIn([]string{"view", "execution"})
 	if code != 0 {
 		t.Fatalf("view execution: exit = %d\nstderr: %s", code, errText)
 	}
-	frame, err := renderWatchFrame(watchFrameStyle(), ".", "execution", "", 2)
+	frame, err := renderWatchFrame(watchFrameStyle(), ws, "execution", "", 2)
 	if err != nil {
 		t.Fatalf("renderWatchFrame: %v", err)
 	}
@@ -196,20 +204,21 @@ func TestWatchFrameByteAgreementWithView(t *testing.T) {
 	}
 }
 
-// TestWatchFrameDeterministic: identical repository state produces
-// identical frames (no clock, no timestamps in the frame content).
+// TestWatchFrameDeterministic: identical store state produces identical
+// frames (no clock, no timestamps in the frame content).
 func TestWatchFrameDeterministic(t *testing.T) {
-	root := viewFixtureAbs(t, "valid")
-	a, err := renderWatchFrame(watchFrameStyle(), root, "execution", "", 2)
+	seedViewRepo(t, "valid")
+	ws := openWorkspace(t)
+	a, err := renderWatchFrame(watchFrameStyle(), ws, "execution", "", 2)
 	if err != nil {
 		t.Fatal(err)
 	}
-	b, err := renderWatchFrame(watchFrameStyle(), root, "execution", "", 2)
+	b, err := renderWatchFrame(watchFrameStyle(), ws, "execution", "", 2)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if !bytes.Equal(a, b) {
-		t.Error("identical repository state must produce identical frames")
+		t.Error("identical store state must produce identical frames")
 	}
 	// Frames are pure content: the clear-screen sequence belongs to the
 	// loop, never to the frame bytes.
@@ -218,95 +227,70 @@ func TestWatchFrameDeterministic(t *testing.T) {
 	}
 }
 
-// TestWatchFrameValidationFailure: a repository with blocking
-// violations renders the calm failure frame — validation summary and
-// findings, the resume hint and the footer — with no projection
-// content and no exit.
-func TestWatchFrameValidationFailure(t *testing.T) {
-	dir := t.TempDir()
-	workItems := filepath.Join(dir, "docs", "operating", "work-items", "stories")
-	if err := os.MkdirAll(workItems, 0o755); err != nil {
-		t.Fatal(err)
-	}
-	bad := "---\nnamespace: eka-cli\n"
-	bad += "type: sto\n" // type without id violates the artifact rule (R0)
-	bad += "---\n# Bad\n"
-	if err := os.WriteFile(filepath.Join(workItems, "sto-bad.md"), []byte(bad), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	frame, err := renderWatchFrame(watchFrameStyle(), dir, "execution", "", 2)
+// TestWatchFrameRefusal: a repository not registered in the EKA
+// workspace renders the calm refusal frame — the refusal message, the
+// sync hint and the watching footer — with no projection content and
+// no exit.
+func TestWatchFrameRefusal(t *testing.T) {
+	t.Setenv("EKA_HOME", t.TempDir())
+	chdirInto(t, t.TempDir())
+	ws := openWorkspace(t)
+	frame, err := renderWatchFrame(watchFrameStyle(), ws, "execution", "", 2)
 	if err != nil {
 		t.Fatalf("renderWatchFrame: %v", err)
 	}
 	text := string(frame)
 	for _, want := range []string{
 		"Repository",
-		"↓ Validate",
-		"Repository validation failed.",
-		"FAIL (1 errors, 0 warnings)",
-		"Validation findings:",
-		"R0",
-		"watching — fix the repository to resume the projection",
+		"↓ View",
+		"Repository not registered in the EKA workspace.",
+		"eka sync",
+		"watching — run 'eka sync' to register the repository",
 		"watching — Ctrl-C to stop (interval 2s)",
 	} {
 		if !strings.Contains(text, want) {
-			t.Errorf("failure frame must contain %q:\n%s", want, text)
+			t.Errorf("refusal frame must contain %q:\n%s", want, text)
 		}
 	}
-	// No projection content: the frame is the failure state, not a
+	// No projection content: the frame is the refusal state, not a
 	// degraded projection.
 	for _, forbidden := range []string{"Planned", "No active container.", "Summary:"} {
 		if strings.Contains(text, forbidden) {
-			t.Errorf("failure frame must not contain projection content %q:\n%s", forbidden, text)
+			t.Errorf("refusal frame must not contain projection content %q:\n%s", forbidden, text)
 		}
 	}
 }
 
-// TestWatchFrameValidationRecovery: the same helper that renders the
-// failure frame renders the projection again once the repository is
-// fixed — the frame flips back without any exit.
-func TestWatchFrameValidationRecovery(t *testing.T) {
+// TestWatchFrameRefusalRecovery: the same helper that renders the
+// refusal frame renders the projection again once the repository is
+// registered and synced — the frame flips back without any exit.
+func TestWatchFrameRefusalRecovery(t *testing.T) {
+	t.Setenv("EKA_HOME", t.TempDir())
 	dir := t.TempDir()
-	workItems := filepath.Join(dir, "docs", "operating", "work-items", "stories")
-	if err := os.MkdirAll(workItems, 0o755); err != nil {
-		t.Fatal(err)
-	}
-	good := "---\nnamespace: eka-watch\n"
-	good += "type: sto\nid: one\ninstance-version: 1\nrevision: 1\n"
-	good += "execution-state: todo\nexistence-state: active\n"
-	good += "author: Engineering\ncreated: 2026-08-05\nupdated: 2026-08-05\n"
-	good += "supersedes: []\nderives-from: []\ndepends-on: []\n"
-	good += "change-log:\n  - date: 2026-08-05\n    domain: existence-state\n    from: \"-\"\n    to: active\n    by: Engineering\n  - date: 2026-08-05\n    domain: execution-state\n    from: \"-\"\n    to: todo\n    by: Engineering\n"
-	good += "---\n# One\n\n## Description\n\nd\n\n## Acceptance Criteria\n\nc\n"
-	if err := os.WriteFile(filepath.Join(workItems, "sto-one.md"), []byte(good), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	bad := "---\nnamespace: eka-watch\n"
-	bad += "type: sto\n" // type without id violates the artifact rule (R0)
-	bad += "---\n# Bad\n"
-	if err := os.WriteFile(filepath.Join(workItems, "sto-bad.md"), []byte(bad), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	failure, err := renderWatchFrame(watchFrameStyle(), dir, "execution", "", 2)
+	writeStory(t, filepath.Join(dir, "docs", "operating", "work-items", "stories", "sto-one.md"), "eka-watch", "one", "todo")
+	chdirInto(t, dir)
+	ws := openWorkspace(t)
+	refusal, err := renderWatchFrame(watchFrameStyle(), ws, "execution", "", 2)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(failure), "Repository validation failed.") {
-		t.Fatalf("broken repository must render the failure frame:\n%s", failure)
+	if !strings.Contains(string(refusal), "not registered") {
+		t.Fatalf("unregistered repository must render the refusal frame:\n%s", refusal)
 	}
-	// Fix the repository: remove the offending artifact.
-	if err := os.Remove(filepath.Join(workItems, "sto-bad.md")); err != nil {
+	// Register + seed the repository: the next cycle must flip back to
+	// the projection.
+	if _, err := sync.Run(ws, dir, sync.Options{Pull: true, Push: true}); err != nil {
 		t.Fatal(err)
 	}
-	recovered, err := renderWatchFrame(watchFrameStyle(), dir, "execution", "", 2)
+	recovered, err := renderWatchFrame(watchFrameStyle(), ws, "execution", "", 2)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if strings.Contains(string(recovered), "validation failed") {
-		t.Errorf("recovered repository must render the projection frame:\n%s", recovered)
+	if strings.Contains(string(recovered), "not registered") {
+		t.Errorf("registered repository must render the projection frame:\n%s", recovered)
 	}
-	if bytes.Equal(failure, recovered) {
-		t.Error("recovery must change the frame bytes")
+	if bytes.Equal(refusal, recovered) {
+		t.Error("registration must change the frame bytes")
 	}
 }
 
@@ -327,43 +311,29 @@ func TestWatchFrameChanged(t *testing.T) {
 }
 
 // TestWatchFrameChangeDetectionOnRepoState: flipping a work item's
-// execution state (with its change-log entry) changes the frame bytes
-// — the loop would redraw on the next interval.
+// execution state (with its change-log entry) and re-syncing the
+// repository changes the frame bytes — the loop would redraw on the
+// next interval.
 func TestWatchFrameChangeDetectionOnRepoState(t *testing.T) {
-	src := viewFixtureAbs(t, "valid")
-	dir := t.TempDir()
-	err := filepath.WalkDir(src, func(path string, d os.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-		if d.IsDir() {
-			return nil
-		}
-		rel, err := filepath.Rel(src, path)
-		if err != nil {
-			return err
-		}
-		data, err := os.ReadFile(path)
-		if err != nil {
-			return err
-		}
-		dst := filepath.Join(dir, rel)
-		if err := os.MkdirAll(filepath.Dir(dst), 0o755); err != nil {
-			return err
-		}
-		return os.WriteFile(dst, data, 0o644)
-	})
+	t.Setenv("EKA_HOME", t.TempDir())
+	repo := copyFixture(t, viewFixtureAbs(t, "valid"))
+	ws, err := workspace.Ensure()
 	if err != nil {
 		t.Fatal(err)
 	}
-	before, err := renderWatchFrame(watchFrameStyle(), dir, "execution", "", 2)
+	defer ws.Close()
+	if _, err := sync.Run(ws, repo, sync.Options{Pull: true, Push: true}); err != nil {
+		t.Fatal(err)
+	}
+	chdirInto(t, repo)
+	before, err := renderWatchFrame(watchFrameStyle(), ws, "execution", "", 2)
 	if err != nil {
 		t.Fatal(err)
 	}
 	// delta is in-review: move it to done, keeping the change-log
 	// consistent so the repository stays conformant. The new entry is
 	// inserted inside the front matter, before the closing marker.
-	delta := filepath.Join(dir, "docs", "operating", "work-items", "bugs", "bug-delta.md")
+	delta := filepath.Join(repo, "docs", "operating", "work-items", "bugs", "bug-delta.md")
 	orig, err := os.ReadFile(delta)
 	if err != nil {
 		t.Fatal(err)
@@ -375,7 +345,12 @@ func TestWatchFrameChangeDetectionOnRepoState(t *testing.T) {
 	if err := os.WriteFile(delta, []byte(modified), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	after, err := renderWatchFrame(watchFrameStyle(), dir, "execution", "", 2)
+	// Re-seed from the docs tree: the snapshot is unchanged, so a
+	// snapshot-mode pull would skip the work (idempotent digest).
+	if _, err := sync.Run(ws, repo, sync.Options{Pull: true, FromDocs: true, Push: true}); err != nil {
+		t.Fatal(err)
+	}
+	after, err := renderWatchFrame(watchFrameStyle(), ws, "execution", "", 2)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -385,10 +360,11 @@ func TestWatchFrameChangeDetectionOnRepoState(t *testing.T) {
 	if !frameChanged(before, after) {
 		t.Error("frameChanged must report the state flip as a redraw")
 	}
-	// The edited repository must still be conformant (the change-log
-	// rule holds), so the after-frame is a projection, not a failure.
-	if strings.Contains(string(after), "validation failed") {
-		t.Errorf("edited repository must stay conformant:\n%s", after)
+	// The re-synced repository must still render a projection, not the
+	// refusal frame (the edited repository stays conformant: the
+	// change-log rule holds).
+	if strings.Contains(string(after), "not registered") {
+		t.Errorf("edited repository must stay registered:\n%s", after)
 	}
 }
 
@@ -413,8 +389,9 @@ func TestWatchClearScreenEmission(t *testing.T) {
 		t.Errorf("expected one sequence per emission, got %d", got)
 	}
 	// The open path: the clear sequence leads the first frame.
-	root := viewFixtureAbs(t, "valid")
-	frame, err := renderWatchFrame(watchFrameStyle(), root, "execution", "", 2)
+	seedViewRepo(t, "valid")
+	ws := openWorkspace(t)
+	frame, err := renderWatchFrame(watchFrameStyle(), ws, "execution", "", 2)
 	if err != nil {
 		t.Fatal(err)
 	}

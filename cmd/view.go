@@ -3,20 +3,23 @@ package cmd
 import (
 	"errors"
 	"fmt"
+	"path/filepath"
 
 	"github.com/maleolabs/engineering-knowledge-architecture/cmd/ui"
-	"github.com/maleolabs/engineering-knowledge-architecture/compile"
 	"github.com/maleolabs/engineering-knowledge-architecture/view"
+	"github.com/maleolabs/engineering-knowledge-architecture/workspace"
 	"github.com/spf13/cobra"
 )
 
 // newViewCommand builds the `eka view` command: project the Engineering
-// Knowledge Model of the repository rooted at the current directory.
-// All projection logic lives in the view package (the Knowledge
-// Projection Engine); this command only validates arguments, compiles
-// the repository through the Knowledge Compiler (conformance gate +
-// CKO assembly), renders the projection and maps the result to the
-// exit code contract.
+// Knowledge Model of the project owning the repository rooted at the
+// current directory. All projection logic lives in the view package
+// (the Knowledge Projection Engine); this command only resolves the
+// workspace, reads the canonical units of the project from the store
+// (the store-backed projection source of the Knowledge Runtime),
+// renders the projection and maps the result to the exit code
+// contract. No Markdown is read at projection time: authoring is
+// compiled and seeded by `eka sync`.
 //
 // The projections are domain-first: discovery, architecture, planning,
 // execution and operations render one Engineering Domain each; ticket
@@ -26,24 +29,29 @@ import (
 // Exit codes:
 //
 //	0  projection produced (including empty projections: no active
-//	   container, no domain artifacts, no tickets)
-//	1  repository validation failed: no projection is produced (the
-//	   full report is printed)
+//	   container, no domain artifacts, no tickets, no synced knowledge)
+//	1  repository not registered in the EKA workspace: no projection
+//	   is produced (deterministic refusal message printed)
 //	2  usage or internal error (unknown projection, missing or unknown
-//	   ticket target, unreadable root)
+//	   ticket target, workspace or store failure)
 func newViewCommand() *cobra.Command {
 	return &cobra.Command{
 		Use:   "view [projection] [target]",
 		Short: "Project the Engineering Knowledge Model",
-		Long: `Project the Engineering Knowledge Model of the repository rooted at the
-current directory: read-only views over the repository's artifacts and
-their relationships, derived from the model — never from file text.
+		Long: `Project the Engineering Knowledge Model of the project owning the
+repository rooted at the current directory: read-only views over the
+complete Engineering Knowledge of the project — every registered
+repository of the project — derived from the EKA workspace canonical
+store (default ~/.eka, or $EKA_HOME), never from file text.
 
-The repository is compiled from the authoring tree via the Knowledge
-Compiler first (conformance-gated: the authoring rules R0-R12 run
-before any projection); a repository with blocking violations is
-refused and no projection is produced. Warnings never block a
-projection.
+The repository must be registered in the EKA workspace and synced
+first: 'eka sync' compiles the authoring tree through the Knowledge
+Compiler (conformance-gated) and seeds the canonical store. At
+projection time no Markdown is read and no conformance gate runs — the
+projection is built from the stored Canonical Knowledge Objects only.
+A repository that is not registered (or a workspace that was never
+synced) is refused with a deterministic message. Run this command
+inside the repository root: repository resolution is exact-path.
 
 Projections (domain-first):
 
@@ -59,7 +67,7 @@ Projections (domain-first):
                status projected from their work items, and its work
                items grouped by execution state
                (planned/todo/in-progress/in-review/done)
-  board        every work item in the repository across all execution
+  board        every work item in the project across all execution
                containers, grouped by execution state, each item tagged
                with its container (unassigned when none)
   operations   the Operations domain: run-, rel- artifacts grouped by
@@ -79,8 +87,10 @@ projections ignore it.
 With no arguments the available projections are listed.
 
 Exit codes:
-  0  projection produced
-  1  repository validation failed (no projection produced)
+  0  projection produced (including empty projections and projects
+     with no synced knowledge)
+  1  repository not registered in the EKA workspace (run 'eka sync'
+     first)
   2  usage or internal error (unknown projection, missing or unknown
      ticket target)`,
 		Example: `  eka view
@@ -99,24 +109,45 @@ Exit codes:
 				return err
 			}
 			s := styleFor(cmd)
-			// Compile FIRST: the Knowledge Compiler runs the authoring
-			// conformance gate and assembles the Canonical Knowledge
-			// Objects. Blocking violations print the full report and
-			// exit 1 — no projection is produced.
-			res, err := compile.Compile(".")
+			// The workspace canonical store is the projection source:
+			// the repository must be registered and synced first
+			// ('eka sync'); the projection never reads Markdown.
+			ws, err := workspace.Ensure()
 			if err != nil {
-				var ve *compile.ValidationError
-				if errors.As(err, &ve) {
-					printReport(s, ve.Report)
-					fmt.Fprintf(cmd.ErrOrStderr(), "eka: view refused: repository is not conformant\n")
-					return &exitError{code: exitFail}
-				}
+				return err // Exit 2: workspace resolution.
+			}
+			defer ws.Close()
+			abs, err := filepath.Abs(".")
+			if err != nil {
 				return fmt.Errorf("view failed: %w", err)
 			}
-			// One compile, one graph: the projection engine is
+			repo, found, err := ws.FindRepo(abs)
+			if err != nil {
+				return fmt.Errorf("view failed: %w", err) // Exit 2: registry failure.
+			}
+			if !found {
+				// Repository-state refusal: deterministic message and
+				// exit 1 — no projection is produced.
+				fmt.Fprintf(cmd.ErrOrStderr(), "eka: view refused: repository %s is not registered in the EKA workspace; run 'eka sync' (auto-registers) or 'eka project register' first\n", abs)
+				return &exitError{code: exitFail}
+			}
+			// The projection source is the complete Engineering
+			// Knowledge of the project: every registered repository's
+			// units, decoded from the immutable payloads.
+			units, err := ws.DB.UnitsByProject(repo.ProjectID)
+			if err != nil {
+				return fmt.Errorf("view failed: %w", err) // Exit 2: store failure.
+			}
+			if len(units) == 0 {
+				// Empty projection: still rendered (exit 0), but the
+				// missing knowledge is surfaced before the render.
+				fmt.Fprintf(s.W, "%s\n", s.Info(fmt.Sprintf(
+					"no synced knowledge for project %s; run 'eka sync' after editing docs", repo.ProjectID)))
+			}
+			// One read, one graph: the projection engine is
 			// synchronous and stateless, so a future loading state can
 			// wrap the whole call without restructuring.
-			g := view.NewGraph(".", res.CKOs)
+			g := view.NewGraph(".", units)
 			proj, err := view.Build(name, g, target)
 			if err != nil {
 				if errors.Is(err, view.ErrUnknownProjection) {
@@ -171,8 +202,8 @@ func printViewLanding(s *ui.Style) {
 	fmt.Fprintln(s.W, s.Accent("Knowledge Projections"))
 	fmt.Fprintln(s.W)
 	fmt.Fprintln(s.W, "  The EKA Knowledge Projection Engine: read-only views over the")
-	fmt.Fprintln(s.W, "  Engineering Knowledge Model — repository artifacts and their")
-	fmt.Fprintln(s.W, "  relationships, projected by domain and state.")
+	fmt.Fprintln(s.W, "  Engineering Knowledge Model from the EKA workspace — the")
+	fmt.Fprintln(s.W, "  complete knowledge of one project, projected by domain and state.")
 	fmt.Fprintln(s.W)
 	fmt.Fprintln(s.W, "Projections")
 	for _, name := range view.Projections() {

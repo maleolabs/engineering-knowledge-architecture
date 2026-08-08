@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -12,33 +11,7 @@ import (
 // dir and returns its path.
 func copySyncFixture(t *testing.T) string {
 	t.Helper()
-	src := filepath.Join("..", "sync", "testdata", "valid")
-	dst := t.TempDir()
-	err := filepath.WalkDir(src, func(path string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-		if d.IsDir() {
-			return nil
-		}
-		rel, err := filepath.Rel(src, path)
-		if err != nil {
-			return err
-		}
-		data, err := os.ReadFile(path)
-		if err != nil {
-			return err
-		}
-		target := filepath.Join(dst, rel)
-		if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
-			return err
-		}
-		return os.WriteFile(target, data, 0o644)
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	return dst
+	return copyFixture(t, filepath.Join("..", "sync", "testdata", "valid"))
 }
 
 func TestSyncHelpExitsZero(t *testing.T) {

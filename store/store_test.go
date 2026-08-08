@@ -998,3 +998,132 @@ func TestVerifyIntegrityPayloadDecode(t *testing.T) {
 		t.Errorf("payload-decode violation missing for tampered unit_json: %+v", report.Violations)
 	}
 }
+
+// --- unit projection (Units / UnitsByProject) ---
+
+// seedUnitsStore seeds one unit per (ns, typ, id, project, repo) tuple
+// and returns the stored hash.
+func seedUnitsStore(t *testing.T, s *Store, ns, typ, id, project, repo string) string {
+	t.Helper()
+	r := ref(ns+"/"+typ+":"+id+":1", project, repo)
+	r.Namespace = ns
+	r.Type = typ
+	r.ID = id
+	r.Form = ns + "/" + typ + ":" + id + ":1"
+	h, err := s.PutUnit(unitJSON(t, ns, typ, id, 1, 1), []byte("body "+id), r)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return h
+}
+
+// TestUnitsByProject: the projection source of the runtime — the union
+// of every repository's units of one project, decoded from their
+// immutable payloads, sorted by canonical form, with the content-
+// derived digest of the reference attached; units of other projects
+// stay invisible. The per-repository view filters by provenance pair.
+func TestUnitsByProject(t *testing.T) {
+	s := openTest(t)
+	// Project proj-a: two repositories with distinct namespaces.
+	hA := seedUnitsStore(t, s, "acme", "sto", "a", "proj-a", "repo-a")
+	hM := seedUnitsStore(t, s, "acme", "sto", "m", "proj-a", "repo-a")
+	hZ := seedUnitsStore(t, s, "zeta", "sto", "z", "proj-a", "repo-b")
+	// Another project with the same repo basename: must stay invisible.
+	seedUnitsStore(t, s, "acme", "sto", "q", "proj-b", "repo-a")
+
+	units, err := s.UnitsByProject("proj-a")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(units) != 3 {
+		t.Fatalf("UnitsByProject = %d units, want 3", len(units))
+	}
+	want := []struct {
+		form, ns, id, hash string
+	}{
+		{"acme/sto:a:1", "acme", "a", hA},
+		{"acme/sto:m:1", "acme", "m", hM},
+		{"zeta/sto:z:1", "zeta", "z", hZ},
+	}
+	for i, w := range want {
+		u := units[i]
+		if u.CanonicalIdentityForm != w.form {
+			t.Errorf("unit %d form = %q, want %q (sorted by form)", i, u.CanonicalIdentityForm, w.form)
+		}
+		if u.Identity.Namespace != w.ns || u.Identity.ID != w.id {
+			t.Errorf("unit %d identity = %s/%s, want %s/%s", i, u.Identity.Namespace, u.Identity.ID, w.ns, w.id)
+		}
+		if u.Digest != w.hash {
+			t.Errorf("unit %d digest = %q, want %q (the reference's object hash)", i, u.Digest, w.hash)
+		}
+		if string(u.ContentPayload) != "body "+w.id {
+			t.Errorf("unit %d content payload = %q, want %q", i, u.ContentPayload, "body "+w.id)
+		}
+	}
+
+	// Per-repository view: the provenance pair filters the union.
+	repoA, err := s.Units("proj-a", "repo-a")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(repoA) != 2 ||
+		repoA[0].CanonicalIdentityForm != "acme/sto:a:1" ||
+		repoA[1].CanonicalIdentityForm != "acme/sto:m:1" {
+		t.Errorf("Units(proj-a, repo-a) = %d units (%v), want a, m", len(repoA), repoA)
+	}
+	repoB, err := s.Units("proj-a", "repo-b")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(repoB) != 1 || repoB[0].CanonicalIdentityForm != "zeta/sto:z:1" {
+		t.Errorf("Units(proj-a, repo-b) = %v, want z", repoB)
+	}
+
+	// Empty result: empty non-nil slice, nil error.
+	none, err := s.UnitsByProject("proj-empty")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if none == nil || len(none) != 0 {
+		t.Errorf("UnitsByProject(proj-empty) = %v, want empty non-nil slice", none)
+	}
+}
+
+// TestUnitsMissingPayloadErrors: a reference whose payload is missing
+// is store corruption — Units and UnitsByProject must error loudly,
+// never silently skip the referenced object.
+func TestUnitsMissingPayloadErrors(t *testing.T) {
+	s := openTest(t)
+	if _, err := s.db.Exec(`PRAGMA foreign_keys = OFF`); err != nil {
+		t.Fatal(err)
+	}
+	ghost := strings.Repeat("0", 64)
+	if _, err := s.db.Exec(`INSERT INTO object_refs (form, object_hash, project_id, source_repo, namespace, type, id, instance_version, revision, dimension, domain, phase, updated_at)
+		VALUES ('ghost/sto:q:1', '` + ghost + `', 'p', 'r', 'ghost', 'sto', 'q', 1, 1, '', '', '', '2026-08-07T00:00:00Z')`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.Units("p", "r"); err == nil {
+		t.Error("Units must error on a missing payload (corrupt store)")
+	}
+	if _, err := s.UnitsByProject("p"); err == nil {
+		t.Error("UnitsByProject must error on a missing payload (corrupt store)")
+	}
+}
+
+// TestUnitsFormMismatchErrors: a reference whose form does not equal
+// the payload's own identity is store corruption — Units errors loudly
+// instead of projecting the unit under the reference's form (mirror of
+// integrity level 4, fail-loud on the read path).
+func TestUnitsFormMismatchErrors(t *testing.T) {
+	s := openTest(t)
+	if _, err := s.PutUnit(unitJSON(t, "acme", "sto", "x", 1, 1), []byte("body"), ref("acme/sto:x:1", "p", "r")); err != nil {
+		t.Fatal(err)
+	}
+	// Point the reference at a payload whose identity differs.
+	if _, err := s.db.Exec(`UPDATE object_refs SET form = 'acme/sto:y:1' WHERE form = 'acme/sto:x:1'`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.Units("p", "r"); err == nil {
+		t.Error("Units must error when the reference form mismatches the payload identity")
+	}
+}

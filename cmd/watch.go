@@ -3,32 +3,35 @@ package cmd
 import (
 	"bufio"
 	"bytes"
-	"errors"
 	"fmt"
 	"io"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"time"
 
 	"github.com/maleolabs/engineering-knowledge-architecture/cmd/ui"
-	"github.com/maleolabs/engineering-knowledge-architecture/compile"
-	"github.com/maleolabs/engineering-knowledge-architecture/conformance"
 	"github.com/maleolabs/engineering-knowledge-architecture/view"
+	"github.com/maleolabs/engineering-knowledge-architecture/workspace"
 	"github.com/spf13/cobra"
 )
 
 // This file implements the `eka watch` command: the live version of
-// `eka view`. The projection surface, the conformance gate and the
-// frame renderers are exactly the view ones — a watch frame of a
-// conformant repository is the one-shot view output plus the watching
-// footer, byte for byte. Watch adds only the presentation loop: a
-// polling interval, change detection (identical frames are not
-// redrawn), a clear-screen on open and on exit, and SIGINT handling.
+// `eka view`. The projection surface and the frame renderers are
+// exactly the view ones — a watch frame of a synced repository is the
+// one-shot view output plus the watching footer, byte for byte. Watch
+// adds only the presentation loop: a polling interval, change
+// detection (identical frames are not redrawn), a clear-screen on open
+// and on exit, and SIGINT handling.
 //
-// Validation failures are rendered as a calm in-place frame, not an
-// exit: watch keeps polling and flips back to the projection
-// automatically once the repository recovers. There is no fsnotify and
-// no new dependency: the repository is re-read on a timer.
+// The projection source is the EKA workspace canonical store: every
+// cycle re-reads the project's units from the store, so a 'eka sync'
+// run in another terminal is picked up without a restart. While the
+// repository is not registered the watch shows a calm refusal frame
+// instead of the projection: it keeps polling and flips to the
+// projection automatically once the repository is registered and
+// synced. No Markdown is read at projection time. There is no fsnotify
+// and no new dependency: the store is re-read on a timer.
 //
 // Watch is a live display: stdout must be a terminal. The terminal
 // gate runs after argument validation, so usage errors stay
@@ -52,22 +55,26 @@ const clearScreen = "\x1b[2J\x1b[H"
 //
 //	0  clean stop (Ctrl-C)
 //	2  usage or internal error (unknown projection, missing ticket
-//	   target, invalid interval, non-terminal stdout, unreadable root)
+//	   target, invalid interval, non-terminal stdout, workspace or
+//	   store failure)
 func newWatchCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "watch <projection> [target]",
 		Short: "Watch a projection live, redrawn on change",
-		Long: `Live projection of the Engineering Knowledge Model of the repository
-rooted at the current directory: 'eka watch' is 'eka view' in a loop —
-the projection is re-rendered in place on a polling interval and
-redrawn only when it changed (no flicker on stable state).
+		Long: `Live projection of the Engineering Knowledge Model of the project
+owning the repository rooted at the current directory: 'eka watch' is
+'eka view' in a loop — the projection is re-rendered in place on a
+polling interval and redrawn only when it changed (no flicker on
+stable state).
 
-On every cycle the repository is re-compiled from the authoring tree
-via the Knowledge Compiler (conformance-gated: the authoring rules
-R0-R12 run before any projection). While blocking violations exist the
-watch shows a calm validation-failure frame instead of the projection;
-it keeps polling and flips back to the projection automatically once
-the repository recovers. Warnings never block a projection.
+On every cycle the projection is rebuilt from the EKA workspace
+canonical store (default ~/.eka, or $EKA_HOME): the units of the whole
+project are re-read from the store, so 'eka sync' in another terminal
+is picked up without a restart. While the repository is not registered
+the watch shows a calm refusal frame instead of the projection; it
+keeps polling and flips to the projection automatically once the
+repository is registered and synced. No Markdown is read at projection
+time.
 
 Projections (the same surface as 'eka view'):
 
@@ -143,8 +150,18 @@ func runWatch(s *ui.Style, projection, target string, interval int) error {
 	signal.Notify(interrupt, os.Interrupt)
 	defer signal.Stop(interrupt)
 
+	// The workspace canonical store is the projection source. The
+	// store is opened once; every cycle re-reads the project's units,
+	// so a 'eka sync' run (registration + seeding) is picked up
+	// without a restart.
+	ws, err := workspace.Ensure()
+	if err != nil {
+		return err // Exit 2: workspace resolution.
+	}
+	defer ws.Close()
+
 	writeClearScreen(s)
-	prev, err := renderWatchFrame(s, ".", projection, target, interval)
+	prev, err := renderWatchFrame(s, ws, projection, target, interval)
 	if err != nil {
 		return err
 	}
@@ -152,7 +169,7 @@ func runWatch(s *ui.Style, projection, target string, interval int) error {
 	flush(s.W)
 
 	render := func() error {
-		frame, err := renderWatchFrame(s, ".", projection, target, interval)
+		frame, err := renderWatchFrame(s, ws, projection, target, interval)
 		if err != nil {
 			return err
 		}
@@ -182,32 +199,40 @@ func runWatch(s *ui.Style, projection, target string, interval int) error {
 }
 
 // renderWatchFrame runs one watch cycle into a fresh buffer: the
-// Knowledge Compiler (the same conformance-gated pipeline as view),
-// then either the projection frame — byte-identical to the one-shot
-// view output plus the watching footer — or the validation-failure
-// frame. The frame is a pure function of (repository state,
+// project's canonical units are re-read from the workspace store, then
+// either the projection frame — byte-identical to the one-shot view
+// output plus the watching footer — or the unregistered-repository
+// refusal frame. The frame is a pure function of (store state,
 // projection, target, interval): no clock, no timestamps, so identical
 // states produce identical frames and the loop skips redraws by byte
-// comparison.
+// comparison. A store/registry failure is an error (exit 2); an
+// unregistered repository is a rendered frame, never an exit.
 //
 // The base style is copied and its writer replaced with the buffer, so
 // the frame carries exactly the color/TTY settings of the live stdout
 // (a verified TTY for watch).
-func renderWatchFrame(s *ui.Style, root, projection, target string, interval int) ([]byte, error) {
+func renderWatchFrame(s *ui.Style, ws *workspace.Workspace, projection, target string, interval int) ([]byte, error) {
 	frame := *s
 	var buf bytes.Buffer
 	frame.W = &buf
 
-	res, err := compile.Compile(root)
+	abs, err := filepath.Abs(".")
 	if err != nil {
-		var ve *compile.ValidationError
-		if errors.As(err, &ve) {
-			renderWatchFailure(&frame, ve.Report, interval)
-			return buf.Bytes(), nil
-		}
 		return nil, fmt.Errorf("watch failed: %w", err)
 	}
-	g := view.NewGraph(root, res.CKOs)
+	repo, found, err := ws.FindRepo(abs)
+	if err != nil {
+		return nil, fmt.Errorf("watch failed: %w", err)
+	}
+	if !found {
+		renderWatchRefusal(&frame, abs, interval)
+		return buf.Bytes(), nil
+	}
+	units, err := ws.DB.UnitsByProject(repo.ProjectID)
+	if err != nil {
+		return nil, fmt.Errorf("watch failed: %w", err)
+	}
+	g := view.NewGraph(".", units)
 	proj, err := view.Build(projection, g, target)
 	if err != nil {
 		return nil, fmt.Errorf("watch failed: %w", err)
@@ -217,23 +242,23 @@ func renderWatchFrame(s *ui.Style, root, projection, target string, interval int
 	return buf.Bytes(), nil
 }
 
-// renderWatchFailure renders the validation-failure frame: the live
-// error state of the watch. It reuses the existing validation pieces —
-// the context header, the report summary and the sorted findings — in
-// a calm red-tinted frame, and ends with a dim hint that the watch
-// keeps polling (this is a rendered state, not an exit).
-func renderWatchFailure(s *ui.Style, r *conformance.Report, interval int) {
+// renderWatchRefusal renders the unregistered-repository frame: the
+// live error state of the watch when the current directory is not
+// registered in the EKA workspace. A calm red-tinted frame with the
+// deterministic refusal message and the sync hint, ending with a dim
+// note that the watch keeps polling (this is a rendered state, not an
+// exit).
+func renderWatchRefusal(s *ui.Style, abs string, interval int) {
 	ui.NewHeader(s, "Repository").
-		Add("Path", r.Root).
+		Add("Path", abs).
 		Add("Knowledge", "EKA v"+standardVersion).
-		Pipeline("Validate").
+		Pipeline("View").
 		Render()
 	fmt.Fprintln(s.W)
-	fmt.Fprintf(s.W, "%s\n", s.Error("Repository validation failed."))
-	fmt.Fprintf(s.W, "%s\n", validationDetail(r))
-	renderFindings(s, r)
+	fmt.Fprintf(s.W, "%s\n", s.Error("Repository not registered in the EKA workspace."))
+	fmt.Fprintf(s.W, "%s\n", s.Dim("Run 'eka sync' (auto-registers) or 'eka project register' first."))
 	fmt.Fprintln(s.W)
-	fmt.Fprintf(s.W, "%s\n", s.Dim("watching — fix the repository to resume the projection"))
+	fmt.Fprintf(s.W, "%s\n", s.Dim("watching — run 'eka sync' to register the repository"))
 	renderWatchFooter(s, interval)
 }
 

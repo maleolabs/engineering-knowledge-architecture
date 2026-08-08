@@ -1,6 +1,6 @@
 # Implementation ADR Summary
 
-Index of the 12 Implementation ADRs of the EKA v1.1 Reference Implementation (8 serialization ADRs + ADR-009–ADR-012, the v0.2.0 Knowledge Runtime Architecture). All ADRs have status **accepted** (`content-state: accepted`) and carry `namespace: eka-ref-impl`, dimension `decisions`.
+Index of the 13 Implementation ADRs of the EKA v1.1 Reference Implementation (8 serialization ADRs + ADR-009–ADR-013, the v0.2.0 Knowledge Runtime Architecture). All ADRs have status **accepted** (`content-state: accepted`) and carry `namespace: eka-ref-impl`, dimension `decisions`.
 
 | ADR | Decision (one line) | Status | File |
 |---|---|---|---|
@@ -16,6 +16,7 @@ Index of the 12 Implementation ADRs of the EKA v1.1 Reference Implementation (8 
 | **ADR-010 — Synchronization Model** | Knowledge Snapshot = deterministic RSF directory package at `exchange/snapshots/`; explicit `eka sync` protocol (pull then push, idempotent, additive, migration from `docs/` via conformance gate + `--from-docs`); one project = many repos partitioned by `source_repo` provenance; Git hooks/wrappers rejected for v0.2, lifecycle extended to Draft → Validate → Publish → Synchronize → Project → Consume. | accepted | [`adr-010-synchronization-model.md`](decisions/adr-010-synchronization-model.md) |
 | **ADR-011 — Immutable Engineering Knowledge Model** | Canonical store v2: immutable content-addressed `object_payloads` (object_hash = SHA-256(unit.json ‖ content), byte-identical to the RSF per-unit digest) + mutable `object_refs` resolver (form → current object); `change_log` removed — history derived from forward-only forms, `prev_hash` lineage, and retained payloads; `eka integrity check` verifies independent of the storage engine (0 clean / 1 violations / 2 internal); deterministic v1→v2 migration recomputes hashes; SQLite is persistence only, immutability belongs to the model. | accepted | [`adr-011-immutable-engineering-knowledge-model.md`](decisions/adr-011-immutable-engineering-knowledge-model.md) |
 | **ADR-012 — Canonical Knowledge Object Runtime** | Canonical Knowledge Object (CKO) = the `exchange.Unit` model (unit.json + representation payload); the `compile/` Knowledge Compiler is the one gateway for all authoring (Markdown = one adapter via conformance scan/analyze); the runtime consumes only CKO — projections read `exchange.Unit`, SQLite persists CKO (never a Markdown cache), two validators with distinct scopes (`eka validate` R0–R12 vs `eka integrity check`); authoring experience unchanged. | accepted | [`adr-012-canonical-knowledge-object-runtime.md`](decisions/adr-012-canonical-knowledge-object-runtime.md) |
+| **ADR-013 — Store-Backed Projections** | Projections are store-backed: `eka view`/`eka watch` read CKO from the workspace canonical store (`store.UnitsByProject` → `exchange.DecodeUnit`), never the docs tree — `compile` stays the authoring gateway for sync docs-mode/migration; projection scope = the project (multi-repo union, digest-tagged, ordered by canonical form); synchronization is a precondition (unregistered repository refused with a deterministic message + hint, exit 1; registered-but-unsynced renders an empty projection with a note, exit 0); one reader, one source (no fallback chain); watch polls the store, the refusal frame replacing the compile-failure frame. | accepted | [`adr-013-store-backed-projections.md`](decisions/adr-013-store-backed-projections.md) |
 
 ## Shared frontmatter conventions
 
@@ -68,4 +69,5 @@ flowchart LR
   A9 --> A11[ADR-011 immutable-knowledge-model]
   A10 --> A11
   A11 --> A12[ADR-012 canonical-knowledge-object-runtime]
+  A12 --> A13[ADR-013 store-backed-projections]
 ```
