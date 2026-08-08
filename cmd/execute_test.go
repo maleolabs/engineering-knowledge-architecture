@@ -83,7 +83,7 @@ func TestExitCodeUsage(t *testing.T) {
 	}
 	// Cobra sorts command lists alphabetically (EnableCommandSorting);
 	// the message must list exactly the registered commands.
-	if !strings.Contains(errText, "available commands: export, import, init, integrity, project, status, sync, validate, version, view, watch") {
+	if !strings.Contains(errText, "available commands: export, get, import, init, integrity, project, status, sync, validate, version, view, watch") {
 		t.Errorf("unknown command message must list the available commands, got %q", errText)
 	}
 	code, _, _ = runIn([]string{"validate", "a", "b"})

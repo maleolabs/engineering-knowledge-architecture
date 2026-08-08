@@ -1,7 +1,7 @@
 # Migration Report — Knowledge Runtime Architecture v0.2.0
 
 > Milestone: EKA v0.2.0 — Knowledge Runtime Architecture (workspace + embedded canonical store + snapshot transport + synchronization protocol).
-> Authoritative decisions: [ADR-009](decisions/adr-009-knowledge-runtime-architecture.md), [ADR-010](decisions/adr-010-synchronization-model.md), [ADR-011](decisions/adr-011-immutable-engineering-knowledge-model.md) (schema v2 — see the [Addendum §8](#8-addendum-immutable-engineering-knowledge-model-schema-v2)), [ADR-012](decisions/adr-012-canonical-knowledge-object-runtime.md) (the Canonical Knowledge Object consumption pivot — see the [Addendum §9](#9-addendum-canonical-knowledge-object-runtime)), [ADR-013](decisions/adr-013-store-backed-projections.md) (store-backed projections — see the [Addendum §10](#10-addendum-store-backed-projections)), [ADR-014](decisions/adr-014-runtime-interface-architecture.md) (the Runtime Kernel — see the [Addendum §11](#11-addendum-runtime-kernel-interfaces)). Convention document, not an artifact.
+> Authoritative decisions: [ADR-009](decisions/adr-009-knowledge-runtime-architecture.md), [ADR-010](decisions/adr-010-synchronization-model.md), [ADR-011](decisions/adr-011-immutable-engineering-knowledge-model.md) (schema v2 — see the [Addendum §8](#8-addendum-immutable-engineering-knowledge-model-schema-v2)), [ADR-012](decisions/adr-012-canonical-knowledge-object-runtime.md) (the Canonical Knowledge Object consumption pivot — see the [Addendum §9](#9-addendum-canonical-knowledge-object-runtime)), [ADR-013](decisions/adr-013-store-backed-projections.md) (store-backed projections — see the [Addendum §10](#10-addendum-store-backed-projections)), [ADR-014](decisions/adr-014-runtime-interface-architecture.md) (the Runtime Kernel — see the [Addendum §11](#11-addendum-runtime-kernel-interfaces)), [ADR-015](decisions/adr-015-machine-retrieval-interface.md) (the machine retrieval interface — see the [Addendum §12](#12-addendum-machine-retrieval-interface-eka-get)). Convention document, not an artifact.
 > Version note: **CLI/artifact version 0.2.0**; the **EKA standard version remains 1.1** — this milestone changes the runtime of the reference implementation, not the standard.
 
 ## 1. Purpose
@@ -49,6 +49,7 @@ New commands (deterministic; exit codes `0` ok / `1` validation or integrity fai
 | `eka project list` | deterministic listing of projects and repositories |
 | `eka status` | workspace overview: path, schema version, workspace id, store totals (Objects = references, Payloads = immutable objects, Attachments), per-repository last sync; read-only — never creates the workspace |
 | `eka integrity check` | read-only store integrity scan: recompute every payload hash, strict-decode every payload, verify every reference (target + derived index columns), recompute attachment digests, check the repository registry; unreferenced payloads counted as history, never violations; exits `0` clean / `1` violations / `2` internal |
+| `eka get <target>` | the machine interface (ADR-015): canonical CKO JSON (schema `eka-cko-v1`) emitted on stdout — identity lookup (RSF canonical form or qualified line form via `Resolver.Resolve`, namespace required) or domain query (one of the five Engineering Domains via `Knowledge.Search` → domain Collection, sorted by canonical form); generated directly from Canonical Knowledge Objects, never rendered, never parsed from Markdown; read-only, never creates a workspace; exits `0` / `1` (no workspace, repository not registered) / `2` (usage, unknown identity, internal) |
 
 ### 3.3 What stays compatible
 
@@ -253,6 +254,42 @@ eka sync ./api && eka sync ./web && eka sync ./mobile
 - **Scan-based traversal and search** — `Relations.To` / `Relations.Downstream` (workspace-wide reverse traversal) and `Knowledge.Search` (metadata filters) are in-memory scans over the project's units in v0.2: deterministic and fine at runtime scale, with indexed SQL reserved as a later optimization.
 - **Alias re-exports** — `SyncResult = sync.Report` and its siblings (the authoring validation report, the integrity report) leak the internal package names into the API surface; accepted as **contract types** (the reports are the domain-shaped return values).
 - **In-memory search does not use the SQL indexes yet** — the `object_refs` index columns (`dimension`, `domain`, `phase`, identity tuple) exist but search filters in memory; a future optimization pushes the filter into SQL.
+
+## 12. Addendum — Machine Retrieval Interface (`eka get`)
+
+*This addendum records the fifth architectural clarification applied to the runtime after release: the machine interface — `eka get`, the canonical machine-readable retrieval command. The authoritative decision is [ADR-015](decisions/adr-015-machine-retrieval-interface.md); the CLI reference lives in [`cli.md`](cli.md); the runtime document's §2.3 and §11 summarize. This section summarizes what it means for users.*
+
+### 12.1 What changed
+
+- **New command: `eka get <target>`** — the machine interface: retrieves Engineering Knowledge as **canonical JSON generated directly from Canonical Knowledge Objects** (`exchange.Unit`) via the Runtime API (`Knowledge.Search`, `Resolver.Resolve`, `Workspace.FindRepo`) — never renders for readability, never parses Markdown, never queries SQLite, never reuses projection renderers. stdout carries **only** the JSON document (+ one trailing newline); errors go to stderr as a single `eka: ...` line; exit `0` (emitted) / `1` (workspace or repository-state refusal, mirroring `eka view`) / `2` (usage, unknown identity, internal). Read-only end to end: `runtime.Open`, never `runtime.Ensure` — `eka get` **never creates a workspace**.
+- **New package: `machine/`** — the CKO serializer: one CKO = one **Document** (schema `eka-cko-v1`, fixed field order, derived `engineering_domain`/`stratum` — classification else type token — content payload verbatim, `object_hash` digest); a domain query returns a **Collection** `{schema, collection: "domain", domain, count, units}` sorted by canonical form. Deterministic: identical synced store state → byte-identical JSON, no timestamps, no host-dependent values.
+- **Query model v0.2** — a target containing `:` = identity lookup (RSF canonical form `<ns>/<type>:<id>:<v>` or qualified line form `<ns>/<type>:<id>`; **namespace required** — unqualified forms refused as ambiguous); a target without `:` = one of the five Engineering Domains → domain Collection of the project union. No flags in v0.2.
+- **Separation formalized** (ADR-015 §Decision 5) — `eka view` = human (projection model → renderer → terminal); `eka get` = machine (Runtime API → CKO → canonical JSON). They share **only** the Runtime API and the CKO model; the machine path never imports `view/`, the projection path never imports `machine/`; ADR-014 is deliberately **not** amended.
+
+### 12.2 What did NOT change
+
+| Area | Status |
+|---|---|
+| **`eka view` / `eka watch` / projections** | unchanged — the projection path (`view/` models, renderers, terminal output) is untouched; the machine path never reuses projection renderers |
+| **Runtime services** | unchanged — `eka get` consumes existing Runtime API surfaces (`Knowledge.Search`, `Resolver.Resolve`, `Workspace.FindRepo`); no new service, no Kernel change (ADR-015 §Decision 5) |
+| **Store schema** | unchanged — no schema change, no migration; the machine path reads the same `object_refs` + `object_payloads` through the Kernel |
+| **RSF bytes / snapshots** | unchanged — `object_hash` in the Document is the same content-derived digest (`SHA-256(unit.json ‖ content)`) the store and snapshots carry |
+| **Authoring** | unchanged — Markdown files in `docs/`; the machine authoring UX is **write Markdown → `eka sync` → `eka get`** |
+
+### 12.3 Migration impact
+
+**None — the command is additive.** Every existing command keeps its behavior, output, and exit codes; existing workspaces, snapshots, and sync flows are unaffected. `eka get` requires a registered + synced repository (the same precondition as `eka view` — `eka sync` auto-registers); it never creates a workspace and never writes the store.
+
+### 12.4 Trade-offs (accepted, documented in ADR-015 §Consequences)
+
+- **Content size** — `content.text` carries the raw representation payload; a metadata-only consumer pays the size (documented remedy: a future content-filter flag).
+- **Unqualified refusal** — the namespace must be spelled out on every identity lookup; ambiguity is avoided (matching the Resolver's global-resolution contract) at the cost of verbosity.
+- **No pagination** — a domain query returns all units of the domain in v0.2; the Collection envelope (`count` + `units`) leaves the room for it.
+- **JSON naming duplicates RSF** — state/relationships use the RSF unit.json field naming by design: consistency with the ratified serialization over inventing new names.
+
+### 12.5 Stability promise
+
+`eka-cko-v1` is **stable across minor releases** — future tooling can depend on it. Changes are **additive** (new fields appended) or **schema-versioned** (a breaking change bumps the schema string; it never mutates the contract under existing consumers). Future query targets (relationship traversal, timeline/history, semantic search, metadata filtering, context generation) extend the query surface over the same Runtime API; the JSON stays `eka-cko-v1`-compatible (ADR-015 §Decision 6).
 
 ---
 

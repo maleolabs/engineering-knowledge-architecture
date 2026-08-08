@@ -1,12 +1,12 @@
 # Runtime API — EKA Knowledge Runtime v0.2.0
 
 > Convention document, not an artifact (no `type`/`id`). Documents the **Runtime Kernel** of the v0.2.0 Runtime: the internal **Runtime API** and the **Authoring API** — the one sanctioned entry point every consumer talks to.
-> Authoritative decision: [ADR-014](decisions/adr-014-runtime-interface-architecture.md) (the interface architecture). Companion documents: [`runtime-architecture.md`](runtime-architecture.md) (the runtime these APIs expose), [`cko-specification.md`](cko-specification.md) (the Canonical Knowledge Object these APIs return), [`cli.md`](cli.md) (the CLI, the first consumer). This document explains the contracts; ADR-014 is normative.
+> Authoritative decision: [ADR-014](decisions/adr-014-runtime-interface-architecture.md) (the interface architecture). Companion documents: [`runtime-architecture.md`](runtime-architecture.md) (the runtime these APIs expose), [`cko-specification.md`](cko-specification.md) (the Canonical Knowledge Object these APIs return), [`cli.md`](cli.md) (the CLI, the first consumer; `eka get`, the machine interface). This document explains the contracts; ADR-014 is normative.
 > Terminology status: the names *runtime*, *workspace*, *snapshot*, and *sync* are **not finalized** — a future milestone may rename them. Everything here is experimental.
 
 ## 1. Purpose
 
-The **Runtime Kernel** (package `runtime/`) is the single sanctioned entry point of the EKA Knowledge Runtime. Every consumer — the CLI today; the Context Engine, the Machine-readable API, MCP, Atrium tomorrow — communicates with the runtime through these service contracts, never through storage internals (ADR-014 §Context). Why the Kernel exists:
+The **Runtime Kernel** (package `runtime/`) is the single sanctioned entry point of the EKA Knowledge Runtime. Every consumer — the CLI and the machine interface (`eka get`) today; the Context Engine, MCP, Atrium tomorrow — communicates with the runtime through these service contracts, never through storage internals (ADR-014 §Context). Why the Kernel exists:
 
 - **One sanctioned way in.** Consumers learn the knowledge-shaped contract once — never SQLite tables, resolver semantics, provenance rules, or the integrity contract.
 - **Future components build on the same contracts.** The CKO-shaped API is the shared vocabulary the future set reserved (ADR-012 §Decision 7, ADR-013 §Consequences); ADR-014 §Future Extensibility names the consumers.
@@ -36,7 +36,7 @@ flowchart LR
     RUN["Runtime API\nWorkspace · Knowledge · Resolver · Relations\nTimeline · Snapshot · Integrity"]
   end
   subgraph CONS["Consumers"]
-    CLI["CLI — cmd/\nsync · view · watch · status\nproject · integrity · validate"]
+    CLI["CLI — cmd/\nsync · view · watch · get · status\nproject · integrity · validate"]
     FUT["Future consumers\nContext Engine · Machine API / MCP · Atrium · AI"]
   end
   DB[("Runtime DB — SQLite eka.db\nobject_payloads + object_refs\n(private persistence)")]
@@ -52,7 +52,7 @@ flowchart LR
   FUT --> RUN
 ```
 
-Reading the flow: **authoring representations** (Markdown today, via the conformance adapter; future adapters) enter through the **Authoring API** — `Validate` gates them, `Compile` turns them into Canonical Knowledge Objects, `Sync` seeds the canonical store (compile + seed + snapshot write, the explicit synchronization of ADR-010). The **Runtime API** services read that store — the only store access in the system — and serve **consumers**: the CLI delegates its runtime commands to the services; future consumers (Context Engine, Machine API/MCP, Atrium, AI) build on the same contracts. The Runtime DB is private: no consumer, present or future, touches it directly.
+Reading the flow: **authoring representations** (Markdown today, via the conformance adapter; future adapters) enter through the **Authoring API** — `Validate` gates them, `Compile` turns them into Canonical Knowledge Objects, `Sync` seeds the canonical store (compile + seed + snapshot write, the explicit synchronization of ADR-010). The **Runtime API** services read that store — the only store access in the system — and serve **consumers**: the CLI delegates its runtime commands to the services (`eka get` is the first machine-shaped consumer — CKO → canonical JSON, the reference implementation a future wire adapter can wrap; ADR-015); future consumers (Context Engine, MCP, Atrium, AI) build on the same contracts. The Runtime DB is private: no consumer, present or future, touches it directly.
 
 ## 3. The Runtime API
 
@@ -144,26 +144,52 @@ cmd     → {runtime, exchange, view, conformance (types), bootstrap, ui}
 
 Nothing outside `runtime/` imports `store/`, `workspace/`, `sync/` or `compile/` in production code. `eka init` stays the authoring adapter (bootstrap/ repo generation); `eka export` / `eka import` stay exchange transport operations — they touch repository files and packages, never the runtime store.
 
-## 7. Future integrations (NOT implemented — boundaries only)
+## 7. Machine Retrieval (`eka get`)
+
+The machine interface is **implemented**: `eka get` consumes the Runtime API exactly as the Kernel intends — a machine-shaped consumer proving the contracts are sufficient before MCP/Atrium build on them (ADR-015). The authoritative decision is [ADR-015](decisions/adr-015-machine-retrieval-interface.md); the full reference (query model, JSON field table, output contract, exit codes, examples) is the [`cli.md`](cli.md) `eka get` section.
+
+### 7.1 Service consumption
+
+| Service | Operation | `eka get` use |
+|---|---|---|
+| Workspace | `FindRepo(absPath)` | the repository-state gate — the current directory must resolve to a registered repository, else refusal (exit `1`, deterministic message + hint); `eka get` **never creates a workspace** (`runtime.Open`, the detached state is a refusal, not an initialization) |
+| Resolver | `Resolve(form)` | identity lookup — a target containing `:`: the RSF canonical form (exact instance) or the qualified line form (lowest instance-version); unqualified forms are refused (the Runtime resolves globally, with no referrer context); a target resolving to nothing is reported as unknown (exit `2`) |
+| Knowledge | `Search(query)` | domain query — a `:`-less target naming one of the five Engineering Domains: `SearchQuery{ProjectID, Domain}` over the project union, sorted by canonical form |
+
+### 7.2 Separation from projections (ADR-015 §Decision 5)
+
+The machine path (`cmd/get.go` → `machine/` → Runtime API) and the projection path (`cmd/view.go`, `cmd/watch.go` → `view/` → Runtime API) share **only** the Runtime API and the CKO model. The machine path imports `{runtime, exchange, conformance}` (ontology helpers for the derived fields) and never imports `view/`; the projection path never imports `machine/`. Projections derive presentational meaning (projected status, boards, dependency trees); `eka get` preserves complete Engineering Knowledge semantics with no presentational transformation — the two paths cannot drift because both are pure functions of the same objects. ADR-014 is deliberately **not** amended: the machine interface is a new capability with its own contract (ADR-015).
+
+### 7.3 The canonical JSON contract (summary)
+
+One CKO = one **Document** (`machine.Document`), schema **`eka-cko-v1`** — stable across minor releases; changes are additive (fields appended) or schema-versioned (a breaking change bumps the schema string). Fields in fixed serialization order: `schema`, `identity` (the complete tuple), `canonical_form`, `engineering_domain` (derived: classification, else type token), `stratum` (derived), `revision`, `author`/`created`/`updated` (omitted when empty), `state_vector` (the five owned domains, RSF unit.json naming), `phase`, `classification`, `relationships` (stored order), `change_log` (occurrence order), `content` `{representation, text}` (opaque payload verbatim), `object_hash` (the content-derived digest). A domain query returns a **Collection** `{schema, collection: "domain", domain, count, units}`, units sorted by canonical form.
+
+- **Content is carried verbatim**: the machine document never parses or re-structures Markdown — `content.text` is the opaque representation payload inline (the RSF's `file` indirection is package-layout-specific and has no place in the machine contract).
+- **Deterministic**: fixed field order, canonical-form sorted collections, no timestamps, no host-dependent values — identical synced store state → byte-identical JSON.
+- Full field table, output contract (stdout = JSON only + one trailing newline; errors → stderr), exit codes (0 / 1 workspace-or-repository refusal / 2 usage, unknown identity, internal) and examples: [`cli.md`](cli.md).
+
+## 8. Future integrations (NOT implemented — boundaries only)
 
 The Kernel's contracts are the boundaries the future set builds on; none of the following exist yet (ADR-014 §Future Extensibility):
 
 - **Context Engine** — `Knowledge.Search` + `Relations` traversal are its query surface; it builds on the Kernel without learning storage.
-- **Machine-readable API / MCP** — CKO serialization over the same services; a thin adapter, exactly as ADR-011 §Decision 8 reserved.
+- **Machine-readable API / MCP** — the machine-readable baseline is **implemented** (`eka get`, §7): CKO serialization over the same services is proven; what remains is the **wire layer** — an MCP server (or HTTP/REST/gRPC) is a thin adapter wrapping the same services and serialization, exactly as ADR-011 §Decision 8 reserved.
 - **Atrium** — the projection source (`Knowledge.UnitsByProject`) + the resolver (`Resolver.Resolve` / `Resolver.ResolveLine`) are the read path it needs.
 - **Alternative authoring** — visual editors, AI-generated knowledge, forms: the Authoring API (Validate/Compile/Sync), inheriting validation, compilation and integrity verification.
 - **Semantic / vector search** — a separate capability behind the `Knowledge.Search` boundaries, not a new storage contract.
 - **Storage engine replacement** — `store/` behind the Kernel; the swap is a Kernel-internal change.
 
-## 8. References
+## 9. References
 
 - [ADR-014 — Runtime Interface Architecture](decisions/adr-014-runtime-interface-architecture.md) — the authoritative decision record for everything in this document (context, decisions, consequences, alternatives, future extensibility)
+- [ADR-015 — Machine Retrieval Interface](decisions/adr-015-machine-retrieval-interface.md) — the machine interface (`eka get`): canonical JSON (schema `eka-cko-v1`), query model, output contract, formal separation from projections (ADR-014 deliberately not amended)
 - [ADR-013 — Store-Backed Projections](decisions/adr-013-store-backed-projections.md) — the store read path the Knowledge service wraps; the refusal messages and empty-projection notes are pinned CLI behavior the Kernel preserves
 - [ADR-012 — Canonical Knowledge Object Runtime](decisions/adr-012-canonical-knowledge-object-runtime.md) — the CKO (`exchange.Unit`) the Runtime API returns; the compiler gateway is the Authoring API's engine
 - [ADR-011 — Immutable Engineering Knowledge Model](decisions/adr-011-immutable-engineering-knowledge-model.md) — the immutable store behind the Kernel; the integrity scan is the Integrity service's contract
 - [ADR-010 — Synchronization Model](decisions/adr-010-synchronization-model.md) — the explicit synchronization `Authoring.Sync` realizes
 - [`runtime-architecture.md`](runtime-architecture.md) — the runtime these APIs expose (workspace, canonical store, sync protocol, CLI behavior review, roadmap)
 - [`cko-specification.md`](cko-specification.md) — the Canonical Knowledge Object schema (field reference, derived values, integrity, Runtime Contract)
-- [`cli.md`](cli.md) — the CLI, the first consumer of the Kernel: command → service delegation, output and exit codes
-- [`adr-summary.md`](adr-summary.md) — index of the 14 Implementation ADRs
+- [`cli.md`](cli.md) — the CLI, the first consumer of the Kernel: command → service delegation, output and exit codes; the `eka get` machine interface reference
+- [`adr-summary.md`](adr-summary.md) — index of the 15 Implementation ADRs
 - The implementation: [`../../runtime/`](../../runtime/) — `runtime.go` (entry points, service wiring), `workspace.go`, `knowledge.go`, `resolver.go`, `relations.go`, `timeline.go`, `snapshot.go`, `integrity.go`, `authoring.go`
+- The machine package: [`../../machine/`](../../machine/) — `document.go` (the Document, schema `eka-cko-v1`), `collection.go` (the domain Collection)
